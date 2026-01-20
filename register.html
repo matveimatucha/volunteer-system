@@ -153,9 +153,7 @@
             margin-bottom: 0.5rem;
             font-weight: 600;
             color: var(--dark);
-            text-transform: uppercase;
-            font-size: 0.85rem;
-            letter-spacing: 0.5px;
+            font-size: 0.95rem;
         }
 
         .required {
@@ -189,20 +187,33 @@
             resize: vertical;
         }
 
-        .checkbox-group {
+        select {
+            cursor: pointer;
+        }
+
+        .checkbox-group,
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+
+        .checkbox-item,
+        .radio-item {
             display: flex;
             align-items: center;
             gap: 0.8rem;
         }
 
-        .checkbox-group input[type="checkbox"] {
+        .checkbox-item input[type="checkbox"],
+        .radio-item input[type="radio"] {
             width: auto;
             cursor: pointer;
         }
 
-        .checkbox-group label {
+        .checkbox-item label,
+        .radio-item label {
             margin: 0;
-            text-transform: none;
             font-weight: 400;
             cursor: pointer;
         }
@@ -306,7 +317,7 @@
         // ================================
         // ВАЖНО! ЗАМЕНИТЕ ССЫЛКУ
         // ================================
-        const GOOGLE_SCRIPT_URL = 'ВСТАВЬТЕ_СЮДА_ССЫЛКУ_ИЗ_GOOGLE_APPS_SCRIPT';
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzNr45OR92-hsxwL6u7MED_BpZ77tj3gmPfsFYTT2ps--nAEwxtpMwfLOtuycu-_6k/exec';
 
         // Получаем ID мероприятия из URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -356,6 +367,8 @@
                 return;
             }
 
+            const formFields = generateFormFields(event.questions || []);
+
             document.getElementById('contentArea').innerHTML = `
                 <div class="event-header">
                     <div class="event-date">${event.date}</div>
@@ -370,47 +383,7 @@
                     <div id="statusMessage" class="message"></div>
 
                     <form id="registrationForm">
-                        <div class="form-group">
-                            <label>Имя <span class="required">*</span></label>
-                            <input type="text" name="name" required placeholder="Ваше полное имя">
-                        </div>
-
-                        <div class="form-group">
-                            <label>Email <span class="required">*</span></label>
-                            <input type="email" name="email" required placeholder="your@email.com">
-                        </div>
-
-                        <div class="form-group">
-                            <label>Телефон <span class="required">*</span></label>
-                            <input type="tel" name="phone" required placeholder="+7 (___) ___-__-__">
-                        </div>
-
-                        <div class="form-group">
-                            <label>Возраст <span class="required">*</span></label>
-                            <input type="number" name="age" required min="14" max="100" placeholder="18">
-                        </div>
-
-                        <div class="form-group">
-                            <label>Опыт волонтёрства</label>
-                            <select name="experience">
-                                <option value="Нет опыта">Нет опыта</option>
-                                <option value="Менее года">Менее года</option>
-                                <option value="1-3 года">1-3 года</option>
-                                <option value="Более 3 лет">Более 3 лет</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Комментарий</label>
-                            <textarea name="comment" placeholder="Расскажите о себе или задайте вопрос (необязательно)"></textarea>
-                        </div>
-
-                        <div class="form-group">
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="agreement" required>
-                                <label for="agreement">Я согласен(а) на обработку персональных данных <span class="required">*</span></label>
-                            </div>
-                        </div>
+                        ${formFields}
 
                         <button type="submit" class="submit-btn" id="submitBtn">Зарегистрироваться</button>
                     </form>
@@ -419,6 +392,99 @@
 
             // Добавляем обработчик формы
             document.getElementById('registrationForm').addEventListener('submit', handleSubmit);
+        }
+
+        function generateFormFields(questions) {
+            if (!questions || questions.length === 0) {
+                return `
+                    <div class="form-group">
+                        <label>Имя <span class="required">*</span></label>
+                        <input type="text" name="name" required placeholder="Ваше полное имя">
+                    </div>
+                    <div class="form-group">
+                        <label>Email <span class="required">*</span></label>
+                        <input type="email" name="email" required placeholder="your@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Телефон <span class="required">*</span></label>
+                        <input type="tel" name="phone" required placeholder="+7 (___) ___-__-__">
+                    </div>
+                `;
+            }
+
+            return questions.map((q, index) => {
+                const requiredMark = q.required ? '<span class="required">*</span>' : '';
+                const requiredAttr = q.required ? 'required' : '';
+                const fieldName = `question_${q.id}`;
+
+                switch (q.type) {
+                    case 'text':
+                    case 'email':
+                    case 'tel':
+                    case 'number':
+                        return `
+                            <div class="form-group">
+                                <label>${q.text} ${requiredMark}</label>
+                                <input type="${q.type}" name="${fieldName}" ${requiredAttr} placeholder="Ваш ответ">
+                            </div>
+                        `;
+
+                    case 'textarea':
+                        return `
+                            <div class="form-group">
+                                <label>${q.text} ${requiredMark}</label>
+                                <textarea name="${fieldName}" ${requiredAttr} placeholder="Ваш ответ"></textarea>
+                            </div>
+                        `;
+
+                    case 'select':
+                        return `
+                            <div class="form-group">
+                                <label>${q.text} ${requiredMark}</label>
+                                <select name="${fieldName}" ${requiredAttr}>
+                                    <option value="">Выберите вариант</option>
+                                    ${(q.options || []).map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                                </select>
+                            </div>
+                        `;
+
+                    case 'radio':
+                        return `
+                            <div class="form-group">
+                                <label>${q.text} ${requiredMark}</label>
+                                <div class="radio-group">
+                                    ${(q.options || []).map((opt, i) => `
+                                        <div class="radio-item">
+                                            <input type="radio" 
+                                                   id="${fieldName}_${i}" 
+                                                   name="${fieldName}" 
+                                                   value="${opt}" 
+                                                   ${requiredAttr}>
+                                            <label for="${fieldName}_${i}">${opt}</label>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+
+                    case 'checkbox':
+                        return `
+                            <div class="form-group">
+                                <div class="checkbox-item">
+                                    <input type="checkbox" 
+                                           id="${fieldName}" 
+                                           name="${fieldName}" 
+                                           value="yes" 
+                                           ${requiredAttr}>
+                                    <label for="${fieldName}">${q.text} ${requiredMark}</label>
+                                </div>
+                            </div>
+                        `;
+
+                    default:
+                        return '';
+                }
+            }).join('');
         }
 
         async function handleSubmit(e) {
@@ -432,18 +498,20 @@
             statusMessage.style.display = 'none';
 
             const formData = new FormData(e.target);
+            
+            // Собираем ответы на вопросы
+            const answers = {};
+            for (let [key, value] of formData.entries()) {
+                answers[key] = value;
+            }
+
             const data = {
                 action: 'registerVolunteer',
                 eventId: eventId,
                 eventTitle: currentEvent.title,
                 volunteer: {
                     timestamp: new Date().toLocaleString('ru-RU'),
-                    name: formData.get('name'),
-                    email: formData.get('email'),
-                    phone: formData.get('phone'),
-                    age: formData.get('age'),
-                    experience: formData.get('experience'),
-                    comment: formData.get('comment') || 'Без комментариев'
+                    answers: answers
                 }
             };
 
