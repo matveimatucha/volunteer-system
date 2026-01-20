@@ -182,6 +182,28 @@
             box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
         }
 
+        input:invalid:not(:placeholder-shown),
+        textarea:invalid:not(:placeholder-shown) {
+            border-color: var(--danger);
+            background: rgba(231, 76, 60, 0.05);
+        }
+
+        input:valid:not(:placeholder-shown),
+        textarea:valid:not(:placeholder-shown) {
+            border-color: var(--success);
+        }
+
+        .field-error {
+            color: var(--danger);
+            font-size: 0.85rem;
+            margin-top: 0.3rem;
+            display: none;
+        }
+
+        .field-error.show {
+            display: block;
+        }
+
         textarea {
             min-height: 100px;
             resize: vertical;
@@ -348,11 +370,12 @@
 
         function displayEvent(event) {
             const spotsLeft = event.maxVolunteers - event.currentVolunteers;
+            const eventColor = event.color || '#ff6b35';
             
             if (spotsLeft <= 0) {
                 document.getElementById('contentArea').innerHTML = `
                     <div class="event-header">
-                        <div class="event-date">${event.date}</div>
+                        <div class="event-date" style="color: ${eventColor};">${event.date}</div>
                         <h1>${event.title}</h1>
                         <div class="event-location">📍 ${event.location}</div>
                         <div class="event-description">${event.description}</div>
@@ -371,11 +394,11 @@
 
             document.getElementById('contentArea').innerHTML = `
                 <div class="event-header">
-                    <div class="event-date">${event.date}</div>
+                    <div class="event-date" style="color: ${eventColor};">${event.date}</div>
                     <h1>${event.title}</h1>
                     <div class="event-location">📍 ${event.location}</div>
                     <div class="event-description">${event.description}</div>
-                    <div class="spots-badge">Осталось ${spotsLeft} из ${event.maxVolunteers} мест</div>
+                    <div class="spots-badge" style="background: linear-gradient(135deg, ${eventColor}, ${adjustColor(eventColor, -20)});">Осталось ${spotsLeft} из ${event.maxVolunteers} мест</div>
                 </div>
                 <div class="form-container">
                     <h2 class="form-title">Регистрация на мероприятие</h2>
@@ -385,7 +408,7 @@
                     <form id="registrationForm">
                         ${formFields}
 
-                        <button type="submit" class="submit-btn" id="submitBtn">Зарегистрироваться</button>
+                        <button type="submit" class="submit-btn" id="submitBtn" style="background: linear-gradient(135deg, ${eventColor}, ${adjustColor(eventColor, -20)});">Зарегистрироваться</button>
                     </form>
                 </div>
             `;
@@ -399,15 +422,18 @@
                 return `
                     <div class="form-group">
                         <label>Имя <span class="required">*</span></label>
-                        <input type="text" name="name" required placeholder="Ваше полное имя">
+                        <input type="text" name="name" required placeholder="Ваше полное имя" minlength="2" maxlength="100">
+                        <div class="field-error">Введите ваше имя (минимум 2 символа)</div>
                     </div>
                     <div class="form-group">
                         <label>Email <span class="required">*</span></label>
-                        <input type="email" name="email" required placeholder="your@email.com">
+                        <input type="email" name="email" required placeholder="your@email.com" pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}">
+                        <div class="field-error">Введите корректный email (например: name@example.com)</div>
                     </div>
                     <div class="form-group">
                         <label>Телефон <span class="required">*</span></label>
-                        <input type="tel" name="phone" required placeholder="+7 (___) ___-__-__">
+                        <input type="tel" name="phone" required placeholder="+7 (___) ___-__-__" pattern="[+]?[0-9\\s\\-\\(\\)]{10,20}">
+                        <div class="field-error">Введите корректный телефон (например: +7 999 123-45-67)</div>
                     </div>
                 `;
             }
@@ -419,13 +445,41 @@
 
                 switch (q.type) {
                     case 'text':
+                        return `
+                            <div class="form-group">
+                                <label>${q.text} ${requiredMark}</label>
+                                <input type="text" name="${fieldName}" ${requiredAttr} placeholder="Ваш ответ" minlength="1" maxlength="500">
+                                <div class="field-error">Это поле обязательно для заполнения</div>
+                            </div>
+                        `;
+
                     case 'email':
+                        return `
+                            <div class="form-group">
+                                <label>${q.text} ${requiredMark}</label>
+                                <input type="email" name="${fieldName}" ${requiredAttr} placeholder="example@email.com" 
+                                       pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}">
+                                <div class="field-error">Введите корректный email (например: name@example.com)</div>
+                            </div>
+                        `;
+
                     case 'tel':
+                        return `
+                            <div class="form-group">
+                                <label>${q.text} ${requiredMark}</label>
+                                <input type="tel" name="${fieldName}" ${requiredAttr} placeholder="+7 (___) ___-__-__"
+                                       pattern="[+]?[0-9\\s\\-\\(\\)]{10,20}">
+                                <div class="field-error">Введите корректный телефон (10-20 цифр)</div>
+                            </div>
+                        `;
+
                     case 'number':
                         return `
                             <div class="form-group">
                                 <label>${q.text} ${requiredMark}</label>
-                                <input type="${q.type}" name="${fieldName}" ${requiredAttr} placeholder="Ваш ответ">
+                                <input type="number" name="${fieldName}" ${requiredAttr} placeholder="Введите число" 
+                                       min="0" max="150">
+                                <div class="field-error">Введите число от 0 до 150</div>
                             </div>
                         `;
 
@@ -433,7 +487,9 @@
                         return `
                             <div class="form-group">
                                 <label>${q.text} ${requiredMark}</label>
-                                <textarea name="${fieldName}" ${requiredAttr} placeholder="Ваш ответ"></textarea>
+                                <textarea name="${fieldName}" ${requiredAttr} placeholder="Ваш ответ" 
+                                          minlength="1" maxlength="2000"></textarea>
+                                <div class="field-error">Это поле обязательно для заполнения</div>
                             </div>
                         `;
 
@@ -445,6 +501,7 @@
                                     <option value="">Выберите вариант</option>
                                     ${(q.options || []).map(opt => `<option value="${opt}">${opt}</option>`).join('')}
                                 </select>
+                                <div class="field-error">Выберите один из вариантов</div>
                             </div>
                         `;
 
@@ -464,6 +521,7 @@
                                         </div>
                                     `).join('')}
                                 </div>
+                                <div class="field-error">Выберите один из вариантов</div>
                             </div>
                         `;
 
@@ -478,6 +536,7 @@
                                            ${requiredAttr}>
                                     <label for="${fieldName}">${q.text} ${requiredMark}</label>
                                 </div>
+                                <div class="field-error">Необходимо поставить галочку</div>
                             </div>
                         `;
 
@@ -492,12 +551,26 @@
             
             const submitBtn = document.getElementById('submitBtn');
             const statusMessage = document.getElementById('statusMessage');
+            const form = e.target;
+            
+            // Валидация формы
+            if (!validateForm(form)) {
+                statusMessage.className = 'message error';
+                statusMessage.textContent = '✗ Пожалуйста, исправьте ошибки в форме';
+                
+                // Прокручиваем к первой ошибке
+                const firstError = form.querySelector('.field-error.show');
+                if (firstError) {
+                    firstError.closest('.form-group').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                return;
+            }
             
             submitBtn.disabled = true;
             submitBtn.textContent = 'Отправка...';
             statusMessage.style.display = 'none';
 
-            const formData = new FormData(e.target);
+            const formData = new FormData(form);
             
             // Собираем ответы на вопросы
             const answers = {};
@@ -525,7 +598,7 @@
 
                 statusMessage.className = 'message success';
                 statusMessage.textContent = '✓ Вы успешно зарегистрированы! Скоро с вами свяжутся.';
-                e.target.reset();
+                form.reset();
                 
                 setTimeout(() => {
                     window.location.href = 'index.html';
@@ -540,6 +613,105 @@
                 submitBtn.textContent = 'Зарегистрироваться';
             }
         }
+
+        // Функция валидации формы
+        function validateForm(form) {
+            let isValid = true;
+            
+            // Скрываем все предыдущие ошибки
+            form.querySelectorAll('.field-error').forEach(error => {
+                error.classList.remove('show');
+            });
+            
+            // Проверяем все обязательные поля
+            const inputs = form.querySelectorAll('input[required], textarea[required], select[required]');
+            
+            inputs.forEach(input => {
+                const errorDiv = input.closest('.form-group').querySelector('.field-error');
+                
+                // Checkbox
+                if (input.type === 'checkbox') {
+                    if (!input.checked) {
+                        isValid = false;
+                        if (errorDiv) errorDiv.classList.add('show');
+                        input.style.borderColor = 'var(--danger)';
+                    }
+                }
+                // Radio
+                else if (input.type === 'radio') {
+                    const radioGroup = form.querySelectorAll(`input[name="${input.name}"]`);
+                    const isChecked = Array.from(radioGroup).some(radio => radio.checked);
+                    if (!isChecked) {
+                        isValid = false;
+                        if (errorDiv) errorDiv.classList.add('show');
+                    }
+                }
+                // Select
+                else if (input.tagName === 'SELECT') {
+                    if (!input.value) {
+                        isValid = false;
+                        if (errorDiv) errorDiv.classList.add('show');
+                        input.style.borderColor = 'var(--danger)';
+                    }
+                }
+                // Email
+                else if (input.type === 'email') {
+                    const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                    if (!emailPattern.test(input.value)) {
+                        isValid = false;
+                        if (errorDiv) errorDiv.classList.add('show');
+                        input.style.borderColor = 'var(--danger)';
+                    }
+                }
+                // Телефон
+                else if (input.type === 'tel') {
+                    const phonePattern = /[+]?[0-9\s\-\(\)]{10,20}/;
+                    if (!phonePattern.test(input.value)) {
+                        isValid = false;
+                        if (errorDiv) errorDiv.classList.add('show');
+                        input.style.borderColor = 'var(--danger)';
+                    }
+                }
+                // Число
+                else if (input.type === 'number') {
+                    const num = parseInt(input.value);
+                    if (isNaN(num) || num < 0 || num > 150) {
+                        isValid = false;
+                        if (errorDiv) errorDiv.classList.add('show');
+                        input.style.borderColor = 'var(--danger)';
+                    }
+                }
+                // Текст и textarea
+                else if (!input.value || input.value.trim() === '') {
+                    isValid = false;
+                    if (errorDiv) errorDiv.classList.add('show');
+                    input.style.borderColor = 'var(--danger)';
+                }
+            });
+            
+            return isValid;
+        }
+
+        // Убираем ошибку при вводе
+        document.addEventListener('input', (e) => {
+            if (e.target.matches('input, textarea, select')) {
+                const errorDiv = e.target.closest('.form-group')?.querySelector('.field-error');
+                if (errorDiv) {
+                    errorDiv.classList.remove('show');
+                }
+                e.target.style.borderColor = '';
+            }
+        });
+
+        // Убираем ошибку при выборе radio/checkbox
+        document.addEventListener('change', (e) => {
+            if (e.target.type === 'radio' || e.target.type === 'checkbox') {
+                const errorDiv = e.target.closest('.form-group')?.querySelector('.field-error');
+                if (errorDiv) {
+                    errorDiv.classList.remove('show');
+                }
+            }
+        });
 
         function displayError(message) {
             document.getElementById('contentArea').innerHTML = `
@@ -556,6 +728,16 @@
 
         // Загружаем мероприятие
         loadEvent();
+
+        // Функция для затемнения/осветления цвета
+        function adjustColor(color, amount) {
+            const clamp = (num) => Math.min(Math.max(num, 0), 255);
+            const num = parseInt(color.replace('#', ''), 16);
+            const r = clamp((num >> 16) + amount);
+            const g = clamp(((num >> 8) & 0x00FF) + amount);
+            const b = clamp((num & 0x0000FF) + amount);
+            return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+        }
     </script>
 </body>
 </html>
