@@ -133,6 +133,10 @@
             resize: vertical;
         }
 
+        select {
+            cursor: pointer;
+        }
+
         .btn {
             padding: 1rem 2rem;
             border: none;
@@ -174,6 +178,11 @@
 
         .btn-danger:hover {
             background: #c0392b;
+        }
+
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
         }
 
         .admin-panel {
@@ -238,11 +247,6 @@
             gap: 0.5rem;
         }
 
-        .event-item-actions button {
-            padding: 0.5rem 1rem;
-            font-size: 0.85rem;
-        }
-
         .event-item-info {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -302,18 +306,20 @@
 
         .modal.active {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
+            padding-top: 2rem;
         }
 
         .modal-content {
             background: #1a1a2e;
             padding: 3rem;
             border-radius: 20px;
-            max-width: 600px;
+            max-width: 900px;
             width: 100%;
             border: 2px solid rgba(255, 107, 53, 0.3);
             animation: slideIn 0.3s ease-out;
+            margin-bottom: 2rem;
         }
 
         @keyframes slideIn {
@@ -345,6 +351,97 @@
             flex: 1;
         }
 
+        /* Конструктор вопросов */
+        .questions-section {
+            background: rgba(0, 78, 137, 0.1);
+            padding: 2rem;
+            border-radius: 15px;
+            margin-top: 2rem;
+            border: 2px solid rgba(0, 78, 137, 0.3);
+        }
+
+        .questions-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .questions-header h3 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.8rem;
+            letter-spacing: 1px;
+            color: var(--accent);
+        }
+
+        .question-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .question-header-row {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .question-header-row input {
+            flex: 1;
+        }
+
+        .question-header-row select {
+            width: 200px;
+        }
+
+        .question-options {
+            margin-top: 1rem;
+            padding-left: 1rem;
+        }
+
+        .option-item {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .option-item input {
+            flex: 1;
+        }
+
+        .btn-icon {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .questions-list {
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 1rem;
+        }
+
+        .questions-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .questions-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .questions-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 107, 53, 0.5);
+            border-radius: 10px;
+        }
+
         @media (max-width: 768px) {
             h1 {
                 font-size: 2.5rem;
@@ -357,6 +454,14 @@
 
             .modal-content {
                 padding: 2rem 1.5rem;
+            }
+
+            .question-header-row {
+                flex-direction: column;
+            }
+
+            .question-header-row select {
+                width: 100%;
             }
         }
     </style>
@@ -428,6 +533,18 @@
                     <input type="number" id="eventMaxVolunteers" required min="1" placeholder="20">
                 </div>
 
+                <!-- КОНСТРУКТОР ВОПРОСОВ -->
+                <div class="questions-section">
+                    <div class="questions-header">
+                        <h3>📝 Вопросы для волонтёров</h3>
+                        <button type="button" class="btn btn-success btn-small" onclick="addQuestion()">+ Добавить вопрос</button>
+                    </div>
+                    
+                    <div id="questionsList" class="questions-list">
+                        <p style="opacity: 0.6; text-align: center; padding: 1rem;">Добавьте вопросы, которые увидят волонтёры при регистрации</p>
+                    </div>
+                </div>
+
                 <div class="modal-actions">
                     <button type="button" class="btn btn-danger" onclick="closeModal()">Отмена</button>
                     <button type="submit" class="btn btn-success">Сохранить</button>
@@ -440,10 +557,11 @@
         // ================================
         // ВАЖНО! НАСТРОЙКИ
         // ================================
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwJaNrut4ZDTTzn9HxHLjXl_RX1fr0bYP7MgB3H8816AjZUI4TqX_ov09kyEN01Pfs/exec';
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzNr45OR92-hsxwL6u7MED_BpZ77tj3gmPfsFYTT2ps--nAEwxtpMwfLOtuycu-_6k/exec';
         const ADMIN_PASSWORD = 'admin123'; // ИЗМЕНИТЕ ПАРОЛЬ!
 
         let isAuthenticated = false;
+        let currentQuestions = [];
 
         // Авторизация
         document.getElementById('authForm').addEventListener('submit', (e) => {
@@ -485,12 +603,15 @@
         function createEventItem(event) {
             const div = document.createElement('div');
             div.className = 'event-item';
+            
+            const questionsCount = event.questions ? event.questions.length : 0;
+            
             div.innerHTML = `
                 <div class="event-item-header">
                     <h3>${event.title}</h3>
                     <div class="event-item-actions">
-                        <button class="btn btn-primary" onclick='editEvent(${JSON.stringify(event)})'>Редактировать</button>
-                        <button class="btn btn-danger" onclick="deleteEvent('${event.id}')">Удалить</button>
+                        <button class="btn btn-primary btn-small" onclick='editEvent(${JSON.stringify(event).replace(/'/g, "&apos;")})'>Редактировать</button>
+                        <button class="btn btn-danger btn-small" onclick="deleteEvent('${event.id}')">Удалить</button>
                     </div>
                 </div>
                 <p>${event.description}</p>
@@ -507,6 +628,10 @@
                         <div class="info-label">Волонтёры</div>
                         <div>${event.currentVolunteers} / ${event.maxVolunteers}</div>
                     </div>
+                    <div class="info-item">
+                        <div class="info-label">Вопросов в форме</div>
+                        <div>${questionsCount}</div>
+                    </div>
                 </div>
             `;
             return div;
@@ -517,6 +642,8 @@
             document.getElementById('modalTitle').textContent = 'Создать мероприятие';
             document.getElementById('eventForm').reset();
             document.getElementById('eventId').value = '';
+            currentQuestions = [];
+            renderQuestions();
             document.getElementById('eventModal').classList.add('active');
         }
 
@@ -529,12 +656,129 @@
             document.getElementById('eventLocation').value = event.location;
             document.getElementById('eventDescription').value = event.description;
             document.getElementById('eventMaxVolunteers').value = event.maxVolunteers;
+            currentQuestions = event.questions || [];
+            renderQuestions();
             document.getElementById('eventModal').classList.add('active');
         }
 
         // Закрыть модалку
         function closeModal() {
             document.getElementById('eventModal').classList.remove('active');
+        }
+
+        // Добавить вопрос
+        function addQuestion() {
+            currentQuestions.push({
+                id: Date.now(),
+                text: '',
+                type: 'text',
+                required: true,
+                options: []
+            });
+            renderQuestions();
+        }
+
+        // Удалить вопрос
+        function removeQuestion(id) {
+            currentQuestions = currentQuestions.filter(q => q.id !== id);
+            renderQuestions();
+        }
+
+        // Добавить опцию для select/radio
+        function addOption(questionId) {
+            const question = currentQuestions.find(q => q.id === questionId);
+            if (question) {
+                if (!question.options) question.options = [];
+                question.options.push('');
+                renderQuestions();
+            }
+        }
+
+        // Удалить опцию
+        function removeOption(questionId, optionIndex) {
+            const question = currentQuestions.find(q => q.id === questionId);
+            if (question && question.options) {
+                question.options.splice(optionIndex, 1);
+                renderQuestions();
+            }
+        }
+
+        // Отрисовка вопросов
+        function renderQuestions() {
+            const container = document.getElementById('questionsList');
+            
+            if (currentQuestions.length === 0) {
+                container.innerHTML = '<p style="opacity: 0.6; text-align: center; padding: 1rem;">Добавьте вопросы, которые увидят волонтёры при регистрации</p>';
+                return;
+            }
+
+            container.innerHTML = currentQuestions.map((q, index) => `
+                <div class="question-item">
+                    <div class="question-header-row">
+                        <input type="text" 
+                               value="${q.text}" 
+                               placeholder="Текст вопроса (например: Ваш возраст?)"
+                               onchange="updateQuestion(${q.id}, 'text', this.value)">
+                        <select onchange="updateQuestion(${q.id}, 'type', this.value)">
+                            <option value="text" ${q.type === 'text' ? 'selected' : ''}>Текст</option>
+                            <option value="email" ${q.type === 'email' ? 'selected' : ''}>Email</option>
+                            <option value="tel" ${q.type === 'tel' ? 'selected' : ''}>Телефон</option>
+                            <option value="number" ${q.type === 'number' ? 'selected' : ''}>Число</option>
+                            <option value="textarea" ${q.type === 'textarea' ? 'selected' : ''}>Длинный текст</option>
+                            <option value="select" ${q.type === 'select' ? 'selected' : ''}>Выбор из списка</option>
+                            <option value="radio" ${q.type === 'radio' ? 'selected' : ''}>Один вариант</option>
+                            <option value="checkbox" ${q.type === 'checkbox' ? 'selected' : ''}>Галочка</option>
+                        </select>
+                        <button type="button" class="btn btn-danger btn-icon" onclick="removeQuestion(${q.id})">×</button>
+                    </div>
+                    
+                    <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; text-transform: none;">
+                        <input type="checkbox" 
+                               ${q.required ? 'checked' : ''} 
+                               onchange="updateQuestion(${q.id}, 'required', this.checked)"
+                               style="width: auto;">
+                        Обязательный вопрос
+                    </label>
+
+                    ${(q.type === 'select' || q.type === 'radio') ? `
+                        <div class="question-options">
+                            <label style="font-size: 0.85rem; margin-bottom: 0.5rem;">Варианты ответов:</label>
+                            ${(q.options || []).map((opt, i) => `
+                                <div class="option-item">
+                                    <input type="text" 
+                                           value="${opt}" 
+                                           placeholder="Вариант ${i + 1}"
+                                           onchange="updateOption(${q.id}, ${i}, this.value)">
+                                    <button type="button" class="btn btn-danger btn-icon" onclick="removeOption(${q.id}, ${i})">×</button>
+                                </div>
+                            `).join('')}
+                            <button type="button" class="btn btn-success btn-small" onclick="addOption(${q.id})" style="margin-top: 0.5rem;">+ Добавить вариант</button>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        // Обновить вопрос
+        function updateQuestion(id, field, value) {
+            const question = currentQuestions.find(q => q.id === id);
+            if (question) {
+                question[field] = value;
+                if (field === 'type' && (value === 'select' || value === 'radio')) {
+                    if (!question.options || question.options.length === 0) {
+                        question.options = ['Вариант 1', 'Вариант 2'];
+                    }
+                }
+                renderQuestions();
+            }
+        }
+
+        // Обновить опцию
+        function updateOption(questionId, index, value) {
+            const question = currentQuestions.find(q => q.id === questionId);
+            if (question && question.options) {
+                question.options[index] = value;
+            }
         }
 
         // Сохранить мероприятие
@@ -552,7 +796,8 @@
                 location: document.getElementById('eventLocation').value,
                 description: document.getElementById('eventDescription').value,
                 maxVolunteers: parseInt(document.getElementById('eventMaxVolunteers').value),
-                currentVolunteers: 0
+                currentVolunteers: 0,
+                questions: currentQuestions
             };
 
             try {
@@ -566,11 +811,9 @@
                     })
                 });
 
-                // Закрываем модалку и перезагружаем список
                 closeModal();
                 showMessage('success', '✓ Мероприятие сохранено!');
                 
-                // Даём время серверу обработать запрос
                 setTimeout(() => {
                     loadEvents();
                 }, 1000);
