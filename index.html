@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация волонтёров</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #ff6b35;
+            --primary-dark: #e85a28;
+            --secondary: #004e89;
+            --accent: #f7b801;
+            --dark: #1a1a2e;
+            --light: #f8f9fa;
+            --success: #2ecc71;
+            --text: #2c3e50;
+        }
+
+        body {
+            font-family: 'Source Sans 3', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--text);
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(255, 107, 53, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 78, 137, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 4rem;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 5rem;
+            color: white;
+            letter-spacing: 3px;
+            margin-bottom: 1rem;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            line-height: 1;
+        }
+
+        .tagline {
+            font-size: 1.3rem;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 300;
+            letter-spacing: 1px;
+        }
+
+        .admin-link {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            z-index: 100;
+        }
+
+        .admin-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .events-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .event-card {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            opacity: 0;
+            animation: fadeInUp 0.6s ease-out forwards;
+            cursor: pointer;
+        }
+
+        .event-card:nth-child(1) { animation-delay: 0.1s; }
+        .event-card:nth-child(2) { animation-delay: 0.2s; }
+        .event-card:nth-child(3) { animation-delay: 0.3s; }
+        .event-card:nth-child(4) { animation-delay: 0.4s; }
+        .event-card:nth-child(5) { animation-delay: 0.5s; }
+        .event-card:nth-child(6) { animation-delay: 0.6s; }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .event-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+        }
+
+        .event-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            padding: 2rem;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .event-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+            animation: rotate 20s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .event-date {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .event-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 1;
+            letter-spacing: 1px;
+        }
+
+        .event-location {
+            font-size: 0.95rem;
+            opacity: 0.95;
+            position: relative;
+            z-index: 1;
+        }
+
+        .event-body {
+            padding: 1.5rem 2rem 2rem;
+        }
+
+        .event-description {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+
+        .event-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+        }
+
+        .spots-info {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .spots-count {
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 1.1rem;
+        }
+
+        .register-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.8rem 2rem;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .register-btn:hover {
+            background: var(--primary-dark);
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(255, 107, 53, 0.4);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            color: white;
+        }
+
+        .empty-state h2 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            letter-spacing: 2px;
+        }
+
+        .empty-state p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 3.5rem;
+            }
+
+            .events-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .admin-link {
+                top: 1rem;
+                right: 1rem;
+                padding: 0.6rem 1.2rem;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="admin.html" class="admin-link">⚙️ Админ-панель</a>
+
+    <div class="container">
+        <header>
+            <h1>ВОЛОНТЁРСКИЕ МЕРОПРИЯТИЯ</h1>
+            <p class="tagline">Присоединяйся и меняй мир к лучшему</p>
+        </header>
+
+        <div id="eventsContainer">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Загружаем мероприятия...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ================================
+        // ВАЖНО! ЗАМЕНИТЕ ССЫЛКУ
+        // ================================
+        const GOOGLE_SCRIPT_URL = 'ВСТАВЬТЕ_СЮДА_ССЫЛКУ_ИЗ_GOOGLE_APPS_SCRIPT';
+
+        async function loadEvents() {
+            try {
+                const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getEvents`);
+                const data = await response.json();
+                
+                const container = document.getElementById('eventsContainer');
+                
+                if (data.events && data.events.length > 0) {
+                    container.innerHTML = '<div class="events-grid"></div>';
+                    const grid = container.querySelector('.events-grid');
+                    
+                    data.events.forEach(event => {
+                        const card = createEventCard(event);
+                        grid.appendChild(card);
+                    });
+                } else {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <h2>Пока нет мероприятий</h2>
+                            <p>Скоро здесь появятся интересные события!</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки:', error);
+                document.getElementById('eventsContainer').innerHTML = `
+                    <div class="empty-state">
+                        <h2>Ошибка загрузки</h2>
+                        <p>Не удалось загрузить мероприятия. Проверьте настройки Google Apps Script.</p>
+                    </div>
+                `;
+            }
+        }
+
+        function createEventCard(event) {
+            const card = document.createElement('div');
+            card.className = 'event-card';
+            
+            const spotsLeft = event.maxVolunteers - event.currentVolunteers;
+            const spotsText = spotsLeft > 0 
+                ? `Осталось ${spotsLeft} мест` 
+                : 'Мест нет';
+            
+            card.innerHTML = `
+                <div class="event-header">
+                    <div class="event-date">${event.date}</div>
+                    <div class="event-title">${event.title}</div>
+                    <div class="event-location">📍 ${event.location}</div>
+                </div>
+                <div class="event-body">
+                    <div class="event-description">${event.description}</div>
+                    <div class="event-footer">
+                        <div class="spots-info">
+                            <span class="spots-count">${spotsLeft}</span>
+                            <span>из ${event.maxVolunteers} мест</span>
+                        </div>
+                        <button class="register-btn" onclick="goToRegistration('${event.id}')" 
+                                ${spotsLeft <= 0 ? 'disabled' : ''}>
+                            ${spotsLeft > 0 ? 'Записаться' : 'Заполнено'}
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            return card;
+        }
+
+        function goToRegistration(eventId) {
+            window.location.href = `register.html?event=${eventId}`;
+        }
+
+        // Загружаем мероприятия при загрузке страницы
+        loadEvents();
+    </script>
+</body>
+</html>

@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация на мероприятие</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #ff6b35;
+            --primary-dark: #e85a28;
+            --secondary: #004e89;
+            --accent: #f7b801;
+            --dark: #1a1a2e;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+        }
+
+        body {
+            font-family: 'Source Sans 3', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(255, 107, 53, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 78, 137, 0.15) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .back-link {
+            display: inline-block;
+            color: white;
+            text-decoration: none;
+            margin-bottom: 2rem;
+            font-weight: 600;
+            padding: 0.8rem 1.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 50px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .back-link:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateX(-5px);
+        }
+
+        .event-header {
+            background: white;
+            padding: 3rem;
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            animation: slideDown 0.6s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .event-date {
+            color: var(--primary);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        h1 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 3rem;
+            color: var(--dark);
+            letter-spacing: 1px;
+            margin-bottom: 1rem;
+        }
+
+        .event-location {
+            color: #666;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+
+        .event-description {
+            color: #444;
+            line-height: 1.7;
+            margin-bottom: 1.5rem;
+        }
+
+        .spots-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 0.6rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .form-container {
+            background: white;
+            padding: 3rem;
+            border-radius: 0 0 20px 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .form-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2rem;
+            color: var(--dark);
+            margin-bottom: 2rem;
+            letter-spacing: 1px;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--dark);
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+
+        .required {
+            color: var(--primary);
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-family: 'Source Sans 3', sans-serif;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            text-transform: none;
+            font-weight: 400;
+            cursor: pointer;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 1.2rem;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-family: 'Source Sans 3', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 1rem;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(255, 107, 53, 0.4);
+        }
+
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .message {
+            padding: 1.2rem;
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+            display: none;
+        }
+
+        .message.success {
+            background: rgba(46, 204, 113, 0.1);
+            border: 2px solid var(--success);
+            color: var(--success);
+            display: block;
+        }
+
+        .message.error {
+            background: rgba(231, 76, 60, 0.1);
+            border: 2px solid var(--danger);
+            color: var(--danger);
+            display: block;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            background: white;
+            border-radius: 20px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f0f0f0;
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.2rem;
+            }
+
+            .event-header,
+            .form-container {
+                padding: 2rem 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← Назад к мероприятиям</a>
+
+        <div id="contentArea">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Загрузка мероприятия...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ================================
+        // ВАЖНО! ЗАМЕНИТЕ ССЫЛКУ
+        // ================================
+        const GOOGLE_SCRIPT_URL = 'ВСТАВЬТЕ_СЮДА_ССЫЛКУ_ИЗ_GOOGLE_APPS_SCRIPT';
+
+        // Получаем ID мероприятия из URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const eventId = urlParams.get('event');
+
+        if (!eventId) {
+            window.location.href = 'index.html';
+        }
+
+        let currentEvent = null;
+
+        async function loadEvent() {
+            try {
+                const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getEvent&id=${eventId}`);
+                const data = await response.json();
+                
+                if (data.event) {
+                    currentEvent = data.event;
+                    displayEvent(data.event);
+                } else {
+                    displayError('Мероприятие не найдено');
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                displayError('Ошибка загрузки мероприятия');
+            }
+        }
+
+        function displayEvent(event) {
+            const spotsLeft = event.maxVolunteers - event.currentVolunteers;
+            
+            if (spotsLeft <= 0) {
+                document.getElementById('contentArea').innerHTML = `
+                    <div class="event-header">
+                        <div class="event-date">${event.date}</div>
+                        <h1>${event.title}</h1>
+                        <div class="event-location">📍 ${event.location}</div>
+                        <div class="event-description">${event.description}</div>
+                        <div class="spots-badge" style="background: #e74c3c;">Мест нет</div>
+                    </div>
+                    <div class="form-container">
+                        <p style="text-align: center; color: #e74c3c; font-size: 1.2rem; font-weight: 600;">
+                            К сожалению, все места на это мероприятие уже заняты.
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+
+            document.getElementById('contentArea').innerHTML = `
+                <div class="event-header">
+                    <div class="event-date">${event.date}</div>
+                    <h1>${event.title}</h1>
+                    <div class="event-location">📍 ${event.location}</div>
+                    <div class="event-description">${event.description}</div>
+                    <div class="spots-badge">Осталось ${spotsLeft} из ${event.maxVolunteers} мест</div>
+                </div>
+                <div class="form-container">
+                    <h2 class="form-title">Регистрация на мероприятие</h2>
+                    
+                    <div id="statusMessage" class="message"></div>
+
+                    <form id="registrationForm">
+                        <div class="form-group">
+                            <label>Имя <span class="required">*</span></label>
+                            <input type="text" name="name" required placeholder="Ваше полное имя">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Email <span class="required">*</span></label>
+                            <input type="email" name="email" required placeholder="your@email.com">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Телефон <span class="required">*</span></label>
+                            <input type="tel" name="phone" required placeholder="+7 (___) ___-__-__">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Возраст <span class="required">*</span></label>
+                            <input type="number" name="age" required min="14" max="100" placeholder="18">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Опыт волонтёрства</label>
+                            <select name="experience">
+                                <option value="Нет опыта">Нет опыта</option>
+                                <option value="Менее года">Менее года</option>
+                                <option value="1-3 года">1-3 года</option>
+                                <option value="Более 3 лет">Более 3 лет</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Комментарий</label>
+                            <textarea name="comment" placeholder="Расскажите о себе или задайте вопрос (необязательно)"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="agreement" required>
+                                <label for="agreement">Я согласен(а) на обработку персональных данных <span class="required">*</span></label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="submit-btn" id="submitBtn">Зарегистрироваться</button>
+                    </form>
+                </div>
+            `;
+
+            // Добавляем обработчик формы
+            document.getElementById('registrationForm').addEventListener('submit', handleSubmit);
+        }
+
+        async function handleSubmit(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const statusMessage = document.getElementById('statusMessage');
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Отправка...';
+            statusMessage.style.display = 'none';
+
+            const formData = new FormData(e.target);
+            const data = {
+                action: 'registerVolunteer',
+                eventId: eventId,
+                eventTitle: currentEvent.title,
+                volunteer: {
+                    timestamp: new Date().toLocaleString('ru-RU'),
+                    name: formData.get('name'),
+                    email: formData.get('email'),
+                    phone: formData.get('phone'),
+                    age: formData.get('age'),
+                    experience: formData.get('experience'),
+                    comment: formData.get('comment') || 'Без комментариев'
+                }
+            };
+
+            try {
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                statusMessage.className = 'message success';
+                statusMessage.textContent = '✓ Вы успешно зарегистрированы! Скоро с вами свяжутся.';
+                e.target.reset();
+                
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 3000);
+
+            } catch (error) {
+                console.error('Ошибка:', error);
+                statusMessage.className = 'message error';
+                statusMessage.textContent = '✗ Ошибка при регистрации. Попробуйте снова.';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Зарегистрироваться';
+            }
+        }
+
+        function displayError(message) {
+            document.getElementById('contentArea').innerHTML = `
+                <div class="event-header">
+                    <h1 style="color: var(--danger);">Ошибка</h1>
+                    <p>${message}</p>
+                    <br>
+                    <a href="index.html" class="submit-btn" style="display: inline-block; width: auto; padding: 1rem 2rem; text-decoration: none;">
+                        Вернуться к мероприятиям
+                    </a>
+                </div>
+            `;
+        }
+
+        // Загружаем мероприятие
+        loadEvent();
+    </script>
+</body>
+</html>

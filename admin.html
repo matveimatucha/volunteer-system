@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #ff6b35;
+            --primary-dark: #e85a28;
+            --secondary: #004e89;
+            --accent: #f7b801;
+            --dark: #1a1a2e;
+            --light: #f8f9fa;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+        }
+
+        body {
+            font-family: 'Source Sans 3', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        h1 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 3.5rem;
+            letter-spacing: 2px;
+            color: var(--primary);
+        }
+
+        .back-link {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .back-link:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .auth-section {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 3rem;
+            max-width: 500px;
+            margin: 0 auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .auth-section h2 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: white;
+            font-family: 'Source Sans 3', sans-serif;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        input::placeholder,
+        textarea::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(255, 107, 53, 0.4);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #27ae60;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .admin-panel {
+            display: none;
+        }
+
+        .admin-panel.active {
+            display: block;
+        }
+
+        .panel-header {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 2rem;
+            border-radius: 20px;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .panel-header h2 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2rem;
+            letter-spacing: 2px;
+        }
+
+        .events-list {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .event-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 2rem;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .event-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(5px);
+        }
+
+        .event-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .event-item h3 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.8rem;
+            color: var(--primary);
+            letter-spacing: 1px;
+        }
+
+        .event-item-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .event-item-actions button {
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+        }
+
+        .event-item-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .info-item {
+            font-size: 0.9rem;
+        }
+
+        .info-label {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.3rem;
+        }
+
+        .message {
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+            display: none;
+        }
+
+        .message.success {
+            background: rgba(46, 204, 113, 0.2);
+            border: 2px solid var(--success);
+            color: var(--success);
+            display: block;
+        }
+
+        .message.error {
+            background: rgba(231, 76, 60, 0.2);
+            border: 2px solid var(--danger);
+            color: var(--danger);
+            display: block;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: #1a1a2e;
+            padding: 3rem;
+            border-radius: 20px;
+            max-width: 600px;
+            width: 100%;
+            border: 2px solid rgba(255, 107, 53, 0.3);
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal h2 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            letter-spacing: 2px;
+            color: var(--primary);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .modal-actions button {
+            flex: 1;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            .event-item-header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .modal-content {
+                padding: 2rem 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚙️ АДМИН-ПАНЕЛЬ</h1>
+            <a href="index.html" class="back-link">← На главную</a>
+        </header>
+
+        <!-- Форма авторизации -->
+        <div id="authSection" class="auth-section">
+            <h2>Вход для администратора</h2>
+            <div id="authMessage" class="message"></div>
+            <form id="authForm">
+                <div class="form-group">
+                    <label>Пароль</label>
+                    <input type="password" id="adminPassword" required placeholder="Введите пароль администратора">
+                </div>
+                <button type="submit" class="btn btn-primary">Войти</button>
+            </form>
+        </div>
+
+        <!-- Админ-панель -->
+        <div id="adminPanel" class="admin-panel">
+            <div class="panel-header">
+                <h2>Управление мероприятиями</h2>
+                <button class="btn btn-success" onclick="openCreateModal()">+ Создать мероприятие</button>
+            </div>
+
+            <div id="eventsList" class="events-list">
+                <p style="text-align: center; padding: 2rem;">Загрузка...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно создания/редактирования -->
+    <div id="eventModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Создать мероприятие</h2>
+            <div id="modalMessage" class="message"></div>
+            <form id="eventForm">
+                <input type="hidden" id="eventId">
+                
+                <div class="form-group">
+                    <label>Название мероприятия *</label>
+                    <input type="text" id="eventTitle" required placeholder="Субботник в парке">
+                </div>
+
+                <div class="form-group">
+                    <label>Дата *</label>
+                    <input type="date" id="eventDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Место проведения *</label>
+                    <input type="text" id="eventLocation" required placeholder="Центральный парк">
+                </div>
+
+                <div class="form-group">
+                    <label>Описание *</label>
+                    <textarea id="eventDescription" required placeholder="Подробное описание мероприятия..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Максимум волонтёров *</label>
+                    <input type="number" id="eventMaxVolunteers" required min="1" placeholder="20">
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-danger" onclick="closeModal()">Отмена</button>
+                    <button type="submit" class="btn btn-success">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // ================================
+        // ВАЖНО! НАСТРОЙКИ
+        // ================================
+        const GOOGLE_SCRIPT_URL = 'ВСТАВЬТЕ_СЮДА_ССЫЛКУ_ИЗ_GOOGLE_APPS_SCRIPT';
+        const ADMIN_PASSWORD = 'admin123'; // ИЗМЕНИТЕ ПАРОЛЬ!
+
+        let isAuthenticated = false;
+
+        // Авторизация
+        document.getElementById('authForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const password = document.getElementById('adminPassword').value;
+            
+            if (password === ADMIN_PASSWORD) {
+                isAuthenticated = true;
+                document.getElementById('authSection').style.display = 'none';
+                document.getElementById('adminPanel').classList.add('active');
+                loadEvents();
+            } else {
+                showAuthMessage('error', 'Неверный пароль!');
+            }
+        });
+
+        // Загрузка мероприятий
+        async function loadEvents() {
+            try {
+                const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getEvents`);
+                const data = await response.json();
+                
+                const container = document.getElementById('eventsList');
+                
+                if (data.events && data.events.length > 0) {
+                    container.innerHTML = '';
+                    data.events.forEach(event => {
+                        container.appendChild(createEventItem(event));
+                    });
+                } else {
+                    container.innerHTML = '<p style="text-align: center; padding: 2rem; opacity: 0.6;">Мероприятий пока нет</p>';
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки:', error);
+                document.getElementById('eventsList').innerHTML = '<p style="text-align: center; padding: 2rem; color: var(--danger);">Ошибка загрузки данных</p>';
+            }
+        }
+
+        function createEventItem(event) {
+            const div = document.createElement('div');
+            div.className = 'event-item';
+            div.innerHTML = `
+                <div class="event-item-header">
+                    <h3>${event.title}</h3>
+                    <div class="event-item-actions">
+                        <button class="btn btn-primary" onclick='editEvent(${JSON.stringify(event)})'>Редактировать</button>
+                        <button class="btn btn-danger" onclick="deleteEvent('${event.id}')">Удалить</button>
+                    </div>
+                </div>
+                <p>${event.description}</p>
+                <div class="event-item-info">
+                    <div class="info-item">
+                        <div class="info-label">Дата</div>
+                        <div>${event.date}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Место</div>
+                        <div>${event.location}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Волонтёры</div>
+                        <div>${event.currentVolunteers} / ${event.maxVolunteers}</div>
+                    </div>
+                </div>
+            `;
+            return div;
+        }
+
+        // Открыть модалку создания
+        function openCreateModal() {
+            document.getElementById('modalTitle').textContent = 'Создать мероприятие';
+            document.getElementById('eventForm').reset();
+            document.getElementById('eventId').value = '';
+            document.getElementById('eventModal').classList.add('active');
+        }
+
+        // Редактировать мероприятие
+        function editEvent(event) {
+            document.getElementById('modalTitle').textContent = 'Редактировать мероприятие';
+            document.getElementById('eventId').value = event.id;
+            document.getElementById('eventTitle').value = event.title;
+            document.getElementById('eventDate').value = event.dateRaw;
+            document.getElementById('eventLocation').value = event.location;
+            document.getElementById('eventDescription').value = event.description;
+            document.getElementById('eventMaxVolunteers').value = event.maxVolunteers;
+            document.getElementById('eventModal').classList.add('active');
+        }
+
+        // Закрыть модалку
+        function closeModal() {
+            document.getElementById('eventModal').classList.remove('active');
+        }
+
+        // Сохранить мероприятие
+        document.getElementById('eventForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const eventData = {
+                id: document.getElementById('eventId').value || Date.now().toString(),
+                title: document.getElementById('eventTitle').value,
+                date: document.getElementById('eventDate').value,
+                location: document.getElementById('eventLocation').value,
+                description: document.getElementById('eventDescription').value,
+                maxVolunteers: parseInt(document.getElementById('eventMaxVolunteers').value),
+                currentVolunteers: 0
+            };
+
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'saveEvent',
+                        event: eventData
+                    })
+                });
+
+                closeModal();
+                setTimeout(() => {
+                    loadEvents();
+                }, 500);
+                
+            } catch (error) {
+                console.error('Ошибка:', error);
+                showModalMessage('error', 'Ошибка при сохранении');
+            }
+        });
+
+        // Удалить мероприятие
+        async function deleteEvent(eventId) {
+            if (!confirm('Вы уверены, что хотите удалить это мероприятие?')) {
+                return;
+            }
+
+            try {
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'deleteEvent',
+                        eventId: eventId
+                    })
+                });
+
+                setTimeout(() => {
+                    loadEvents();
+                }, 500);
+                
+            } catch (error) {
+                console.error('Ошибка:', error);
+            }
+        }
+
+        function showAuthMessage(type, text) {
+            const msg = document.getElementById('authMessage');
+            msg.className = `message ${type}`;
+            msg.textContent = text;
+            setTimeout(() => msg.style.display = 'none', 3000);
+        }
+
+        function showModalMessage(type, text) {
+            const msg = document.getElementById('modalMessage');
+            msg.className = `message ${type}`;
+            msg.textContent = text;
+            setTimeout(() => msg.style.display = 'none', 3000);
+        }
+    </script>
+</body>
+</html>
