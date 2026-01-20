@@ -383,6 +383,7 @@
 
         <!-- Админ-панель -->
         <div id="adminPanel" class="admin-panel">
+            <div id="globalMessage" class="message" style="margin-bottom: 1rem;"></div>
             <div class="panel-header">
                 <h2>Управление мероприятиями</h2>
                 <button class="btn btn-success" onclick="openCreateModal()">+ Создать мероприятие</button>
@@ -439,7 +440,7 @@
         // ================================
         // ВАЖНО! НАСТРОЙКИ
         // ================================
-        const GOOGLE_SCRIPT_URL = 'ВСТАВЬТЕ_СЮДА_ССЫЛКУ_ИЗ_GOOGLE_APPS_SCRIPT';
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwJaNrut4ZDTTzn9HxHLjXl_RX1fr0bYP7MgB3H8816AjZUI4TqX_ov09kyEN01Pfs/exec';
         const ADMIN_PASSWORD = 'admin123'; // ИЗМЕНИТЕ ПАРОЛЬ!
 
         let isAuthenticated = false;
@@ -540,6 +541,10 @@
         document.getElementById('eventForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Сохранение...';
+            
             const eventData = {
                 id: document.getElementById('eventId').value || Date.now().toString(),
                 title: document.getElementById('eventTitle').value,
@@ -551,7 +556,7 @@
             };
 
             try {
-                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                await fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
@@ -561,14 +566,21 @@
                     })
                 });
 
+                // Закрываем модалку и перезагружаем список
                 closeModal();
+                showMessage('success', '✓ Мероприятие сохранено!');
+                
+                // Даём время серверу обработать запрос
                 setTimeout(() => {
                     loadEvents();
-                }, 500);
+                }, 1000);
                 
             } catch (error) {
                 console.error('Ошибка:', error);
                 showModalMessage('error', 'Ошибка при сохранении');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Сохранить';
             }
         });
 
@@ -589,12 +601,15 @@
                     })
                 });
 
+                showMessage('success', '✓ Мероприятие удалено');
+                
                 setTimeout(() => {
                     loadEvents();
-                }, 500);
+                }, 1000);
                 
             } catch (error) {
                 console.error('Ошибка:', error);
+                showMessage('error', '✗ Ошибка при удалении');
             }
         }
 
@@ -610,6 +625,13 @@
             msg.className = `message ${type}`;
             msg.textContent = text;
             setTimeout(() => msg.style.display = 'none', 3000);
+        }
+
+        function showMessage(type, text) {
+            const msg = document.getElementById('globalMessage');
+            msg.className = `message ${type}`;
+            msg.textContent = text;
+            setTimeout(() => msg.style.display = 'none', 5000);
         }
     </script>
 </body>
