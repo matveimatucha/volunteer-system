@@ -334,41 +334,9 @@
         // ================================
         // ВАЖНО! ЗАМЕНИТЕ ССЫЛКУ
         // ================================
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwJaNrut4ZDTTzn9HxHLjXl_RX1fr0bYP7MgB3H8816AjZUI4TqX_ov09kyEN01Pfs/exec';
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzNr45OR92-hsxwL6u7MED_BpZ77tj3gmPfsFYTT2ps--nAEwxtpMwfLOtuycu-_6k/exec';
 
-        async function loadEvents() {
-            try {
-                const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getEvents`);
-                const data = await response.json();
-                
-                const container = document.getElementById('eventsContainer');
-                
-                if (data.events && data.events.length > 0) {
-                    container.innerHTML = '<div class="events-grid"></div>';
-                    const grid = container.querySelector('.events-grid');
-                    
-                    data.events.forEach(event => {
-                        const card = createEventCard(event);
-                        grid.appendChild(card);
-                    });
-                } else {
-                    container.innerHTML = `
-                        <div class="empty-state">
-                            <h2>Пока нет мероприятий</h2>
-                            <p>Скоро здесь появятся интересные события!</p>
-                        </div>
-                    `;
-                }
-            } catch (error) {
-                console.error('Ошибка загрузки:', error);
-                document.getElementById('eventsContainer').innerHTML = `
-                    <div class="empty-state">
-                        <h2>Ошибка загрузки</h2>
-                        <p>Не удалось загрузить мероприятия. Проверьте настройки Google Apps Script.</p>
-                    </div>
-                `;
-            }
-        }
+
 
         function createEventCard(event) {
             const card = document.createElement('div');
@@ -407,8 +375,67 @@
             window.location.href = `register.html?event=${eventId}`;
         }
 
+        // Кэширование для ускорения
+        let cachedEvents = null;
+        let cacheTime = null;
+        const CACHE_DURATION = 30000; // 30 секунд
+
+        async function loadEventsWithCache() {
+            // Проверяем кэш
+            const now = Date.now();
+            if (cachedEvents && cacheTime && (now - cacheTime) < CACHE_DURATION) {
+                displayEvents(cachedEvents);
+                return;
+            }
+
+            // Загружаем с сервера
+            await loadEvents();
+        }
+
+        function displayEvents(events) {
+            const container = document.getElementById('eventsContainer');
+            
+            if (events && events.length > 0) {
+                container.innerHTML = '<div class="events-grid"></div>';
+                const grid = container.querySelector('.events-grid');
+                
+                events.forEach(event => {
+                    const card = createEventCard(event);
+                    grid.appendChild(card);
+                });
+            } else {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h2>Пока нет мероприятий</h2>
+                        <p>Скоро здесь появятся интересные события!</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function loadEvents() {
+            try {
+                const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getEvents`);
+                const data = await response.json();
+                
+                // Сохраняем в кэш
+                cachedEvents = data.events || [];
+                cacheTime = Date.now();
+                
+                displayEvents(cachedEvents);
+            } catch (error) {
+                console.error('Ошибка загрузки:', error);
+                document.getElementById('eventsContainer').innerHTML = `
+                    <div class="empty-state">
+                        <h2>Ошибка загрузки</h2>
+                        <p>Не удалось загрузить мероприятия. Проверьте настройки Google Apps Script.</p>
+                    </div>
+                `;
+            }
+        }
+
         // Загружаем мероприятия при загрузке страницы
-        loadEvents();
+        loadEventsWithCache();
     </script>
 </body>
 </html>
