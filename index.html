@@ -154,11 +154,36 @@
         }
 
         .event-header {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
             padding: 2rem;
             color: white;
             position: relative;
             overflow: hidden;
+        }
+
+        /* Разноцветные плашки для мероприятий */
+        .event-header.color-1 {
+            background: linear-gradient(135deg, #ff6b35 0%, #e85a28 100%);
+        }
+        .event-header.color-2 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .event-header.color-3 {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        .event-header.color-4 {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        .event-header.color-5 {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+        .event-header.color-6 {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+        .event-header.color-7 {
+            background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+        }
+        .event-header.color-8 {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
         }
 
         .event-header::before {
@@ -347,8 +372,10 @@
                 ? `Осталось ${spotsLeft} мест` 
                 : 'Мест нет';
             
+            const eventColor = event.color || '#ff6b35';
+            
             card.innerHTML = `
-                <div class="event-header">
+                <div class="event-header" style="background: linear-gradient(135deg, ${eventColor} 0%, ${adjustColor(eventColor, -20)} 100%);">
                     <div class="event-date">${event.date}</div>
                     <div class="event-title">${event.title}</div>
                     <div class="event-location">📍 ${event.location}</div>
@@ -357,10 +384,10 @@
                     <div class="event-description">${event.description}</div>
                     <div class="event-footer">
                         <div class="spots-info">
-                            <span class="spots-count">${spotsLeft}</span>
+                            <span class="spots-count" style="color: ${eventColor};">${spotsLeft}</span>
                             <span>из ${event.maxVolunteers} мест</span>
                         </div>
-                        <button class="register-btn" onclick="goToRegistration('${event.id}')" 
+                        <button class="register-btn" style="background: ${eventColor};" onmouseover="this.style.background='${adjustColor(eventColor, -20)}'" onmouseout="this.style.background='${eventColor}'" onclick="goToRegistration('${event.id}')" 
                                 ${spotsLeft <= 0 ? 'disabled' : ''}>
                             ${spotsLeft > 0 ? 'Записаться' : 'Заполнено'}
                         </button>
@@ -369,6 +396,16 @@
             `;
             
             return card;
+        }
+
+        // Функция для затемнения/осветления цвета
+        function adjustColor(color, amount) {
+            const clamp = (num) => Math.min(Math.max(num, 0), 255);
+            const num = parseInt(color.replace('#', ''), 16);
+            const r = clamp((num >> 16) + amount);
+            const g = clamp(((num >> 8) & 0x00FF) + amount);
+            const b = clamp((num & 0x0000FF) + amount);
+            return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
         }
 
         function goToRegistration(eventId) {
