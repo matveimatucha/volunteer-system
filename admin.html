@@ -351,6 +351,98 @@
             flex: 1;
         }
 
+        /* Модальное окно выбора шаблона */
+        .template-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            padding: 2rem;
+        }
+
+        .template-modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .template-modal-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 3rem;
+            border-radius: 20px;
+            max-width: 600px;
+            width: 100%;
+            border: 3px solid var(--primary);
+            animation: scaleIn 0.3s ease-out;
+            box-shadow: 0 20px 60px rgba(255, 107, 53, 0.4);
+        }
+
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .template-modal h2 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+            letter-spacing: 2px;
+            color: var(--primary);
+            text-align: center;
+        }
+
+        .template-modal p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+            text-align: center;
+            opacity: 0.9;
+        }
+
+        .template-modal ul {
+            list-style: none;
+            margin: 1.5rem 0;
+            padding: 0;
+        }
+
+        .template-modal li {
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+            font-size: 0.95rem;
+        }
+
+        .template-modal li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        .template-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .template-actions button {
+            flex: 1;
+            padding: 1.2rem;
+            font-size: 1rem;
+        }
+
         /* Конструктор вопросов */
         .questions-section {
             background: rgba(0, 78, 137, 0.1);
@@ -500,6 +592,36 @@
         </div>
     </div>
 
+    <!-- Модальное окно выбора шаблона -->
+    <div id="templateModal" class="template-modal">
+        <div class="template-modal-content">
+            <h2>🎯 Использовать шаблон?</h2>
+            <p>Хотите автоматически добавить готовый набор базовых вопросов для волонтёров?</p>
+            
+            <div style="background: rgba(255, 107, 53, 0.1); padding: 1.5rem; border-radius: 10px; border-left: 4px solid var(--primary);">
+                <p style="margin: 0 0 1rem 0; font-weight: 600; text-align: left;">Будут добавлены 8 базовых вопросов:</p>
+                <ul>
+                    <li>Имя и Фамилия (с проверкой)</li>
+                    <li>Факультет МГУ (41 вариант)</li>
+                    <li>Курс обучения (специалитет/бакалавриат/магистратура)</li>
+                    <li>ВКонтакте (с проверкой ссылки)</li>
+                    <li>Telegram (с проверкой @username)</li>
+                    <li>Номер телефона (с проверкой)</li>
+                    <li>Размер футболки (XS-XXL)</li>
+                    <li>Опыт волонтёрства</li>
+                </ul>
+                <p style="margin: 1rem 0 0 0; font-size: 0.9rem; opacity: 0.8; text-align: left;">
+                    💡 После добавления можете редактировать вопросы или добавить свои (например, согласие на обработку данных, аллергии, навыки и т.д.)
+                </p>
+            </div>
+
+            <div class="template-actions">
+                <button type="button" class="btn btn-danger" onclick="declineTemplate()">Нет, создам вручную</button>
+                <button type="button" class="btn btn-success" onclick="acceptTemplate()">✓ Да, добавить шаблон</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Модальное окно создания/редактирования -->
     <div id="eventModal" class="modal">
         <div class="modal-content">
@@ -533,11 +655,23 @@
                     <input type="number" id="eventMaxVolunteers" required min="1" placeholder="20">
                 </div>
 
+                <div class="form-group">
+                    <label>Цвет плашки мероприятия</label>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <input type="color" id="eventColor" value="#ff6b35" style="width: 80px; height: 50px; cursor: pointer; border-radius: 10px;">
+                        <span id="colorPreview" style="flex: 1; padding: 1rem; border-radius: 10px; background: #ff6b35; color: white; font-weight: 600; text-align: center;">Предпросмотр цвета</span>
+                    </div>
+                    <small style="opacity: 0.7; font-size: 0.85rem; margin-top: 0.5rem; display: block;">Этот цвет будет использоваться для заголовка мероприятия</small>
+                </div>
+
                 <!-- КОНСТРУКТОР ВОПРОСОВ -->
                 <div class="questions-section">
                     <div class="questions-header">
                         <h3>📝 Вопросы для волонтёров</h3>
-                        <button type="button" class="btn btn-success btn-small" onclick="addQuestion()">+ Добавить вопрос</button>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button type="button" class="btn btn-success btn-small" style="background: var(--secondary);" onclick="addTemplateQuestions()">⚡ Добавить шаблон</button>
+                            <button type="button" class="btn btn-success btn-small" onclick="addQuestion()">+ Добавить вопрос</button>
+                        </div>
                     </div>
                     
                     <div id="questionsList" class="questions-list">
@@ -562,6 +696,18 @@
 
         let isAuthenticated = false;
         let currentQuestions = [];
+
+        // Обновление предпросмотра цвета
+        document.addEventListener('DOMContentLoaded', () => {
+            const colorInput = document.getElementById('eventColor');
+            const colorPreview = document.getElementById('colorPreview');
+            
+            if (colorInput && colorPreview) {
+                colorInput.addEventListener('input', (e) => {
+                    colorPreview.style.background = e.target.value;
+                });
+            }
+        });
 
         // Авторизация
         document.getElementById('authForm').addEventListener('submit', (e) => {
@@ -639,12 +785,118 @@
 
         // Открыть модалку создания
         function openCreateModal() {
+            // Сначала показываем предложение использовать шаблон
+            document.getElementById('templateModal').classList.add('active');
+        }
+
+        // Принять шаблон
+        function acceptTemplate() {
+            document.getElementById('templateModal').classList.remove('active');
+            
+            // Создаём мероприятие с шаблоном
+            document.getElementById('modalTitle').textContent = 'Создать мероприятие';
+            document.getElementById('eventForm').reset();
+            document.getElementById('eventId').value = '';
+            
+            // Добавляем шаблонные вопросы
+            addFullTemplateQuestions();
+            
+            document.getElementById('eventModal').classList.add('active');
+        }
+
+        // Отклонить шаблон
+        function declineTemplate() {
+            document.getElementById('templateModal').classList.remove('active');
+            
+            // Создаём мероприятие без шаблона
             document.getElementById('modalTitle').textContent = 'Создать мероприятие';
             document.getElementById('eventForm').reset();
             document.getElementById('eventId').value = '';
             currentQuestions = [];
             renderQuestions();
+            
             document.getElementById('eventModal').classList.add('active');
+        }
+
+        // Добавить полный шаблон вопросов (для нового мероприятия)
+        function addFullTemplateQuestions() {
+            const templates = [
+                {
+                    id: Date.now(),
+                    text: 'Имя',
+                    type: 'text',
+                    required: true,
+                    description: 'Ваше имя',
+                    options: []
+                },
+                {
+                    id: Date.now() + 1,
+                    text: 'Фамилия',
+                    type: 'text',
+                    required: true,
+                    description: 'Ваша фамилия',
+                    options: []
+                },
+                {
+                    id: Date.now() + 2,
+                    text: 'Факультет',
+                    type: 'faculty',
+                    required: true,
+                    description: 'Выберите ваш факультет из списка',
+                    options: []
+                },
+                {
+                    id: Date.now() + 3,
+                    text: 'Курс обучения',
+                    type: 'course',
+                    required: true,
+                    description: 'Укажите на каком курсе вы учитесь',
+                    options: []
+                },
+                {
+                    id: Date.now() + 4,
+                    text: 'ВКонтакте',
+                    type: 'vk',
+                    required: true,
+                    description: 'Пример: https://vk.com/your_id',
+                    options: []
+                },
+                {
+                    id: Date.now() + 5,
+                    text: 'Telegram',
+                    type: 'telegram',
+                    required: true,
+                    description: 'Начинается с @, например: @username',
+                    options: []
+                },
+                {
+                    id: Date.now() + 6,
+                    text: 'Номер телефона',
+                    type: 'tel',
+                    required: true,
+                    description: 'Для срочной связи',
+                    options: []
+                },
+                {
+                    id: Date.now() + 7,
+                    text: 'Размер футболки',
+                    type: 'select',
+                    required: true,
+                    description: 'Нужно для заказа формы',
+                    options: ['XS', 'S', 'M', 'L', 'XL', 'XXL']
+                },
+                {
+                    id: Date.now() + 8,
+                    text: 'Опыт волонтёрства',
+                    type: 'textarea',
+                    required: false,
+                    description: 'Расскажите где и когда вы были волонтёром (если был опыт)',
+                    options: []
+                }
+            ];
+
+            currentQuestions = [...templates];
+            renderQuestions();
         }
 
         // Редактировать мероприятие
@@ -656,6 +908,8 @@
             document.getElementById('eventLocation').value = event.location;
             document.getElementById('eventDescription').value = event.description;
             document.getElementById('eventMaxVolunteers').value = event.maxVolunteers;
+            document.getElementById('eventColor').value = event.color || '#ff6b35';
+            document.getElementById('colorPreview').style.background = event.color || '#ff6b35';
             currentQuestions = event.questions || [];
             renderQuestions();
             document.getElementById('eventModal').classList.add('active');
@@ -664,6 +918,88 @@
         // Закрыть модалку
         function closeModal() {
             document.getElementById('eventModal').classList.remove('active');
+        }
+
+        // Добавить шаблонные вопросы (кнопка внутри формы)
+        function addTemplateQuestions() {
+            const templates = [
+                {
+                    id: Date.now(),
+                    text: 'Имя',
+                    type: 'text',
+                    required: true,
+                    description: 'Ваше имя',
+                    options: []
+                },
+                {
+                    id: Date.now() + 1,
+                    text: 'Фамилия',
+                    type: 'text',
+                    required: true,
+                    description: 'Ваша фамилия',
+                    options: []
+                },
+                {
+                    id: Date.now() + 2,
+                    text: 'Факультет',
+                    type: 'faculty',
+                    required: true,
+                    description: 'Выберите ваш факультет из списка',
+                    options: []
+                },
+                {
+                    id: Date.now() + 3,
+                    text: 'Курс обучения',
+                    type: 'course',
+                    required: true,
+                    description: 'Укажите на каком курсе вы учитесь',
+                    options: []
+                },
+                {
+                    id: Date.now() + 4,
+                    text: 'ВКонтакте',
+                    type: 'vk',
+                    required: true,
+                    description: 'Пример: https://vk.com/your_id',
+                    options: []
+                },
+                {
+                    id: Date.now() + 5,
+                    text: 'Telegram',
+                    type: 'telegram',
+                    required: true,
+                    description: 'Начинается с @, например: @username',
+                    options: []
+                },
+                {
+                    id: Date.now() + 6,
+                    text: 'Номер телефона',
+                    type: 'tel',
+                    required: true,
+                    description: 'Для срочной связи',
+                    options: []
+                },
+                {
+                    id: Date.now() + 7,
+                    text: 'Размер футболки',
+                    type: 'select',
+                    required: true,
+                    description: 'Нужно для заказа формы',
+                    options: ['XS', 'S', 'M', 'L', 'XL', 'XXL']
+                },
+                {
+                    id: Date.now() + 8,
+                    text: 'Опыт волонтёрства',
+                    type: 'textarea',
+                    required: false,
+                    description: 'Расскажите где и когда вы были волонтёром (если был опыт)',
+                    options: []
+                }
+            ];
+
+            currentQuestions = [...templates];
+            renderQuestions();
+            showMessage('success', '✓ Добавлены 8 базовых вопросов! Можете добавить дополнительные вопросы (например, согласие на обработку данных).');
         }
 
         // Добавить вопрос
@@ -717,7 +1053,7 @@
                     <div class="question-header-row">
                         <input type="text" 
                                value="${q.text}" 
-                               placeholder="Текст вопроса (например: Ваш возраст?)"
+                               placeholder="Текст вопроса (например: Ваш факультет?)"
                                onchange="updateQuestion(${q.id}, 'text', this.value)">
                         <select onchange="updateQuestion(${q.id}, 'type', this.value)">
                             <option value="text" ${q.type === 'text' ? 'selected' : ''}>Текст</option>
@@ -728,8 +1064,20 @@
                             <option value="select" ${q.type === 'select' ? 'selected' : ''}>Выбор из списка</option>
                             <option value="radio" ${q.type === 'radio' ? 'selected' : ''}>Один вариант</option>
                             <option value="checkbox" ${q.type === 'checkbox' ? 'selected' : ''}>Галочка</option>
+                            <option value="faculty" ${q.type === 'faculty' ? 'selected' : ''}>Факультет МГУ</option>
+                            <option value="course" ${q.type === 'course' ? 'selected' : ''}>Курс обучения</option>
+                            <option value="vk" ${q.type === 'vk' ? 'selected' : ''}>Ссылка ВКонтакте</option>
+                            <option value="telegram" ${q.type === 'telegram' ? 'selected' : ''}>Telegram (@username)</option>
                         </select>
                         <button type="button" class="btn btn-danger btn-icon" onclick="removeQuestion(${q.id})">×</button>
+                    </div>
+                    
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <input type="text" 
+                               value="${q.description || ''}" 
+                               placeholder="Описание/подсказка (например: Выберите ваш факультет из списка)"
+                               onchange="updateQuestion(${q.id}, 'description', this.value)"
+                               style="font-size: 0.9rem; opacity: 0.8;">
                     </div>
                     
                     <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; text-transform: none;">
@@ -797,6 +1145,7 @@
                 description: document.getElementById('eventDescription').value,
                 maxVolunteers: parseInt(document.getElementById('eventMaxVolunteers').value),
                 currentVolunteers: 0,
+                color: document.getElementById('eventColor').value,
                 questions: currentQuestions
             };
 
