@@ -339,7 +339,7 @@
         // ================================
         // ВАЖНО! ЗАМЕНИТЕ ССЫЛКУ
         // ================================
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzNr45OR92-hsxwL6u7MED_BpZ77tj3gmPfsFYTT2ps--nAEwxtpMwfLOtuycu-_6k/exec';
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxwZe1FgR0r30W9OPELZZnH0-J1RcBEzw6sxYZEnfF1hDPNBingqs2R2myJxlQpWng/exec';
 
         // Получаем ID мероприятия из URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -417,6 +417,67 @@
             document.getElementById('registrationForm').addEventListener('submit', handleSubmit);
         }
 
+        // Список факультетов МГУ (по алфавиту)
+        const MGU_FACULTIES = [
+            'Биологический',
+            'Вычислительной математики и кибернетики',
+            'Географический',
+            'Геологический',
+            'Государственного управления',
+            'Высшая школа бизнеса',
+            'Высшая школа государственного администрирования',
+            'Высшая школа государственного аудита',
+            'Высшая школа инновационного бизнеса',
+            'Высшая школа культурной политики и управления в гуманитарной сфере',
+            'Высшая школа перевода',
+            'Высшая школа современных социальных наук',
+            'Высшая школа телевидения',
+            'Высшая школа управления и инноваций',
+            'Глобальных процессов',
+            'Институт русского языка и культуры',
+            'Институт стран Азии и Африки',
+            'Иностранных языков и регионоведения',
+            'Искусств',
+            'Исторический',
+            'Журналистики',
+            'Космических исследований',
+            'Механико-математический',
+            'Мировой политики',
+            'Московская школа экономики',
+            'Наук о материалах',
+            'Педагогического образования',
+            'Политологии',
+            'Почвоведения',
+            'Психологии',
+            'Социологический',
+            'Физический',
+            'Физической культуры и спорта',
+            'Филологический',
+            'Философский',
+            'Фундаментальной медицины',
+            'Фундаментальной физико-химической инженерии',
+            'Химический',
+            'Экономический',
+            'Юридический',
+            'Биоинженерии и биоинформатики'
+        ];
+
+        const COURSE_OPTIONS = [
+            'Специалитет - 1 курс',
+            'Специалитет - 2 курс',
+            'Специалитет - 3 курс',
+            'Специалитет - 4 курс',
+            'Специалитет - 5 курс',
+            'Специалитет - 6 курс',
+            'Бакалавриат - 1 курс',
+            'Бакалавриат - 2 курс',
+            'Бакалавриат - 3 курс',
+            'Бакалавриат - 4 курс',
+            'Магистратура - 1 курс',
+            'Магистратура - 2 курс',
+            'Другое (укажите в комментарии)'
+        ];
+
         function generateFormFields(questions) {
             if (!questions || questions.length === 0) {
                 return `
@@ -448,6 +509,7 @@
                         return `
                             <div class="form-group">
                                 <label>${q.text} ${requiredMark}</label>
+                                ${q.description ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${q.description}</small>` : ''}
                                 <input type="text" name="${fieldName}" ${requiredAttr} placeholder="Ваш ответ" minlength="1" maxlength="500">
                                 <div class="field-error">Это поле обязательно для заполнения</div>
                             </div>
@@ -457,6 +519,7 @@
                         return `
                             <div class="form-group">
                                 <label>${q.text} ${requiredMark}</label>
+                                ${q.description ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${q.description}</small>` : ''}
                                 <input type="email" name="${fieldName}" ${requiredAttr} placeholder="example@email.com" 
                                        pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}">
                                 <div class="field-error">Введите корректный email (например: name@example.com)</div>
@@ -467,6 +530,7 @@
                         return `
                             <div class="form-group">
                                 <label>${q.text} ${requiredMark}</label>
+                                ${q.description ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${q.description}</small>` : ''}
                                 <input type="tel" name="${fieldName}" ${requiredAttr} placeholder="+7 (___) ___-__-__"
                                        pattern="[+]?[0-9\\s\\-\\(\\)]{10,20}">
                                 <div class="field-error">Введите корректный телефон (10-20 цифр)</div>
@@ -477,6 +541,7 @@
                         return `
                             <div class="form-group">
                                 <label>${q.text} ${requiredMark}</label>
+                                ${q.description ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${q.description}</small>` : ''}
                                 <input type="number" name="${fieldName}" ${requiredAttr} placeholder="Введите число" 
                                        min="0" max="150">
                                 <div class="field-error">Введите число от 0 до 150</div>
@@ -487,6 +552,7 @@
                         return `
                             <div class="form-group">
                                 <label>${q.text} ${requiredMark}</label>
+                                ${q.description ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${q.description}</small>` : ''}
                                 <textarea name="${fieldName}" ${requiredAttr} placeholder="Ваш ответ" 
                                           minlength="1" maxlength="2000"></textarea>
                                 <div class="field-error">Это поле обязательно для заполнения</div>
@@ -497,6 +563,7 @@
                         return `
                             <div class="form-group">
                                 <label>${q.text} ${requiredMark}</label>
+                                ${q.description ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${q.description}</small>` : ''}
                                 <select name="${fieldName}" ${requiredAttr}>
                                     <option value="">Выберите вариант</option>
                                     ${(q.options || []).map(opt => `<option value="${opt}">${opt}</option>`).join('')}
@@ -509,6 +576,7 @@
                         return `
                             <div class="form-group">
                                 <label>${q.text} ${requiredMark}</label>
+                                ${q.description ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${q.description}</small>` : ''}
                                 <div class="radio-group">
                                     ${(q.options || []).map((opt, i) => `
                                         <div class="radio-item">
@@ -536,7 +604,60 @@
                                            ${requiredAttr}>
                                     <label for="${fieldName}">${q.text} ${requiredMark}</label>
                                 </div>
+                                ${q.description ? `<small style="color: #666; margin-top: 0.5rem; display: block;">${q.description}</small>` : ''}
                                 <div class="field-error">Необходимо поставить галочку</div>
+                            </div>
+                        `;
+
+                    case 'faculty':
+                        return `
+                            <div class="form-group">
+                                <label>${q.text} ${requiredMark}</label>
+                                ${q.description ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${q.description}</small>` : ''}
+                                <select name="${fieldName}" ${requiredAttr}>
+                                    <option value="">Выберите факультет</option>
+                                    ${MGU_FACULTIES.map(f => `<option value="${f}">${f}</option>`).join('')}
+                                </select>
+                                <div class="field-error">Выберите ваш факультет</div>
+                            </div>
+                        `;
+
+                    case 'course':
+                        return `
+                            <div class="form-group">
+                                <label>${q.text} ${requiredMark}</label>
+                                ${q.description ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${q.description}</small>` : ''}
+                                <select name="${fieldName}" ${requiredAttr}>
+                                    <option value="">Выберите курс</option>
+                                    ${COURSE_OPTIONS.map(c => `<option value="${c}">${c}</option>`).join('')}
+                                </select>
+                                <div class="field-error">Выберите ваш курс</div>
+                            </div>
+                        `;
+
+                    case 'vk':
+                        const vkDescription = q.description || 'Пример: https://vk.com/your_id';
+                        return `
+                            <div class="form-group">
+                                <label>${q.text} ${requiredMark}</label>
+                                <small style="color: #666; margin-bottom: 0.5rem; display: block;">${vkDescription}</small>
+                                <input type="url" name="${fieldName}" ${requiredAttr} 
+                                       placeholder="https://vk.com/your_id"
+                                       pattern="https://vk\\.com/.*">
+                                <div class="field-error">Введите ссылку на ВК (должна начинаться с https://vk.com/)</div>
+                            </div>
+                        `;
+
+                    case 'telegram':
+                        const tgDescription = q.description || 'Начинается с @, например: @username';
+                        return `
+                            <div class="form-group">
+                                <label>${q.text} ${requiredMark}</label>
+                                <small style="color: #666; margin-bottom: 0.5rem; display: block;">${tgDescription}</small>
+                                <input type="text" name="${fieldName}" ${requiredAttr} 
+                                       placeholder="@username"
+                                       pattern="@[a-zA-Z0-9_]{5,32}">
+                                <div class="field-error">Введите username Telegram (начинается с @, от 5 до 32 символов)</div>
                             </div>
                         `;
 
@@ -667,6 +788,25 @@
                 else if (input.type === 'tel') {
                     const phonePattern = /[+]?[0-9\s\-\(\)]{10,20}/;
                     if (!phonePattern.test(input.value)) {
+                        isValid = false;
+                        if (errorDiv) errorDiv.classList.add('show');
+                        input.style.borderColor = 'var(--danger)';
+                    }
+                }
+                // URL (ВКонтакте)
+                else if (input.type === 'url') {
+                    if (input.pattern && input.pattern.includes('vk')) {
+                        if (!input.value.startsWith('https://vk.com/')) {
+                            isValid = false;
+                            if (errorDiv) errorDiv.classList.add('show');
+                            input.style.borderColor = 'var(--danger)';
+                        }
+                    }
+                }
+                // Telegram
+                else if (input.pattern && input.pattern.includes('@')) {
+                    const telegramPattern = /^@[a-zA-Z0-9_]{5,32}$/;
+                    if (!telegramPattern.test(input.value)) {
                         isValid = false;
                         if (errorDiv) errorDiv.classList.add('show');
                         input.style.borderColor = 'var(--danger)';
