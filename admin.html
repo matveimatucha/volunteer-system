@@ -599,9 +599,10 @@
             <p>Хотите автоматически добавить готовый набор базовых вопросов для волонтёров?</p>
             
             <div style="background: rgba(255, 107, 53, 0.1); padding: 1.5rem; border-radius: 10px; border-left: 4px solid var(--primary);">
-                <p style="margin: 0 0 1rem 0; font-weight: 600; text-align: left;">Будут добавлены 8 базовых вопросов:</p>
+                <p style="margin: 0 0 1rem 0; font-weight: 600; text-align: left;">Будут добавлены 9 базовых вопросов:</p>
                 <ul>
-                    <li>Имя и Фамилия (с проверкой)</li>
+                    <li>Имя</li>
+                    <li>Фамилия</li>
                     <li>Факультет МГУ (41 вариант)</li>
                     <li>Курс обучения (специалитет/бакалавриат/магистратура)</li>
                     <li>ВКонтакте (с проверкой ссылки)</li>
@@ -629,6 +630,7 @@
             <div id="modalMessage" class="message"></div>
             <form id="eventForm">
                 <input type="hidden" id="eventId">
+                <input type="hidden" id="eventCurrentVolunteers" value="0">
                 
                 <div class="form-group">
                     <label>Название мероприятия *</label>
@@ -696,6 +698,7 @@
 
         let isAuthenticated = false;
         let currentQuestions = [];
+        let eventsData = {};
 
         // Обновление предпросмотра цвета
         document.addEventListener('DOMContentLoaded', () => {
@@ -734,7 +737,9 @@
                 
                 if (data.events && data.events.length > 0) {
                     container.innerHTML = '';
+                    eventsData = {};
                     data.events.forEach(event => {
+                        eventsData[event.id] = event;
                         container.appendChild(createEventItem(event));
                     });
                 } else {
@@ -756,7 +761,7 @@
                 <div class="event-item-header">
                     <h3>${event.title}</h3>
                     <div class="event-item-actions">
-                        <button class="btn btn-primary btn-small" onclick='editEvent(${JSON.stringify(event).replace(/'/g, "&apos;")})'>Редактировать</button>
+                        <button class="btn btn-primary btn-small" onclick="editEventById('${event.id}')">Редактировать</button>
                         <button class="btn btn-danger btn-small" onclick="deleteEvent('${event.id}')">Удалить</button>
                     </div>
                 </div>
@@ -899,10 +904,17 @@
             renderQuestions();
         }
 
+        // Открыть редактирование по ID (безопасно — без JSON в onclick)
+        function editEventById(id) {
+            const event = eventsData[id];
+            if (event) editEvent(event);
+        }
+
         // Редактировать мероприятие
         function editEvent(event) {
             document.getElementById('modalTitle').textContent = 'Редактировать мероприятие';
             document.getElementById('eventId').value = event.id;
+            document.getElementById('eventCurrentVolunteers').value = event.currentVolunteers || 0;
             document.getElementById('eventTitle').value = event.title;
             document.getElementById('eventDate').value = event.dateRaw;
             document.getElementById('eventLocation').value = event.location;
@@ -1144,7 +1156,7 @@
                 location: document.getElementById('eventLocation').value,
                 description: document.getElementById('eventDescription').value,
                 maxVolunteers: parseInt(document.getElementById('eventMaxVolunteers').value),
-                currentVolunteers: 0,
+                currentVolunteers: parseInt(document.getElementById('eventCurrentVolunteers').value) || 0,
                 color: document.getElementById('eventColor').value,
                 questions: currentQuestions
             };
@@ -1207,23 +1219,26 @@
 
         function showAuthMessage(type, text) {
             const msg = document.getElementById('authMessage');
+            msg.style.display = '';
             msg.className = `message ${type}`;
             msg.textContent = text;
-            setTimeout(() => msg.style.display = 'none', 3000);
+            setTimeout(() => { msg.style.display = 'none'; }, 3000);
         }
 
         function showModalMessage(type, text) {
             const msg = document.getElementById('modalMessage');
+            msg.style.display = '';
             msg.className = `message ${type}`;
             msg.textContent = text;
-            setTimeout(() => msg.style.display = 'none', 3000);
+            setTimeout(() => { msg.style.display = 'none'; }, 3000);
         }
 
         function showMessage(type, text) {
             const msg = document.getElementById('globalMessage');
+            msg.style.display = '';
             msg.className = `message ${type}`;
             msg.textContent = text;
-            setTimeout(() => msg.style.display = 'none', 5000);
+            setTimeout(() => { msg.style.display = 'none'; }, 5000);
         }
     </script>
 </body>

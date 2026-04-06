@@ -689,7 +689,7 @@
             
             submitBtn.disabled = true;
             submitBtn.textContent = 'Отправка...';
-            statusMessage.style.display = 'none';
+            statusMessage.className = 'message';
 
             const formData = new FormData(form);
             
@@ -746,6 +746,7 @@
             
             // Проверяем все обязательные поля
             const inputs = form.querySelectorAll('input[required], textarea[required], select[required]');
+            const validatedRadioGroups = new Set();
             
             inputs.forEach(input => {
                 const errorDiv = input.closest('.form-group').querySelector('.field-error');
@@ -758,8 +759,10 @@
                         input.style.borderColor = 'var(--danger)';
                     }
                 }
-                // Radio
+                // Radio — проверяем каждую группу только один раз
                 else if (input.type === 'radio') {
+                    if (validatedRadioGroups.has(input.name)) return;
+                    validatedRadioGroups.add(input.name);
                     const radioGroup = form.querySelectorAll(`input[name="${input.name}"]`);
                     const isChecked = Array.from(radioGroup).some(radio => radio.checked);
                     if (!isChecked) {
@@ -786,7 +789,7 @@
                 }
                 // Телефон
                 else if (input.type === 'tel') {
-                    const phonePattern = /[+]?[0-9\s\-\(\)]{10,20}/;
+                    const phonePattern = /^[+]?[0-9\s\-\(\)]{10,20}$/;
                     if (!phonePattern.test(input.value)) {
                         isValid = false;
                         if (errorDiv) errorDiv.classList.add('show');
