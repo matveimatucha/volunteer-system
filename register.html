@@ -6,7 +6,9 @@
     <title>Регистрация на мероприятие</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="dns-prefetch" href="https://script.google.com">
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
     <style>
         * {
             margin: 0;
@@ -350,21 +352,55 @@
         }
 
         let currentEvent = null;
+        const EVENT_CACHE_KEY = `volunteer_event_${eventId}`;
+        const EVENT_CACHE_DURATION = 5 * 60 * 1000; // 5 минут
+
+        function getCachedEvent() {
+            try {
+                const raw = localStorage.getItem(EVENT_CACHE_KEY);
+                if (!raw) return null;
+                const { event, ts } = JSON.parse(raw);
+                if (Date.now() - ts > EVENT_CACHE_DURATION) return null;
+                return event;
+            } catch {
+                return null;
+            }
+        }
+
+        function setCachedEvent(event) {
+            try {
+                localStorage.setItem(EVENT_CACHE_KEY, JSON.stringify({ event, ts: Date.now() }));
+            } catch {}
+        }
 
         async function loadEvent() {
+            // Показываем кэш мгновенно
+            const cached = getCachedEvent();
+            if (cached) {
+                currentEvent = cached;
+                displayEvent(cached);
+                // Тихо обновляем в фоне (актуальность мест)
+                fetchEvent(true);
+                return;
+            }
+            await fetchEvent(false);
+        }
+
+        async function fetchEvent(silent = false) {
             try {
                 const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getEvent&id=${eventId}`);
                 const data = await response.json();
-                
+
                 if (data.event) {
+                    setCachedEvent(data.event);
                     currentEvent = data.event;
                     displayEvent(data.event);
-                } else {
+                } else if (!silent) {
                     displayError('Мероприятие не найдено');
                 }
             } catch (error) {
                 console.error('Ошибка:', error);
-                displayError('Ошибка загрузки мероприятия');
+                if (!silent) displayError('Ошибка загрузки мероприятия');
             }
         }
 

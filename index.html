@@ -6,7 +6,9 @@
     <title>Регистрация волонтёров</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="dns-prefetch" href="https://script.google.com">
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
     <style>
         * {
             margin: 0;
@@ -412,21 +414,38 @@
             window.location.href = `register.html?event=${eventId}`;
         }
 
-        // Кэширование для ускорения
-        let cachedEvents = null;
-        let cacheTime = null;
-        const CACHE_DURATION = 30000; // 30 секунд
+        const CACHE_KEY = 'volunteer_events';
+        const CACHE_DURATION = 5 * 60 * 1000; // 5 минут
+
+        function getCachedEvents() {
+            try {
+                const raw = localStorage.getItem(CACHE_KEY);
+                if (!raw) return null;
+                const { events, ts } = JSON.parse(raw);
+                if (Date.now() - ts > CACHE_DURATION) return null;
+                return events;
+            } catch {
+                return null;
+            }
+        }
+
+        function setCachedEvents(events) {
+            try {
+                localStorage.setItem(CACHE_KEY, JSON.stringify({ events, ts: Date.now() }));
+            } catch {}
+        }
 
         async function loadEventsWithCache() {
-            // Проверяем кэш
-            const now = Date.now();
-            if (cachedEvents && cacheTime && (now - cacheTime) < CACHE_DURATION) {
-                displayEvents(cachedEvents);
+            // Показываем кэш мгновенно, если он свежий
+            const cached = getCachedEvents();
+            if (cached) {
+                displayEvents(cached);
+                // Тихо обновляем в фоне
+                loadEvents(true);
                 return;
             }
-
-            // Загружаем с сервера
-            await loadEvents();
+            // Кэша нет — грузим с лоадером
+            await loadEvents(false);
         }
 
         function displayEvents(events) {
@@ -450,24 +469,24 @@
             }
         }
 
-        async function loadEvents() {
+        async function loadEvents(silent = false) {
             try {
                 const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getEvents`);
                 const data = await response.json();
-                
-                // Сохраняем в кэш
-                cachedEvents = data.events || [];
-                cacheTime = Date.now();
-                
-                displayEvents(cachedEvents);
+                const events = data.events || [];
+                setCachedEvents(events);
+                displayEvents(events);
             } catch (error) {
                 console.error('Ошибка загрузки:', error);
-                document.getElementById('eventsContainer').innerHTML = `
-                    <div class="empty-state">
-                        <h2>Ошибка загрузки</h2>
-                        <p>Не удалось загрузить мероприятия. Проверьте настройки Google Apps Script.</p>
-                    </div>
-                `;
+                // Если тихое фоновое обновление — не показываем ошибку поверх кэша
+                if (!silent) {
+                    document.getElementById('eventsContainer').innerHTML = `
+                        <div class="empty-state">
+                            <h2>Ошибка загрузки</h2>
+                            <p>Не удалось загрузить мероприятия. Проверьте настройки Google Apps Script.</p>
+                        </div>
+                    `;
+                }
             }
         }
 
