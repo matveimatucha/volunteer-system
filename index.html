@@ -323,6 +323,51 @@
             to { transform: rotate(360deg); }
         }
 
+        .archive-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin: 2rem 0 1.5rem;
+        }
+
+        .archive-btn {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            color: white;
+            padding: 0.8rem 2rem;
+            border-radius: 50px;
+            font-family: 'Source Sans 3', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 0.5px;
+        }
+
+        .archive-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .archive-label {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.95rem;
+        }
+
+        .archive-section {
+            margin-top: 1rem;
+        }
+
+        .archive-section .events-grid {
+            opacity: 0.65;
+        }
+
+        .event-card.past {
+            filter: grayscale(30%);
+        }
+
         @media (max-width: 768px) {
             h1 {
                 font-size: 3.5rem;
@@ -463,22 +508,81 @@
 
         function displayEvents(events) {
             const container = document.getElementById('eventsContainer');
-            
-            if (events && events.length > 0) {
-                container.innerHTML = '<div class="events-grid"></div>';
-                const grid = container.querySelector('.events-grid');
-                
-                events.forEach(event => {
-                    const card = createEventCard(event);
-                    grid.appendChild(card);
-                });
-            } else {
+
+            if (!events || events.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <h2>Пока нет мероприятий</h2>
                         <p>Скоро здесь появятся интересные события!</p>
                     </div>
                 `;
+                return;
+            }
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Черновики скрыты, остальные делим на актуальные и архив
+            const visible = events.filter(e => (e.status || 'open') !== 'draft');
+            const active  = visible.filter(e => new Date(e.date) >= today);
+            const past    = visible.filter(e => new Date(e.date) < today);
+
+            let html = '';
+
+            if (active.length > 0) {
+                html += '<div class="events-grid">' +
+                    active.map(() => '').join('') +
+                '</div>';
+            } else {
+                html += `<div class="empty-state">
+                    <h2>Пока нет мероприятий</h2>
+                    <p>Скоро здесь появятся интересные события!</p>
+                </div>`;
+            }
+
+            if (past.length > 0) {
+                html += `<div class="archive-toggle">
+                    <span class="archive-label">Прошедших мероприятий: ${past.length}</span>
+                    <button class="archive-btn" onclick="toggleArchive()">Показать архив</button>
+                </div>
+                <div id="archiveSection" class="archive-section" style="display:none;">
+                    <div class="events-grid" id="archiveGrid"></div>
+                </div>`;
+            }
+
+            container.innerHTML = html;
+
+            // Рендерим активные карточки
+            if (active.length > 0) {
+                const grid = container.querySelector('.events-grid');
+                active.forEach(event => grid.appendChild(createEventCard(event)));
+            }
+
+            // Сохраняем прошедшие для ленивой отрисовки
+            container._pastEvents = past;
+        }
+
+        function toggleArchive() {
+            const section = document.getElementById('archiveSection');
+            const btn = document.querySelector('.archive-btn');
+            const container = document.getElementById('eventsContainer');
+
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+                btn.textContent = 'Скрыть архив';
+
+                // Рендерим прошедшие карточки один раз
+                const grid = document.getElementById('archiveGrid');
+                if (!grid.hasChildNodes() && container._pastEvents) {
+                    container._pastEvents.forEach(event => {
+                        const card = createEventCard(event);
+                        card.classList.add('past');
+                        grid.appendChild(card);
+                    });
+                }
+            } else {
+                section.style.display = 'none';
+                btn.textContent = 'Показать архив';
             }
         }
 

@@ -340,6 +340,7 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script>
         // ================================
         // ВАЖНО! ВСТАВЬТЕ ВАШ FIREBASE КОНФИГ
@@ -355,6 +356,16 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+
+        // ================================
+        // EMAILJS — уведомления на email
+        // Зарегистрируйтесь на emailjs.com и вставьте свои ключи
+        // ================================
+        const EMAILJS_PUBLIC_KEY  = 'ВСТАВЬТЕ_PUBLIC_KEY';   // Account → API Keys
+        const EMAILJS_SERVICE_ID  = 'ВСТАВЬТЕ_SERVICE_ID';   // Email Services → Service ID
+        const EMAILJS_TEMPLATE_ID = 'ВСТАВЬТЕ_TEMPLATE_ID';  // Email Templates → Template ID
+        const ADMIN_EMAIL         = 'ВСТАВЬТЕ_ВАШ_EMAIL';    // куда приходят уведомления
+        emailjs.init(EMAILJS_PUBLIC_KEY);
 
         // Получаем ID мероприятия из URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -765,6 +776,20 @@
                 // Сбрасываем кэш мероприятия, чтобы обновить число мест
                 localStorage.removeItem(EVENT_CACHE_KEY);
                 localStorage.removeItem('volunteer_events');
+
+                // Отправляем email-уведомление (если EmailJS настроен)
+                if (EMAILJS_PUBLIC_KEY !== 'ВСТАВЬТЕ_PUBLIC_KEY') {
+                    const summary = Object.entries(answers)
+                        .map(([k, v]) => `${k}: ${v}`)
+                        .join('\n');
+                    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+                        to_email:   ADMIN_EMAIL,
+                        event_name: currentEvent.title,
+                        event_date: currentEvent.date,
+                        answers:    summary,
+                        reply_to:   answers['question_' + Object.keys(answers).find(k => k.includes('email'))] || ''
+                    }).catch(err => console.warn('EmailJS:', err));
+                }
 
                 statusMessage.className = 'message success';
                 statusMessage.textContent = '✓ Вы успешно зарегистрированы! Скоро с вами свяжутся.';
