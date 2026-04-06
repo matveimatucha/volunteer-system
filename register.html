@@ -6,7 +6,8 @@
     <title>Регистрация на мероприятие</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="dns-prefetch" href="https://script.google.com">
+    <link rel="dns-prefetch" href="https://firestore.googleapis.com">
+    <link rel="preconnect" href="https://firestore.googleapis.com">
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
     <style>
@@ -337,11 +338,23 @@
         </div>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
     <script>
         // ================================
-        // ВАЖНО! ЗАМЕНИТЕ ССЫЛКУ
+        // ВАЖНО! ВСТАВЬТЕ ВАШ FIREBASE КОНФИГ
+        // Берётся в консоли Firebase: Project settings → Your apps → Web app
         // ================================
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxwZe1FgR0r30W9OPELZZnH0-J1RcBEzw6sxYZEnfF1hDPNBingqs2R2myJxlQpWng/exec';
+        const firebaseConfig = {
+            apiKey:            "ВСТАВЬТЕ_apiKey",
+            authDomain:        "ВСТАВЬТЕ_authDomain",
+            projectId:         "ВСТАВЬТЕ_projectId",
+            storageBucket:     "ВСТАВЬТЕ_storageBucket",
+            messagingSenderId: "ВСТАВЬТЕ_messagingSenderId",
+            appId:             "ВСТАВЬТЕ_appId"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
         // Получаем ID мероприятия из URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -388,13 +401,13 @@
 
         async function fetchEvent(silent = false) {
             try {
-                const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getEvent&id=${eventId}`);
-                const data = await response.json();
+                const docSnap = await db.collection('events').doc(eventId).get();
 
-                if (data.event) {
-                    setCachedEvent(data.event);
-                    currentEvent = data.event;
-                    displayEvent(data.event);
+                if (docSnap.exists) {
+                    const event = docSnap.data();
+                    setCachedEvent(event);
+                    currentEvent = event;
+                    displayEvent(event);
                 } else if (!silent) {
                     displayError('Мероприятие не найдено');
                 }
@@ -735,28 +748,28 @@
                 answers[key] = value;
             }
 
-            const data = {
-                action: 'registerVolunteer',
-                eventId: eventId,
-                eventTitle: currentEvent.title,
-                volunteer: {
+            try {
+                // Сохраняем заявку волонтёра
+                await db.collection('registrations').add({
+                    eventId: eventId,
+                    eventTitle: currentEvent.title,
                     timestamp: new Date().toLocaleString('ru-RU'),
                     answers: answers
-                }
-            };
-
-            try {
-                await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
                 });
+
+                // Атомарно увеличиваем счётчик волонтёров
+                await db.collection('events').doc(eventId).update({
+                    currentVolunteers: firebase.firestore.FieldValue.increment(1)
+                });
+
+                // Сбрасываем кэш мероприятия, чтобы обновить число мест
+                localStorage.removeItem(EVENT_CACHE_KEY);
+                localStorage.removeItem('volunteer_events');
 
                 statusMessage.className = 'message success';
                 statusMessage.textContent = '✓ Вы успешно зарегистрированы! Скоро с вами свяжутся.';
                 form.reset();
-                
+
                 setTimeout(() => {
                     window.location.href = 'index.html';
                 }, 3000);

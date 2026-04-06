@@ -6,7 +6,8 @@
     <title>Админ-панель</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="dns-prefetch" href="https://script.google.com">
+    <link rel="dns-prefetch" href="https://firestore.googleapis.com">
+    <link rel="preconnect" href="https://firestore.googleapis.com">
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
     <style>
@@ -691,11 +692,24 @@
         </div>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
     <script>
         // ================================
-        // ВАЖНО! НАСТРОЙКИ
+        // ВАЖНО! ВСТАВЬТЕ ВАШ FIREBASE КОНФИГ
+        // Берётся в консоли Firebase: Project settings → Your apps → Web app
         // ================================
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxwZe1FgR0r30W9OPELZZnH0-J1RcBEzw6sxYZEnfF1hDPNBingqs2R2myJxlQpWng/exec';
+        const firebaseConfig = {
+            apiKey:            "ВСТАВЬТЕ_apiKey",
+            authDomain:        "ВСТАВЬТЕ_authDomain",
+            projectId:         "ВСТАВЬТЕ_projectId",
+            storageBucket:     "ВСТАВЬТЕ_storageBucket",
+            messagingSenderId: "ВСТАВЬТЕ_messagingSenderId",
+            appId:             "ВСТАВЬТЕ_appId"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
         const ADMIN_PASSWORD = 'admin123'; // ИЗМЕНИТЕ ПАРОЛЬ!
 
         let isAuthenticated = false;
@@ -732,15 +746,14 @@
         // Загрузка мероприятий
         async function loadEvents() {
             try {
-                const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getEvents`);
-                const data = await response.json();
-                
+                const snap = await db.collection('events').get();
                 const container = document.getElementById('eventsList');
-                
-                if (data.events && data.events.length > 0) {
+
+                if (!snap.empty) {
                     container.innerHTML = '';
                     eventsData = {};
-                    data.events.forEach(event => {
+                    snap.docs.forEach(docSnap => {
+                        const event = docSnap.data();
                         eventsData[event.id] = event;
                         container.appendChild(createEventItem(event));
                     });
@@ -918,7 +931,7 @@
             document.getElementById('eventId').value = event.id;
             document.getElementById('eventCurrentVolunteers').value = event.currentVolunteers || 0;
             document.getElementById('eventTitle').value = event.title;
-            document.getElementById('eventDate').value = event.dateRaw;
+            document.getElementById('eventDate').value = event.dateRaw || event.date || '';
             document.getElementById('eventLocation').value = event.location;
             document.getElementById('eventDescription').value = event.description;
             document.getElementById('eventMaxVolunteers').value = event.maxVolunteers;
@@ -1164,23 +1177,16 @@
             };
 
             try {
-                await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'saveEvent',
-                        event: eventData
-                    })
-                });
+                await db.collection('events').doc(eventData.id).set(eventData);
+
+                // Сбрасываем кэш на главной странице
+                localStorage.removeItem('volunteer_events');
+                localStorage.removeItem(`volunteer_event_${eventData.id}`);
 
                 closeModal();
                 showMessage('success', '✓ Мероприятие сохранено!');
-                
-                setTimeout(() => {
-                    loadEvents();
-                }, 1000);
-                
+                loadEvents();
+
             } catch (error) {
                 console.error('Ошибка:', error);
                 showModalMessage('error', 'Ошибка при сохранении');
@@ -1197,22 +1203,15 @@
             }
 
             try {
-                await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'deleteEvent',
-                        eventId: eventId
-                    })
-                });
+                await db.collection('events').doc(eventId).delete();
+
+                // Сбрасываем кэш
+                localStorage.removeItem('volunteer_events');
+                localStorage.removeItem(`volunteer_event_${eventId}`);
 
                 showMessage('success', '✓ Мероприятие удалено');
-                
-                setTimeout(() => {
-                    loadEvents();
-                }, 1000);
-                
+                loadEvents();
+
             } catch (error) {
                 console.error('Ошибка:', error);
                 showMessage('error', '✗ Ошибка при удалении');

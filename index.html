@@ -6,7 +6,8 @@
     <title>Регистрация волонтёров</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="dns-prefetch" href="https://script.google.com">
+    <link rel="dns-prefetch" href="https://firestore.googleapis.com">
+    <link rel="preconnect" href="https://firestore.googleapis.com">
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
     <style>
@@ -357,11 +358,23 @@
         </div>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
     <script>
         // ================================
-        // ВАЖНО! ЗАМЕНИТЕ ССЫЛКУ
+        // ВАЖНО! ВСТАВЬТЕ ВАШ FIREBASE КОНФИГ
+        // Берётся в консоли Firebase: Project settings → Your apps → Web app
         // ================================
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxwZe1FgR0r30W9OPELZZnH0-J1RcBEzw6sxYZEnfF1hDPNBingqs2R2myJxlQpWng/exec';
+        const firebaseConfig = {
+            apiKey:            "ВСТАВЬТЕ_apiKey",
+            authDomain:        "ВСТАВЬТЕ_authDomain",
+            projectId:         "ВСТАВЬТЕ_projectId",
+            storageBucket:     "ВСТАВЬТЕ_storageBucket",
+            messagingSenderId: "ВСТАВЬТЕ_messagingSenderId",
+            appId:             "ВСТАВЬТЕ_appId"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
 
 
@@ -471,19 +484,17 @@
 
         async function loadEvents(silent = false) {
             try {
-                const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getEvents`);
-                const data = await response.json();
-                const events = data.events || [];
+                const snap = await db.collection('events').get();
+                const events = snap.docs.map(d => d.data());
                 setCachedEvents(events);
                 displayEvents(events);
             } catch (error) {
                 console.error('Ошибка загрузки:', error);
-                // Если тихое фоновое обновление — не показываем ошибку поверх кэша
                 if (!silent) {
                     document.getElementById('eventsContainer').innerHTML = `
                         <div class="empty-state">
                             <h2>Ошибка загрузки</h2>
-                            <p>Не удалось загрузить мероприятия. Проверьте настройки Google Apps Script.</p>
+                            <p>Не удалось загрузить мероприятия. Проверьте конфиг Firebase.</p>
                         </div>
                     `;
                 }
