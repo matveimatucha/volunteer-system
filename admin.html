@@ -366,12 +366,14 @@
             backdrop-filter: blur(8px);
             z-index: 2000;
             padding: 2rem;
+            overflow-y: auto;
         }
 
         .template-modal.active {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
+            padding-top: 2rem;
         }
 
         .template-modal-content {
@@ -383,6 +385,7 @@
             border: 3px solid var(--primary);
             animation: scaleIn 0.3s ease-out;
             box-shadow: 0 20px 60px rgba(255, 107, 53, 0.4);
+            margin-bottom: 2rem;
         }
 
         @keyframes scaleIn {
