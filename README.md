@@ -24,3 +24,10 @@ npm run test:e2e
 ```
 
 E2E-тесты используют Playwright с браузерными моками Firebase/EmailJS, чтобы проверять пользовательский сценарий регистрации без реального доступа к облачным сервисам.
+
+## Интеграция с Google Sheets
+
+Готовый шаблон с формулами и пошаговой настройкой:
+
+- `GOOGLE_SHEETS_TEMPLATE.md`
+- `GOOGLE_APPS_SCRIPT.md` — авто-импорт CSV из Google Drive с `import_log`, уведомлениями (Telegram/email) и листами по мероприятиям

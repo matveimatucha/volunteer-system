@@ -524,7 +524,10 @@
             today.setHours(0, 0, 0, 0);
 
             // Черновики скрыты, остальные делим на актуальные и архив
-            const visible = events.filter(e => (e.status || 'open') !== 'draft');
+            const visible = events.filter(e => {
+                const status = e.status || 'open';
+                return status !== 'draft' && e.isTemplate !== true;
+            });
             const active  = visible.filter(e => new Date(e.date) >= today);
             const past    = visible.filter(e => new Date(e.date) < today);
 

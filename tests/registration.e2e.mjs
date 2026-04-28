@@ -199,7 +199,7 @@ test('registration flow uses transaction and stores submission', async ({ page }
   await page.fill('input[name="phone"]', '+79991234567');
   await page.click('button[type="submit"]');
 
-  await expect(page.locator('#statusMessage')).toContainText('Вы успешно зарегистрированы');
+  await expect(page.locator('.success-screen')).toContainText('Заявка принята');
 
   const debug = await page.evaluate(() => window.__mockDebug);
   expect(debug.transactionCalls).toBeGreaterThan(0);

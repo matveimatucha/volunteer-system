@@ -724,10 +724,13 @@
             <div class="participants-modal-header">
                 <h2 id="participantsTitle">Участники</h2>
                 <div style="display: flex; gap: 0.8rem; flex-wrap: wrap;">
-                    <button class="btn btn-success btn-small" onclick="exportCSV()">⬇ Скачать CSV</button>
+                    <button class="btn btn-success btn-small" onclick="exportCSV('new')">⬇ Скачать новые CSV</button>
+                    <button class="btn btn-small" style="background: var(--secondary);" onclick="exportCSV('all')">⬇ Скачать все CSV</button>
+                    <button class="btn btn-small" style="background: #7f8c8d;" onclick="markAllViewed()">✓ Отметить как просмотренные</button>
                     <button class="btn btn-danger btn-small" onclick="closeParticipantsModal()">✕ Закрыть</button>
                 </div>
             </div>
+            <div id="participantsMeta" style="margin-bottom: 1rem; opacity: 0.75;"></div>
             <div id="participantsContent">
                 <p class="empty-participants">Загрузка...</p>
             </div>
@@ -784,6 +787,25 @@
                         <span id="colorPreview" style="flex: 1; padding: 1rem; border-radius: 10px; background: #ff6b35; color: white; font-weight: 600; text-align: center;">Предпросмотр цвета</span>
                     </div>
                     <small style="opacity: 0.7; font-size: 0.85rem; margin-top: 0.5rem; display: block;">Этот цвет будет использоваться для заголовка мероприятия</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Текст после успешной регистрации</label>
+                    <textarea id="eventSuccessMessage" placeholder="Твоя заявка принята, жди добавления в чат (оставь личные сообщения открытыми)"></textarea>
+                    <small style="opacity: 0.7; font-size: 0.85rem; margin-top: 0.5rem; display: block;">Если пусто, будет использован стандартный текст</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Ссылка на чат (опционально)</label>
+                    <input type="url" id="eventChatLink" placeholder="https://t.me/your_chat">
+                    <small style="opacity: 0.7; font-size: 0.85rem; margin-top: 0.5rem; display: block;">Показывается на экране успешной отправки</small>
+                </div>
+
+                <div class="form-group">
+                    <label style="display: flex; gap: 0.6rem; align-items: center; text-transform: none; font-size: 0.95rem;">
+                        <input type="checkbox" id="eventIsTemplate" style="width: auto;">
+                        Это шаблон-основа (скрыт на главной, используется для быстрых копий)
+                    </label>
                 </div>
 
                 <!-- КОНСТРУКТОР ВОПРОСОВ -->
@@ -891,15 +913,18 @@
             const statusLabels = { open: 'Открыто', draft: 'Черновик', closed: 'Закрыто' };
             const status = event.status || 'open';
             const statusLabel = statusLabels[status] || 'Открыто';
+            const templateBadge = event.isTemplate ? '<span class="status-badge" style="background: rgba(79,172,254,0.15); color: #4facfe; border: 1px solid rgba(79,172,254,0.4);">Шаблон</span>' : '';
 
             div.innerHTML = `
                 <div class="event-item-header">
                     <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
                         <h3>${event.title}</h3>
                         <span class="status-badge status-${status}">${statusLabel}</span>
+                        ${templateBadge}
                     </div>
                     <div class="event-item-actions" style="flex-wrap: wrap;">
                         <button class="btn btn-success btn-small" onclick="showParticipants('${event.id}', '${event.title.replace(/'/g, "\\'")}')">👥 Участники</button>
+                        ${event.isTemplate ? `<button class="btn btn-small" style="background: #4facfe;" onclick="createFromTemplate('${event.id}')">⚡ Создать из шаблона</button>` : ''}
                         <button class="btn btn-small" style="background: var(--secondary);" onclick="duplicateEvent('${event.id}')">⧉ Скопировать</button>
                         <button class="btn btn-primary btn-small" onclick="editEventById('${event.id}')">Редактировать</button>
                         <button class="btn btn-danger btn-small" onclick="deleteEvent('${event.id}')">Удалить</button>
@@ -1063,7 +1088,13 @@
             document.getElementById('eventColor').value = event.color || '#ff6b35';
             document.getElementById('colorPreview').style.background = event.color || '#ff6b35';
             document.getElementById('eventStatus').value = event.status || 'open';
-            currentQuestions = event.questions || [];
+            document.getElementById('eventSuccessMessage').value = event.successMessage || '';
+            document.getElementById('eventChatLink').value = event.chatLink || '';
+            document.getElementById('eventIsTemplate').checked = !!event.isTemplate;
+            currentQuestions = (event.questions || []).map(q => ({
+                ...q,
+                options: Array.isArray(q.options) ? q.options : []
+            }));
             renderQuestions();
             document.getElementById('eventModal').classList.add('active');
         }
@@ -1269,8 +1300,8 @@
                     if (!question.options || question.options.length === 0) {
                         question.options = ['Вариант 1', 'Вариант 2'];
                     }
+                    renderQuestions();
                 }
-                renderQuestions();
             }
         }
 
@@ -1300,6 +1331,9 @@
                 currentVolunteers: parseInt(document.getElementById('eventCurrentVolunteers').value) || 0,
                 color: document.getElementById('eventColor').value,
                 status: document.getElementById('eventStatus').value || 'open',
+                successMessage: document.getElementById('eventSuccessMessage').value.trim(),
+                chatLink: document.getElementById('eventChatLink').value.trim(),
+                isTemplate: document.getElementById('eventIsTemplate').checked,
                 questions: currentQuestions
             };
 
@@ -1360,22 +1394,98 @@
             document.getElementById('eventColor').value = original.color || '#ff6b35';
             document.getElementById('colorPreview').style.background = original.color || '#ff6b35';
             document.getElementById('eventStatus').value = 'draft';
+            document.getElementById('eventSuccessMessage').value = original.successMessage || '';
+            document.getElementById('eventChatLink').value = original.chatLink || '';
+            document.getElementById('eventIsTemplate').checked = false;
             currentQuestions = JSON.parse(JSON.stringify(original.questions || []));
+            renderQuestions();
+            document.getElementById('eventModal').classList.add('active');
+        }
+
+        function createFromTemplate(id) {
+            const template = eventsData[id];
+            if (!template) return;
+
+            document.getElementById('modalTitle').textContent = 'Создать мероприятие из шаблона';
+            document.getElementById('eventId').value = '';
+            document.getElementById('eventCurrentVolunteers').value = 0;
+            document.getElementById('eventTitle').value = template.title.replace(/^Шаблон:\s*/i, '');
+            document.getElementById('eventDate').value = '';
+            document.getElementById('eventLocation').value = template.location || '';
+            document.getElementById('eventDescription').value = template.description || '';
+            document.getElementById('eventMaxVolunteers').value = template.maxVolunteers || '';
+            document.getElementById('eventColor').value = template.color || '#ff6b35';
+            document.getElementById('colorPreview').style.background = template.color || '#ff6b35';
+            document.getElementById('eventStatus').value = 'draft';
+            document.getElementById('eventSuccessMessage').value = template.successMessage || '';
+            document.getElementById('eventChatLink').value = template.chatLink || '';
+            document.getElementById('eventIsTemplate').checked = false;
+            currentQuestions = JSON.parse(JSON.stringify(template.questions || []));
             renderQuestions();
             document.getElementById('eventModal').classList.add('active');
         }
 
         // Показать участников мероприятия
         let currentParticipantsData = [];
+        let currentParticipantsEventId = null;
+
+        function getSeenIdsKey(eventId) {
+            return `participants_seen_ids_${eventId}`;
+        }
+
+        function getSeenIds(eventId) {
+            if (!eventId) return new Set();
+            try {
+                const raw = localStorage.getItem(getSeenIdsKey(eventId));
+                if (!raw) return new Set();
+                const list = JSON.parse(raw);
+                if (!Array.isArray(list)) return new Set();
+                return new Set(list);
+            } catch {
+                return new Set();
+            }
+        }
+
+        function saveSeenIds(eventId, idsSet) {
+            if (!eventId) return;
+            try {
+                localStorage.setItem(getSeenIdsKey(eventId), JSON.stringify(Array.from(idsSet)));
+            } catch {}
+        }
+
+        function getNewParticipants() {
+            const seenIds = getSeenIds(currentParticipantsEventId);
+            return currentParticipantsData.filter(r => !seenIds.has(r.registrationId));
+        }
+
+        function updateParticipantsMeta() {
+            const meta = document.getElementById('participantsMeta');
+            if (!meta) return;
+            const total = currentParticipantsData.length;
+            const newCount = getNewParticipants().length;
+            meta.innerHTML = `Всего заявок: <strong>${total}</strong> · Новых: <strong>${newCount}</strong>`;
+        }
 
         async function showParticipants(eventId, eventTitle) {
+            currentParticipantsEventId = eventId;
             document.getElementById('participantsTitle').textContent = 'Участники: ' + eventTitle;
+            document.getElementById('participantsMeta').innerHTML = '';
             document.getElementById('participantsContent').innerHTML = '<p class="empty-participants">Загрузка...</p>';
             document.getElementById('participantsModal').classList.add('active');
 
             try {
                 const snap = await db.collection('registrations').where('eventId', '==', eventId).get();
-                currentParticipantsData = snap.docs.map(d => d.data());
+                currentParticipantsData = snap.docs.map(d => {
+                    const data = d.data();
+                    return {
+                        registrationId: data.registrationId || d.id,
+                        createdAt: data.createdAt || '',
+                        createdAtMs: Number(data.createdAtMs) || 0,
+                        ...data
+                    };
+                });
+                currentParticipantsData.sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
+                updateParticipantsMeta();
 
                 if (currentParticipantsData.length === 0) {
                     document.getElementById('participantsContent').innerHTML =
@@ -1389,15 +1499,19 @@
                     if (r.answers) Object.keys(r.answers).forEach(k => answerKeys.add(k));
                 });
                 const keys = Array.from(answerKeys);
+                const seenIds = getSeenIds(currentParticipantsEventId);
 
                 const thead = keys.map(k => `<th>${k}</th>`).join('');
                 const tbody = currentParticipantsData.map(r => {
                     const cells = keys.map(k => `<td>${r.answers?.[k] || '—'}</td>`).join('');
-                    return `<tr><td>${r.timestamp || '—'}</td>${cells}</tr>`;
+                    const isNew = !seenIds.has(r.registrationId);
+                    return `<tr>
+                        <td>${r.timestamp || '—'}${isNew ? ' <span style="color:#2ecc71; font-weight:700;">· NEW</span>' : ''}</td>
+                        ${cells}
+                    </tr>`;
                 }).join('');
 
                 document.getElementById('participantsContent').innerHTML = `
-                    <p style="margin-bottom: 1rem; opacity: 0.7;">Всего заявок: <strong>${currentParticipantsData.length}</strong></p>
                     <div class="participants-table-wrap">
                         <table class="participants-table">
                             <thead><tr><th>Время подачи</th>${thead}</tr></thead>
@@ -1415,28 +1529,64 @@
         function closeParticipantsModal() {
             document.getElementById('participantsModal').classList.remove('active');
             currentParticipantsData = [];
+            currentParticipantsEventId = null;
         }
 
-        // Экспорт участников в CSV
-        function exportCSV() {
+        function escapeCsv(value) {
+            return `"${String(value ?? '').replace(/"/g, '""')}"`;
+        }
+
+        function markAsSeen(records) {
+            if (!currentParticipantsEventId || !records.length) return;
+            const seenIds = getSeenIds(currentParticipantsEventId);
+            records.forEach(r => {
+                if (r.registrationId) seenIds.add(r.registrationId);
+            });
+            saveSeenIds(currentParticipantsEventId, seenIds);
+            updateParticipantsMeta();
+        }
+
+        function markAllViewed() {
             if (!currentParticipantsData.length) {
+                alert('Нет заявок для отметки');
+                return;
+            }
+            markAsSeen(currentParticipantsData);
+            showParticipants(currentParticipantsEventId, document.getElementById('participantsTitle').textContent.replace('Участники: ', ''));
+            showMessage('success', '✓ Все текущие заявки отмечены как просмотренные');
+        }
+
+        // Экспорт участников в CSV (all | new)
+        function exportCSV(mode = 'all') {
+            if (!currentParticipantsData.length || !currentParticipantsEventId) {
                 alert('Нет данных для экспорта');
                 return;
             }
 
+            const records = mode === 'new' ? getNewParticipants() : currentParticipantsData;
+            if (!records.length) {
+                alert(mode === 'new' ? 'Новых заявок нет' : 'Нет данных для экспорта');
+                return;
+            }
+
             const answerKeys = new Set();
-            currentParticipantsData.forEach(r => {
+            records.forEach(r => {
                 if (r.answers) Object.keys(r.answers).forEach(k => answerKeys.add(k));
             });
             const keys = Array.from(answerKeys);
 
-            const header = ['Время', ...keys].map(k => `"${k}"`).join(',');
-            const rows = currentParticipantsData.map(r => {
-                const allKeys = ['timestamp', ...keys];
-                return allKeys.map(k => {
-                    const val = k === 'timestamp' ? (r.timestamp || '') : (r.answers?.[k] || '');
-                    return `"${String(val).replace(/"/g, '""')}"`;
-                }).join(',');
+            const header = ['registrationId', 'createdAt', 'createdAtMs', 'timestamp', 'eventId', 'eventTitle', ...keys].map(escapeCsv).join(',');
+            const rows = records.map(r => {
+                const fixedColumns = [
+                    r.registrationId || '',
+                    r.createdAt || '',
+                    r.createdAtMs || '',
+                    r.timestamp || '',
+                    r.eventId || '',
+                    r.eventTitle || ''
+                ];
+                const answers = keys.map(k => r.answers?.[k] || '');
+                return [...fixedColumns, ...answers].map(escapeCsv).join(',');
             });
 
             // \uFEFF — BOM для корректного открытия в Excel
@@ -1445,9 +1595,12 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `participants_${Date.now()}.csv`;
+            a.download = `participants_${mode}_${Date.now()}.csv`;
             a.click();
             URL.revokeObjectURL(url);
+
+            markAsSeen(records);
+            showParticipants(currentParticipantsEventId, document.getElementById('participantsTitle').textContent.replace('Участники: ', ''));
         }
 
         function showAuthMessage(type, text) {

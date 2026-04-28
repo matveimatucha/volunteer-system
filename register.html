@@ -300,6 +300,36 @@
             border-radius: 20px;
         }
 
+        .success-screen {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 2.5rem;
+            animation: slideDown 0.4s ease-out;
+        }
+
+        .success-screen h2 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2.2rem;
+            color: var(--success);
+            margin-bottom: 1rem;
+            letter-spacing: 1px;
+        }
+
+        .success-screen p {
+            color: #444;
+            font-size: 1.05rem;
+            line-height: 1.6;
+            margin-bottom: 1.2rem;
+        }
+
+        .success-actions {
+            display: flex;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+            margin-top: 1.5rem;
+        }
+
         .spinner {
             width: 50px;
             height: 50px;
@@ -490,6 +520,31 @@
             }
 
             return '';
+        }
+
+        function showSuccessScreen(event) {
+            const message = event?.successMessage?.trim()
+                || 'Твоя заявка принята, жди добавления в чат (оставь личные сообщения открытыми).';
+            const chatLink = event?.chatLink?.trim() || '';
+            const safeLink = chatLink.startsWith('http://') || chatLink.startsWith('https://') ? chatLink : '';
+
+            document.getElementById('contentArea').innerHTML = `
+                <div class="success-screen">
+                    <h2>✓ Заявка принята</h2>
+                    <p>${message}</p>
+                    ${safeLink ? `<p>Если уже готовы, можете перейти в чат мероприятия:</p>` : ''}
+                    <div class="success-actions">
+                        ${safeLink ? `
+                            <a href="${safeLink}" target="_blank" rel="noopener noreferrer" class="submit-btn" style="display: inline-block; text-decoration: none; width: auto; padding: 0.9rem 1.4rem; margin-top: 0;">
+                                Перейти в чат
+                            </a>
+                        ` : ''}
+                        <a href="index.html" class="submit-btn" style="display: inline-block; text-decoration: none; width: auto; padding: 0.9rem 1.4rem; margin-top: 0;">
+                            На главную
+                        </a>
+                    </div>
+                </div>
+            `;
         }
 
         // Список факультетов МГУ (по алфавиту)
@@ -795,8 +850,11 @@
                     }
 
                     transaction.set(registrationRef, {
+                        registrationId: registrationRef.id,
                         eventId: eventId,
                         eventTitle: latestEvent.title,
+                        createdAt: new Date().toISOString(),
+                        createdAtMs: Date.now(),
                         timestamp: new Date().toLocaleString('ru-RU'),
                         answers: answers
                     });
@@ -827,10 +885,7 @@
                 statusMessage.className = 'message success';
                 statusMessage.textContent = '✓ Вы успешно зарегистрированы! Скоро с вами свяжутся.';
                 form.reset();
-
-                setTimeout(() => {
-                    window.location.href = 'index.html';
-                }, 3000);
+                showSuccessScreen(latestEvent || currentEvent);
 
             } catch (error) {
                 console.error('Ошибка:', error);

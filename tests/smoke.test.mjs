@@ -14,6 +14,7 @@ test('index.html blocks signup for closed events', async () => {
   assert.match(indexHtml, /const isClosed = \(event\.status \|\| 'open'\) === 'closed';/);
   assert.match(indexHtml, /const canRegister = spotsLeft > 0 && !isClosed;/);
   assert.match(indexHtml, /\$\{isClosed \? 'Регистрация закрыта' : \(spotsLeft > 0 \? 'Записаться' : 'Заполнено'\)\}/);
+  assert.match(indexHtml, /status !== 'draft' && e\.isTemplate !== true/);
 });
 
 test('register.html uses transaction to prevent oversubscription', async () => {
@@ -30,10 +31,15 @@ test('register.html resolves reply_to from real email answers', async () => {
 
   assert.match(registerHtml, /function findReplyToEmail\(answers\) \{/);
   assert.match(registerHtml, /reply_to:\s+findReplyToEmail\(answers\)/);
+  assert.match(registerHtml, /function showSuccessScreen\(event\) \{/);
 });
 
 test('admin.html template count message is consistent', async () => {
   const adminHtml = await readProjectFile('admin.html');
 
   assert.match(adminHtml, /Добавлены 9 базовых вопросов/);
+  assert.match(adminHtml, /onclick="exportCSV\('new'\)"/);
+  assert.match(adminHtml, /onclick="exportCSV\('all'\)"/);
+  assert.match(adminHtml, /function exportCSV\(mode = 'all'\)/);
+  assert.match(adminHtml, /\['registrationId', 'createdAt', 'createdAtMs', 'timestamp', 'eventId', 'eventTitle'/);
 });
