@@ -427,10 +427,11 @@
             const card = document.createElement('div');
             card.className = 'event-card';
             
-            const spotsLeft = event.maxVolunteers - event.currentVolunteers;
-            const spotsText = spotsLeft > 0 
-                ? `Осталось ${spotsLeft} мест` 
-                : 'Мест нет';
+            const maxVolunteers = Number(event.maxVolunteers) || 0;
+            const currentVolunteers = Number(event.currentVolunteers) || 0;
+            const spotsLeft = Math.max(maxVolunteers - currentVolunteers, 0);
+            const isClosed = (event.status || 'open') === 'closed';
+            const canRegister = spotsLeft > 0 && !isClosed;
             
             const eventColor = event.color || '#ff6b35';
             
@@ -445,11 +446,11 @@
                     <div class="event-footer">
                         <div class="spots-info">
                             <span class="spots-count" style="color: ${eventColor};">${spotsLeft}</span>
-                            <span>из ${event.maxVolunteers} мест</span>
+                            <span>из ${maxVolunteers} мест</span>
                         </div>
                         <button class="register-btn" style="background: ${eventColor};" onmouseover="this.style.background='${adjustColor(eventColor, -20)}'" onmouseout="this.style.background='${eventColor}'" onclick="goToRegistration('${event.id}')" 
-                                ${spotsLeft <= 0 ? 'disabled' : ''}>
-                            ${spotsLeft > 0 ? 'Записаться' : 'Заполнено'}
+                                ${!canRegister ? 'disabled' : ''}>
+                            ${isClosed ? 'Регистрация закрыта' : (spotsLeft > 0 ? 'Записаться' : 'Заполнено')}
                         </button>
                     </div>
                 </div>

@@ -429,21 +429,24 @@
         }
 
         function displayEvent(event) {
-            const spotsLeft = event.maxVolunteers - event.currentVolunteers;
+            const maxVolunteers = Number(event.maxVolunteers) || 0;
+            const currentVolunteers = Number(event.currentVolunteers) || 0;
+            const spotsLeft = Math.max(maxVolunteers - currentVolunteers, 0);
             const eventColor = event.color || '#ff6b35';
+            const isClosed = (event.status || 'open') === 'closed';
             
-            if (spotsLeft <= 0) {
+            if (spotsLeft <= 0 || isClosed) {
                 document.getElementById('contentArea').innerHTML = `
                     <div class="event-header">
                         <div class="event-date" style="color: ${eventColor};">${event.date}</div>
                         <h1>${event.title}</h1>
                         <div class="event-location">📍 ${event.location}</div>
                         <div class="event-description">${event.description}</div>
-                        <div class="spots-badge" style="background: #e74c3c;">Мест нет</div>
+                        <div class="spots-badge" style="background: #e74c3c;">${isClosed ? 'Регистрация закрыта' : 'Мест нет'}</div>
                     </div>
                     <div class="form-container">
                         <p style="text-align: center; color: #e74c3c; font-size: 1.2rem; font-weight: 600;">
-                            К сожалению, все места на это мероприятие уже заняты.
+                            ${isClosed ? 'Регистрация на это мероприятие закрыта администратором.' : 'К сожалению, все места на это мероприятие уже заняты.'}
                         </p>
                     </div>
                 `;
@@ -458,7 +461,7 @@
                     <h1>${event.title}</h1>
                     <div class="event-location">📍 ${event.location}</div>
                     <div class="event-description">${event.description}</div>
-                    <div class="spots-badge" style="background: linear-gradient(135deg, ${eventColor}, ${adjustColor(eventColor, -20)});">Осталось ${spotsLeft} из ${event.maxVolunteers} мест</div>
+                    <div class="spots-badge" style="background: linear-gradient(135deg, ${eventColor}, ${adjustColor(eventColor, -20)});">Осталось ${spotsLeft} из ${maxVolunteers} мест</div>
                 </div>
                 <div class="form-container">
                     <h2 class="form-title">Регистрация на мероприятие</h2>
@@ -475,6 +478,18 @@
 
             // Добавляем обработчик формы
             document.getElementById('registrationForm').addEventListener('submit', handleSubmit);
+        }
+
+        function findReplyToEmail(answers) {
+            const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+            for (const value of Object.values(answers)) {
+                if (typeof value === 'string' && emailPattern.test(value.trim())) {
+                    return value.trim();
+                }
+            }
+
+            return '';
         }
 
         // Список факультетов МГУ (по алфавиту)
@@ -760,17 +775,35 @@
             }
 
             try {
-                // Сохраняем заявку волонтёра
-                await db.collection('registrations').add({
-                    eventId: eventId,
-                    eventTitle: currentEvent.title,
-                    timestamp: new Date().toLocaleString('ru-RU'),
-                    answers: answers
-                });
+                const eventRef = db.collection('events').doc(eventId);
+                const registrationRef = db.collection('registrations').doc();
+                let latestEvent = null;
 
-                // Атомарно увеличиваем счётчик волонтёров
-                await db.collection('events').doc(eventId).update({
-                    currentVolunteers: firebase.firestore.FieldValue.increment(1)
+                await db.runTransaction(async (transaction) => {
+                    const eventSnap = await transaction.get(eventRef);
+                    if (!eventSnap.exists) {
+                        throw new Error('EVENT_NOT_FOUND');
+                    }
+
+                    latestEvent = eventSnap.data();
+                    const latestMax = Number(latestEvent.maxVolunteers) || 0;
+                    const latestCurrent = Number(latestEvent.currentVolunteers) || 0;
+                    const isClosed = (latestEvent.status || 'open') === 'closed';
+
+                    if (isClosed || latestCurrent >= latestMax) {
+                        throw new Error('REGISTRATION_CLOSED');
+                    }
+
+                    transaction.set(registrationRef, {
+                        eventId: eventId,
+                        eventTitle: latestEvent.title,
+                        timestamp: new Date().toLocaleString('ru-RU'),
+                        answers: answers
+                    });
+
+                    transaction.update(eventRef, {
+                        currentVolunteers: firebase.firestore.FieldValue.increment(1)
+                    });
                 });
 
                 // Сбрасываем кэш мероприятия, чтобы обновить число мест
@@ -784,10 +817,10 @@
                         .join('\n');
                     emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
                         to_email:   ADMIN_EMAIL,
-                        event_name: currentEvent.title,
-                        event_date: currentEvent.date,
+                        event_name: latestEvent?.title || currentEvent?.title || '',
+                        event_date: latestEvent?.date || currentEvent?.date || '',
                         answers:    summary,
-                        reply_to:   answers['question_' + Object.keys(answers).find(k => k.includes('email'))] || ''
+                        reply_to:   findReplyToEmail(answers)
                     }).catch(err => console.warn('EmailJS:', err));
                 }
 
@@ -802,7 +835,12 @@
             } catch (error) {
                 console.error('Ошибка:', error);
                 statusMessage.className = 'message error';
-                statusMessage.textContent = '✗ Ошибка при регистрации. Попробуйте снова.';
+                if (error && (error.message === 'REGISTRATION_CLOSED' || error.message === 'EVENT_NOT_FOUND')) {
+                    statusMessage.textContent = '✗ Регистрация уже закрыта или мест больше нет. Страница будет обновлена.';
+                    fetchEvent(false);
+                } else {
+                    statusMessage.textContent = '✗ Ошибка при регистрации. Попробуйте снова.';
+                }
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Зарегистрироваться';

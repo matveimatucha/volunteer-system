@@ -1,0 +1,14 @@
+{
+  "name": "volunteer-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Volunteer registration website test suite",
+  "scripts": {
+    "test": "node --test tests/smoke.test.mjs && playwright test",
+    "test:smoke": "node --test tests/smoke.test.mjs",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
+  }
+}
