@@ -454,6 +454,17 @@
 
 
 
+        function getDirectImageUrl(url) {
+            if (!url) return '';
+            const trimmed = url.trim();
+            // Поддержка Google Диска (как view ссылок, так и d/ или open?id=)
+            const driveMatch = trimmed.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=)|docs\.google\.com\/file\/d\/)([a-zA-Z0-9_-]+)/);
+            if (driveMatch && driveMatch[1]) {
+                return `https://docs.google.com/uc?export=download&id=${driveMatch[1]}`;
+            }
+            return trimmed;
+        }
+
         function hexToRgba(hex, alpha) {
             const num = parseInt(hex.replace('#', ''), 16);
             const r = (num >> 16);
@@ -474,8 +485,9 @@
             const canRegister = spotsLeft > 0 && !isClosed;
             
             const eventColor = event.color || '#ff6b35';
-            const bgStyle = event.image 
-                ? `background: linear-gradient(135deg, ${hexToRgba(eventColor, 0.8)} 0%, ${hexToRgba(adjustColor(eventColor, -20), 0.85)} 100%), url('${event.image}') no-repeat center center / cover;`
+            const imageUrl = getDirectImageUrl(event.image);
+            const bgStyle = imageUrl 
+                ? `background: linear-gradient(135deg, ${hexToRgba(eventColor, 0.8)} 0%, ${hexToRgba(adjustColor(eventColor, -20), 0.85)} 100%), url('${imageUrl}') no-repeat center center / cover;`
                 : `background: linear-gradient(135deg, ${eventColor} 0%, ${adjustColor(eventColor, -20)} 100%);`;
             
             card.innerHTML = `

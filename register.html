@@ -49,7 +49,7 @@
         }
 
         .container {
-            max-width: 700px;
+            max-width: 1200px;
             margin: 0 auto;
             position: relative;
             z-index: 1;
@@ -75,11 +75,18 @@
         }
 
         .event-header {
-            background: white;
-            padding: 3rem;
+            width: 100%;
+            aspect-ratio: 4 / 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 2rem;
             border-radius: 20px 20px 0 0;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
             animation: slideDown 0.6s ease-out;
+            box-sizing: border-box;
         }
 
         @keyframes slideDown {
@@ -345,11 +352,15 @@
         }
 
         @media (max-width: 768px) {
+            .event-header {
+                aspect-ratio: auto;
+                padding: 3rem 1.5rem;
+            }
+
             h1 {
                 font-size: 2.2rem;
             }
 
-            .event-header,
             .form-container {
                 padding: 2rem 1.5rem;
             }
@@ -458,6 +469,17 @@
             }
         }
 
+        function getDirectImageUrl(url) {
+            if (!url) return '';
+            const trimmed = url.trim();
+            // Поддержка Google Диска (как view ссылок, так и d/ или open?id=)
+            const driveMatch = trimmed.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=)|docs\.google\.com\/file\/d\/)([a-zA-Z0-9_-]+)/);
+            if (driveMatch && driveMatch[1]) {
+                return `https://docs.google.com/uc?export=download&id=${driveMatch[1]}`;
+            }
+            return trimmed;
+        }
+
         function hexToRgba(hex, alpha) {
             const num = parseInt(hex.replace('#', ''), 16);
             const r = (num >> 16);
@@ -474,17 +496,19 @@
             const eventColor = event.color || '#ff6b35';
             const isClosed = (event.status || 'open') === 'closed' || (event.status || 'open') === 'draft' || event.isTemplate === true;
             
+            const imageUrl = getDirectImageUrl(event.image);
+
             if (spotsLeft <= 0 || isClosed) {
-                const bgStyle = event.image 
-                    ? `background: linear-gradient(135deg, ${hexToRgba(eventColor, 0.8)} 0%, ${hexToRgba(adjustColor(eventColor, -20), 0.85)} 100%), url('${event.image}') no-repeat center center / cover; color: white;`
+                const bgStyle = imageUrl 
+                    ? `background: linear-gradient(135deg, ${hexToRgba(eventColor, 0.8)} 0%, ${hexToRgba(adjustColor(eventColor, -20), 0.85)} 100%), url('${imageUrl}') no-repeat center center / cover; color: white;`
                     : `background: white; color: var(--dark);`;
 
                 document.getElementById('contentArea').innerHTML = `
                     <div class="event-header" style="${bgStyle}">
-                        <div class="event-date" style="color: ${event.image ? 'white' : eventColor}; opacity: ${event.image ? '0.9' : '1'};">${event.date}</div>
-                        <h1 style="color: ${event.image ? 'white' : 'var(--dark)'};">${event.title}</h1>
-                        <div class="event-location" style="color: ${event.image ? 'rgba(255,255,255,0.9)' : '#666'};">📍 ${event.location}</div>
-                        <div class="event-description" style="color: ${event.image ? 'rgba(255,255,255,0.95)' : '#444'};">${event.description}</div>
+                        <div class="event-date" style="color: ${imageUrl ? 'white' : eventColor}; opacity: ${imageUrl ? '0.9' : '1'};">${event.date}</div>
+                        <h1 style="color: ${imageUrl ? 'white' : 'var(--dark)'};">${event.title}</h1>
+                        <div class="event-location" style="color: ${imageUrl ? 'rgba(255,255,255,0.9)' : '#666'};">📍 ${event.location}</div>
+                        <div class="event-description" style="color: ${imageUrl ? 'rgba(255,255,255,0.95)' : '#444'};">${event.description}</div>
                         <div class="spots-badge" style="background: #e74c3c;">${isClosed ? 'Регистрация закрыта' : 'Мест нет'}</div>
                     </div>
                     <div class="form-container">
@@ -497,16 +521,16 @@
             }
 
             const formFields = generateFormFields(event.questions || []);
-            const bgStyle = event.image 
-                ? `background: linear-gradient(135deg, ${hexToRgba(eventColor, 0.8)} 0%, ${hexToRgba(adjustColor(eventColor, -20), 0.85)} 100%), url('${event.image}') no-repeat center center / cover; color: white;`
+            const bgStyle = imageUrl 
+                ? `background: linear-gradient(135deg, ${hexToRgba(eventColor, 0.8)} 0%, ${hexToRgba(adjustColor(eventColor, -20), 0.85)} 100%), url('${imageUrl}') no-repeat center center / cover; color: white;`
                 : `background: white; color: var(--dark);`;
 
             document.getElementById('contentArea').innerHTML = `
                 <div class="event-header" style="${bgStyle}">
-                    <div class="event-date" style="color: ${event.image ? 'white' : eventColor}; opacity: ${event.image ? '0.9' : '1'};">${event.date}</div>
-                    <h1 style="color: ${event.image ? 'white' : 'var(--dark)'};">${event.title}</h1>
-                    <div class="event-location" style="color: ${event.image ? 'rgba(255,255,255,0.9)' : '#666'};">📍 ${event.location}</div>
-                    <div class="event-description" style="color: ${event.image ? 'rgba(255,255,255,0.95)' : '#444'};">${event.description}</div>
+                    <div class="event-date" style="color: ${imageUrl ? 'white' : eventColor}; opacity: ${imageUrl ? '0.9' : '1'};">${event.date}</div>
+                    <h1 style="color: ${imageUrl ? 'white' : 'var(--dark)'};">${event.title}</h1>
+                    <div class="event-location" style="color: ${imageUrl ? 'rgba(255,255,255,0.9)' : '#666'};">📍 ${event.location}</div>
+                    <div class="event-description" style="color: ${imageUrl ? 'rgba(255,255,255,0.95)' : '#444'};">${event.description}</div>
                     <div class="spots-badge" style="background: linear-gradient(135deg, ${eventColor}, ${adjustColor(eventColor, -20)});">
                         ${isUnlimited ? `Уже записалось: ${currentVolunteers}` : `Осталось ${spotsLeft} из ${maxVolunteers} мест`}
                     </div>
