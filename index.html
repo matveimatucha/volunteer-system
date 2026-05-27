@@ -61,8 +61,23 @@
 
         header {
             text-align: center;
+            padding: 4rem 2rem;
             margin-bottom: 4rem;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.85) 0%, rgba(118, 75, 162, 0.85) 100%), url('assets/main-bg.jpg') no-repeat center center / cover;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
             animation: fadeInDown 0.8s ease-out;
+        }
+
+        .logo-wrapper {
+            margin-bottom: 1.5rem;
+        }
+
+        .main-logo {
+            max-height: 100px;
+            max-width: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.2));
         }
 
         @keyframes fadeInDown {
@@ -391,6 +406,9 @@
 
     <div class="container">
         <header>
+            <div class="logo-wrapper">
+                <img src="assets/logo.png" alt="Логотип" class="main-logo" onerror="this.style.display='none'">
+            </div>
             <h1>ВОЛОНТЁРСКИЕ МЕРОПРИЯТИЯ</h1>
             <p class="tagline">Присоединяйся и меняй мир к лучшему</p>
         </header>
@@ -423,20 +441,32 @@
 
 
 
+        function hexToRgba(hex, alpha) {
+            const num = parseInt(hex.replace('#', ''), 16);
+            const r = (num >> 16);
+            const g = (num >> 8) & 0x00FF;
+            const b = num & 0x0000FF;
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
         function createEventCard(event) {
             const card = document.createElement('div');
             card.className = 'event-card';
             
             const maxVolunteers = Number(event.maxVolunteers) || 0;
             const currentVolunteers = Number(event.currentVolunteers) || 0;
-            const spotsLeft = Math.max(maxVolunteers - currentVolunteers, 0);
+            const isUnlimited = !maxVolunteers;
+            const spotsLeft = isUnlimited ? 999999 : Math.max(maxVolunteers - currentVolunteers, 0);
             const isClosed = (event.status || 'open') === 'closed';
             const canRegister = spotsLeft > 0 && !isClosed;
             
             const eventColor = event.color || '#ff6b35';
+            const bgStyle = event.image 
+                ? `background: linear-gradient(135deg, ${hexToRgba(eventColor, 0.8)} 0%, ${hexToRgba(adjustColor(eventColor, -20), 0.85)} 100%), url('${event.image}') no-repeat center center / cover;`
+                : `background: linear-gradient(135deg, ${eventColor} 0%, ${adjustColor(eventColor, -20)} 100%);`;
             
             card.innerHTML = `
-                <div class="event-header" style="background: linear-gradient(135deg, ${eventColor} 0%, ${adjustColor(eventColor, -20)} 100%);">
+                <div class="event-header" style="${bgStyle}">
                     <div class="event-date">${event.date}</div>
                     <div class="event-title">${event.title}</div>
                     <div class="event-location">📍 ${event.location}</div>
@@ -445,8 +475,12 @@
                     <div class="event-description">${event.description}</div>
                     <div class="event-footer">
                         <div class="spots-info">
-                            <span class="spots-count" style="color: ${eventColor};">${spotsLeft}</span>
-                            <span>из ${maxVolunteers} мест</span>
+                            ${isUnlimited ? `
+                                <span>Уже записалось: <span class="spots-count" style="color: ${eventColor};">${currentVolunteers}</span></span>
+                            ` : `
+                                <span class="spots-count" style="color: ${eventColor};">${spotsLeft}</span>
+                                <span>из ${maxVolunteers} мест</span>
+                            `}
                         </div>
                         <button class="register-btn" style="background: ${eventColor};" onmouseover="this.style.background='${adjustColor(eventColor, -20)}'" onmouseout="this.style.background='${eventColor}'" onclick="goToRegistration('${event.id}')" 
                                 ${!canRegister ? 'disabled' : ''}>
@@ -523,13 +557,19 @@
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
+            const parseLocalDate = (dateStr) => {
+                if (!dateStr) return new Date(0);
+                const [year, month, day] = dateStr.split('-').map(Number);
+                return new Date(year, month - 1, day);
+            };
+
             // Черновики скрыты, остальные делим на актуальные и архив
             const visible = events.filter(e => {
                 const status = e.status || 'open';
                 return status !== 'draft' && e.isTemplate !== true;
             });
-            const active  = visible.filter(e => new Date(e.date) >= today);
-            const past    = visible.filter(e => new Date(e.date) < today);
+            const active  = visible.filter(e => parseLocalDate(e.date) >= today && !e.isArchived);
+            const past    = visible.filter(e => parseLocalDate(e.date) < today || e.isArchived);
 
             let html = '';
 

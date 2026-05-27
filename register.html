@@ -458,20 +458,33 @@
             }
         }
 
+        function hexToRgba(hex, alpha) {
+            const num = parseInt(hex.replace('#', ''), 16);
+            const r = (num >> 16);
+            const g = (num >> 8) & 0x00FF;
+            const b = num & 0x0000FF;
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
         function displayEvent(event) {
-            const maxVolunteers = Number(event.maxVolunteers) || 0;
+            const maxVolunteers = Number(event.maxVolunteers) ? Number(event.maxVolunteers) : 0;
             const currentVolunteers = Number(event.currentVolunteers) || 0;
-            const spotsLeft = Math.max(maxVolunteers - currentVolunteers, 0);
+            const isUnlimited = !maxVolunteers;
+            const spotsLeft = isUnlimited ? 999999 : Math.max(maxVolunteers - currentVolunteers, 0);
             const eventColor = event.color || '#ff6b35';
-            const isClosed = (event.status || 'open') === 'closed';
+            const isClosed = (event.status || 'open') === 'closed' || (event.status || 'open') === 'draft' || event.isTemplate === true;
             
             if (spotsLeft <= 0 || isClosed) {
+                const bgStyle = event.image 
+                    ? `background: linear-gradient(135deg, ${hexToRgba(eventColor, 0.8)} 0%, ${hexToRgba(adjustColor(eventColor, -20), 0.85)} 100%), url('${event.image}') no-repeat center center / cover; color: white;`
+                    : `background: white; color: var(--dark);`;
+
                 document.getElementById('contentArea').innerHTML = `
-                    <div class="event-header">
-                        <div class="event-date" style="color: ${eventColor};">${event.date}</div>
-                        <h1>${event.title}</h1>
-                        <div class="event-location">📍 ${event.location}</div>
-                        <div class="event-description">${event.description}</div>
+                    <div class="event-header" style="${bgStyle}">
+                        <div class="event-date" style="color: ${event.image ? 'white' : eventColor}; opacity: ${event.image ? '0.9' : '1'};">${event.date}</div>
+                        <h1 style="color: ${event.image ? 'white' : 'var(--dark)'};">${event.title}</h1>
+                        <div class="event-location" style="color: ${event.image ? 'rgba(255,255,255,0.9)' : '#666'};">📍 ${event.location}</div>
+                        <div class="event-description" style="color: ${event.image ? 'rgba(255,255,255,0.95)' : '#444'};">${event.description}</div>
                         <div class="spots-badge" style="background: #e74c3c;">${isClosed ? 'Регистрация закрыта' : 'Мест нет'}</div>
                     </div>
                     <div class="form-container">
@@ -484,14 +497,19 @@
             }
 
             const formFields = generateFormFields(event.questions || []);
+            const bgStyle = event.image 
+                ? `background: linear-gradient(135deg, ${hexToRgba(eventColor, 0.8)} 0%, ${hexToRgba(adjustColor(eventColor, -20), 0.85)} 100%), url('${event.image}') no-repeat center center / cover; color: white;`
+                : `background: white; color: var(--dark);`;
 
             document.getElementById('contentArea').innerHTML = `
-                <div class="event-header">
-                    <div class="event-date" style="color: ${eventColor};">${event.date}</div>
-                    <h1>${event.title}</h1>
-                    <div class="event-location">📍 ${event.location}</div>
-                    <div class="event-description">${event.description}</div>
-                    <div class="spots-badge" style="background: linear-gradient(135deg, ${eventColor}, ${adjustColor(eventColor, -20)});">Осталось ${spotsLeft} из ${maxVolunteers} мест</div>
+                <div class="event-header" style="${bgStyle}">
+                    <div class="event-date" style="color: ${event.image ? 'white' : eventColor}; opacity: ${event.image ? '0.9' : '1'};">${event.date}</div>
+                    <h1 style="color: ${event.image ? 'white' : 'var(--dark)'};">${event.title}</h1>
+                    <div class="event-location" style="color: ${event.image ? 'rgba(255,255,255,0.9)' : '#666'};">📍 ${event.location}</div>
+                    <div class="event-description" style="color: ${event.image ? 'rgba(255,255,255,0.95)' : '#444'};">${event.description}</div>
+                    <div class="spots-badge" style="background: linear-gradient(135deg, ${eventColor}, ${adjustColor(eventColor, -20)});">
+                        ${isUnlimited ? `Уже записалось: ${currentVolunteers}` : `Осталось ${spotsLeft} из ${maxVolunteers} мест`}
+                    </div>
                 </div>
                 <div class="form-container">
                     <h2 class="form-title">Регистрация на мероприятие</h2>
@@ -841,9 +859,9 @@
                     }
 
                     latestEvent = eventSnap.data();
-                    const latestMax = Number(latestEvent.maxVolunteers) || 0;
+                    const latestMax = Number(latestEvent.maxVolunteers) ? Number(latestEvent.maxVolunteers) : 999999;
                     const latestCurrent = Number(latestEvent.currentVolunteers) || 0;
-                    const isClosed = (latestEvent.status || 'open') === 'closed';
+                    const isClosed = (latestEvent.status || 'open') === 'closed' || (latestEvent.status || 'open') === 'draft' || latestEvent.isTemplate === true;
 
                     if (isClosed || latestCurrent >= latestMax) {
                         throw new Error('REGISTRATION_CLOSED');

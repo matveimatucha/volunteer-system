@@ -118,6 +118,11 @@
             transition: all 0.3s ease;
         }
 
+        select option {
+            background-color: #1a1a2e;
+            color: white;
+        }
+
         input::placeholder,
         textarea::placeholder {
             color: rgba(255, 255, 255, 0.5);
@@ -767,8 +772,14 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Максимум волонтёров *</label>
-                    <input type="number" id="eventMaxVolunteers" required min="1" placeholder="20">
+                    <label>Максимум волонтёров (пусто — без ограничений)</label>
+                    <input type="number" id="eventMaxVolunteers" placeholder="Например: 20">
+                </div>
+
+                <div class="form-group">
+                    <label>Ссылка на фоновое фото мероприятия (опционально)</label>
+                    <input type="url" id="eventImage" placeholder="https://example.com/photo.jpg">
+                    <small style="opacity: 0.7; font-size: 0.85rem; margin-top: 0.5rem; display: block;">Изображение будет использовано в качестве обложки карточки и на странице регистрации</small>
                 </div>
 
                 <div class="form-group">
@@ -805,6 +816,13 @@
                     <label style="display: flex; gap: 0.6rem; align-items: center; text-transform: none; font-size: 0.95rem;">
                         <input type="checkbox" id="eventIsTemplate" style="width: auto;">
                         Это шаблон-основа (скрыт на главной, используется для быстрых копий)
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label style="display: flex; gap: 0.6rem; align-items: center; text-transform: none; font-size: 0.95rem;">
+                        <input type="checkbox" id="eventIsArchived" style="width: auto;">
+                        Перенести в архив вручную (мероприятие будет показываться в прошедших)
                     </label>
                 </div>
 
@@ -923,7 +941,7 @@
                         ${templateBadge}
                     </div>
                     <div class="event-item-actions" style="flex-wrap: wrap;">
-                        <button class="btn btn-success btn-small" onclick="showParticipants('${event.id}', '${event.title.replace(/'/g, "\\'")}')">👥 Участники</button>
+                        <button class="btn btn-success btn-small" onclick="showParticipants('${event.id}')">👥 Участники</button>
                         ${event.isTemplate ? `<button class="btn btn-small" style="background: #4facfe;" onclick="createFromTemplate('${event.id}')">⚡ Создать из шаблона</button>` : ''}
                         <button class="btn btn-small" style="background: var(--secondary);" onclick="duplicateEvent('${event.id}')">⧉ Скопировать</button>
                         <button class="btn btn-primary btn-small" onclick="editEventById('${event.id}')">Редактировать</button>
@@ -942,7 +960,7 @@
                     </div>
                     <div class="info-item">
                         <div class="info-label">Волонтёры</div>
-                        <div>${event.currentVolunteers} / ${event.maxVolunteers}</div>
+                        <div>${event.currentVolunteers} / ${event.maxVolunteers || '∞'}</div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">Вопросов в форме</div>
@@ -1084,13 +1102,15 @@
             document.getElementById('eventDate').value = event.dateRaw || event.date || '';
             document.getElementById('eventLocation').value = event.location;
             document.getElementById('eventDescription').value = event.description;
-            document.getElementById('eventMaxVolunteers').value = event.maxVolunteers;
+            document.getElementById('eventMaxVolunteers').value = event.maxVolunteers ? event.maxVolunteers : '';
             document.getElementById('eventColor').value = event.color || '#ff6b35';
             document.getElementById('colorPreview').style.background = event.color || '#ff6b35';
             document.getElementById('eventStatus').value = event.status || 'open';
             document.getElementById('eventSuccessMessage').value = event.successMessage || '';
             document.getElementById('eventChatLink').value = event.chatLink || '';
             document.getElementById('eventIsTemplate').checked = !!event.isTemplate;
+            document.getElementById('eventIsArchived').checked = !!event.isArchived;
+            document.getElementById('eventImage').value = event.image || '';
             currentQuestions = (event.questions || []).map(q => ({
                 ...q,
                 options: Array.isArray(q.options) ? q.options : []
@@ -1327,13 +1347,15 @@
                 date: document.getElementById('eventDate').value,
                 location: document.getElementById('eventLocation').value,
                 description: document.getElementById('eventDescription').value,
-                maxVolunteers: parseInt(document.getElementById('eventMaxVolunteers').value),
+                maxVolunteers: parseInt(document.getElementById('eventMaxVolunteers').value) || 0,
                 currentVolunteers: parseInt(document.getElementById('eventCurrentVolunteers').value) || 0,
                 color: document.getElementById('eventColor').value,
                 status: document.getElementById('eventStatus').value || 'open',
                 successMessage: document.getElementById('eventSuccessMessage').value.trim(),
                 chatLink: document.getElementById('eventChatLink').value.trim(),
                 isTemplate: document.getElementById('eventIsTemplate').checked,
+                isArchived: document.getElementById('eventIsArchived').checked,
+                image: document.getElementById('eventImage').value.trim(),
                 questions: currentQuestions
             };
 
@@ -1390,13 +1412,15 @@
             document.getElementById('eventDate').value = '';
             document.getElementById('eventLocation').value = original.location;
             document.getElementById('eventDescription').value = original.description;
-            document.getElementById('eventMaxVolunteers').value = original.maxVolunteers;
+            document.getElementById('eventMaxVolunteers').value = original.maxVolunteers ? original.maxVolunteers : '';
             document.getElementById('eventColor').value = original.color || '#ff6b35';
             document.getElementById('colorPreview').style.background = original.color || '#ff6b35';
             document.getElementById('eventStatus').value = 'draft';
             document.getElementById('eventSuccessMessage').value = original.successMessage || '';
             document.getElementById('eventChatLink').value = original.chatLink || '';
             document.getElementById('eventIsTemplate').checked = false;
+            document.getElementById('eventIsArchived').checked = false;
+            document.getElementById('eventImage').value = original.image || '';
             currentQuestions = JSON.parse(JSON.stringify(original.questions || []));
             renderQuestions();
             document.getElementById('eventModal').classList.add('active');
@@ -1413,13 +1437,15 @@
             document.getElementById('eventDate').value = '';
             document.getElementById('eventLocation').value = template.location || '';
             document.getElementById('eventDescription').value = template.description || '';
-            document.getElementById('eventMaxVolunteers').value = template.maxVolunteers || '';
+            document.getElementById('eventMaxVolunteers').value = template.maxVolunteers ? template.maxVolunteers : '';
             document.getElementById('eventColor').value = template.color || '#ff6b35';
             document.getElementById('colorPreview').style.background = template.color || '#ff6b35';
             document.getElementById('eventStatus').value = 'draft';
             document.getElementById('eventSuccessMessage').value = template.successMessage || '';
             document.getElementById('eventChatLink').value = template.chatLink || '';
             document.getElementById('eventIsTemplate').checked = false;
+            document.getElementById('eventIsArchived').checked = false;
+            document.getElementById('eventImage').value = template.image || '';
             currentQuestions = JSON.parse(JSON.stringify(template.questions || []));
             renderQuestions();
             document.getElementById('eventModal').classList.add('active');
@@ -1466,7 +1492,9 @@
             meta.innerHTML = `Всего заявок: <strong>${total}</strong> · Новых: <strong>${newCount}</strong>`;
         }
 
-        async function showParticipants(eventId, eventTitle) {
+        async function showParticipants(eventId) {
+            const event = eventsData[eventId];
+            const eventTitle = event ? event.title : '';
             currentParticipantsEventId = eventId;
             document.getElementById('participantsTitle').textContent = 'Участники: ' + eventTitle;
             document.getElementById('participantsMeta').innerHTML = '';
@@ -1501,7 +1529,18 @@
                 const keys = Array.from(answerKeys);
                 const seenIds = getSeenIds(currentParticipantsEventId);
 
-                const thead = keys.map(k => `<th>${k}</th>`).join('');
+                // Создаём карту: ID вопроса -> Текст вопроса
+                const questionTextMap = {};
+                if (event && event.questions) {
+                    event.questions.forEach(q => {
+                        questionTextMap[`question_${q.id}`] = q.text;
+                    });
+                }
+                questionTextMap['name'] = 'Имя';
+                questionTextMap['email'] = 'Email';
+                questionTextMap['phone'] = 'Телефон';
+
+                const thead = keys.map(k => `<th>${questionTextMap[k] || k}</th>`).join('');
                 const tbody = currentParticipantsData.map(r => {
                     const cells = keys.map(k => `<td>${r.answers?.[k] || '—'}</td>`).join('');
                     const isNew = !seenIds.has(r.registrationId);
@@ -1552,7 +1591,7 @@
                 return;
             }
             markAsSeen(currentParticipantsData);
-            showParticipants(currentParticipantsEventId, document.getElementById('participantsTitle').textContent.replace('Участники: ', ''));
+            showParticipants(currentParticipantsEventId);
             showMessage('success', '✓ Все текущие заявки отмечены как просмотренные');
         }
 
@@ -1575,7 +1614,19 @@
             });
             const keys = Array.from(answerKeys);
 
-            const header = ['registrationId', 'createdAt', 'createdAtMs', 'timestamp', 'eventId', 'eventTitle', ...keys].map(escapeCsv).join(',');
+            const event = eventsData[currentParticipantsEventId];
+            const questionTextMap = {};
+            if (event && event.questions) {
+                event.questions.forEach(q => {
+                    questionTextMap[`question_${q.id}`] = q.text;
+                });
+            }
+            questionTextMap['name'] = 'Имя';
+            questionTextMap['email'] = 'Email';
+            questionTextMap['phone'] = 'Телефон';
+
+            const headerKeys = keys.map(k => questionTextMap[k] || k);
+            const header = ['registrationId', 'createdAt', 'createdAtMs', 'timestamp', 'eventId', 'eventTitle', ...headerKeys].map(escapeCsv).join(',');
             const rows = records.map(r => {
                 const fixedColumns = [
                     r.registrationId || '',
@@ -1600,7 +1651,7 @@
             URL.revokeObjectURL(url);
 
             markAsSeen(records);
-            showParticipants(currentParticipantsEventId, document.getElementById('participantsTitle').textContent.replace('Участники: ', ''));
+            showParticipants(currentParticipantsEventId);
         }
 
         function showAuthMessage(type, text) {
