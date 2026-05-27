@@ -61,20 +61,28 @@
 
         header {
             text-align: center;
-            padding: 4rem 2rem;
-            margin-bottom: 4rem;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto 4rem auto;
+            aspect-ratio: 4 / 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
             background: linear-gradient(135deg, rgba(102, 126, 234, 0.85) 0%, rgba(118, 75, 162, 0.85) 100%), url('assets/main-bg.jpg') no-repeat center center / cover;
             border-radius: 20px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
             animation: fadeInDown 0.8s ease-out;
+            box-sizing: border-box;
         }
 
         .logo-wrapper {
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
         }
 
         .main-logo {
-            max-height: 100px;
+            max-height: 80px;
             max-width: 100%;
             object-fit: contain;
             filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.2));
@@ -384,6 +392,11 @@
         }
 
         @media (max-width: 768px) {
+            header {
+                aspect-ratio: auto;
+                padding: 3rem 1.5rem;
+            }
+
             h1 {
                 font-size: 3.5rem;
             }
