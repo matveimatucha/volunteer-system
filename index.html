@@ -184,6 +184,21 @@
             color: white;
             position: relative;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            min-height: 180px;
+        }
+
+        .event-card-logo {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            width: 45px;
+            height: 45px;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25));
+            z-index: 2;
         }
 
         /* Разноцветные плашки для мероприятий */
@@ -486,12 +501,14 @@
             
             const eventColor = event.color || '#ff6b35';
             const imageUrl = getDirectImageUrl(event.image);
+            const logoUrl = getDirectImageUrl(event.logo) || 'assets/logo.png';
             const bgStyle = imageUrl 
                 ? `background: linear-gradient(135deg, ${hexToRgba(eventColor, 0.8)} 0%, ${hexToRgba(adjustColor(eventColor, -20), 0.85)} 100%), url('${imageUrl}') no-repeat center center / cover;`
                 : `background: linear-gradient(135deg, ${eventColor} 0%, ${adjustColor(eventColor, -20)} 100%);`;
             
             card.innerHTML = `
                 <div class="event-header" style="${bgStyle}">
+                    <img src="${logoUrl}" alt="Логотип мероприятия" class="event-card-logo" onerror="this.style.display='none'">
                     <div class="event-date">${event.date}</div>
                     <div class="event-title">${event.title}</div>
                     <div class="event-location">📍 ${event.location}</div>

@@ -87,6 +87,18 @@
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
             animation: slideDown 0.6s ease-out;
             box-sizing: border-box;
+            position: relative;
+        }
+
+        .event-header-logo {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            width: 70px;
+            height: 70px;
+            object-fit: contain;
+            filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.25));
+            z-index: 2;
         }
 
         @keyframes slideDown {
@@ -498,6 +510,8 @@
             
             const imageUrl = getDirectImageUrl(event.image);
 
+            const logoUrl = getDirectImageUrl(event.logo) || 'assets/logo.png';
+
             if (spotsLeft <= 0 || isClosed) {
                 const bgStyle = imageUrl 
                     ? `background: linear-gradient(135deg, ${hexToRgba(eventColor, 0.8)} 0%, ${hexToRgba(adjustColor(eventColor, -20), 0.85)} 100%), url('${imageUrl}') no-repeat center center / cover; color: white;`
@@ -505,6 +519,7 @@
 
                 document.getElementById('contentArea').innerHTML = `
                     <div class="event-header" style="${bgStyle}">
+                        <img src="${logoUrl}" alt="Логотип мероприятия" class="event-header-logo" onerror="this.style.display='none'">
                         <div class="event-date" style="color: ${imageUrl ? 'white' : eventColor}; opacity: ${imageUrl ? '0.9' : '1'};">${event.date}</div>
                         <h1 style="color: ${imageUrl ? 'white' : 'var(--dark)'};">${event.title}</h1>
                         <div class="event-location" style="color: ${imageUrl ? 'rgba(255,255,255,0.9)' : '#666'};">📍 ${event.location}</div>
@@ -527,6 +542,7 @@
 
             document.getElementById('contentArea').innerHTML = `
                 <div class="event-header" style="${bgStyle}">
+                    <img src="${logoUrl}" alt="Логотип мероприятия" class="event-header-logo" onerror="this.style.display='none'">
                     <div class="event-date" style="color: ${imageUrl ? 'white' : eventColor}; opacity: ${imageUrl ? '0.9' : '1'};">${event.date}</div>
                     <h1 style="color: ${imageUrl ? 'white' : 'var(--dark)'};">${event.title}</h1>
                     <div class="event-location" style="color: ${imageUrl ? 'rgba(255,255,255,0.9)' : '#666'};">📍 ${event.location}</div>
