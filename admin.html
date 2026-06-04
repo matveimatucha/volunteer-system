@@ -857,6 +857,7 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+    <script src="assets/registration-utils.js"></script>
     <script>
         // ================================
         // ВАЖНО! ВСТАВЬТЕ ВАШ FIREBASE КОНФИГ
@@ -948,6 +949,7 @@
                     </div>
                     <div class="event-item-actions" style="flex-wrap: wrap;">
                         <button class="btn btn-success btn-small" onclick="showParticipants('${event.id}')">👥 Участники</button>
+                        <button class="btn btn-small" onclick="syncVolunteerCount('${event.id}')" title="Пересчитать по заявкам в базе">🔄 Счётчик</button>
                         ${event.isTemplate ? `<button class="btn btn-small" style="background: #4facfe;" onclick="createFromTemplate('${event.id}')">⚡ Создать из шаблона</button>` : ''}
                         <button class="btn btn-small" style="background: var(--secondary);" onclick="duplicateEvent('${event.id}')">⧉ Скопировать</button>
                         <button class="btn btn-primary btn-small" onclick="editEventById('${event.id}')">Редактировать</button>
@@ -1348,10 +1350,12 @@
             submitBtn.disabled = true;
             submitBtn.textContent = 'Сохранение...';
             
+            const dateRaw = document.getElementById('eventDate').value;
             const eventData = {
                 id: document.getElementById('eventId').value || Date.now().toString(),
                 title: document.getElementById('eventTitle').value,
-                date: document.getElementById('eventDate').value,
+                dateRaw: dateRaw,
+                date: formatDateRuFromIso(dateRaw) || dateRaw,
                 location: document.getElementById('eventLocation').value,
                 description: document.getElementById('eventDescription').value,
                 maxVolunteers: parseInt(document.getElementById('eventMaxVolunteers').value) || 0,
@@ -1502,6 +1506,25 @@
             meta.innerHTML = `Всего заявок: <strong>${total}</strong> · Новых: <strong>${newCount}</strong>`;
         }
 
+        async function syncVolunteerCount(eventId) {
+            if (!eventId) return;
+            try {
+                const snap = await db.collection('registrations').where('eventId', '==', eventId).get();
+                const count = snap.size;
+                await db.collection('events').doc(eventId).update({ currentVolunteers: count });
+                localStorage.removeItem('volunteer_events');
+                localStorage.removeItem(`volunteer_event_${eventId}`);
+                if (eventsData[eventId]) {
+                    eventsData[eventId].currentVolunteers = count;
+                }
+                showMessage('success', `✓ Счётчик обновлён: ${count} заявок`);
+                loadEvents();
+            } catch (error) {
+                console.error('Ошибка пересчёта:', error);
+                showMessage('error', 'Не удалось пересчитать участников');
+            }
+        }
+
         async function showParticipants(eventId) {
             const event = eventsData[eventId];
             const eventTitle = event ? event.title : '';
@@ -1540,22 +1563,17 @@
                 const seenIds = getSeenIds(currentParticipantsEventId);
 
                 // Создаём карту: ID вопроса -> Текст вопроса
-                const questionTextMap = {};
-                if (event && event.questions) {
-                    event.questions.forEach(q => {
-                        questionTextMap[`question_${q.id}`] = q.text;
-                    });
-                }
-                questionTextMap['name'] = 'Имя';
-                questionTextMap['email'] = 'Email';
-                questionTextMap['phone'] = 'Телефон';
+                const questionTextMap = buildQuestionTextMap(event?.questions || []);
 
-                const thead = keys.map(k => `<th>${questionTextMap[k] || k}</th>`).join('');
+                const thead = keys.map(k => `<th>${escapeHtmlText(questionTextMap[k] || k)}</th>`).join('');
                 const tbody = currentParticipantsData.map(r => {
-                    const cells = keys.map(k => `<td>${r.answers?.[k] || '—'}</td>`).join('');
+                    const cells = keys.map(k => {
+                        const val = r.answers?.[k] ?? r.answersLabeled?.[questionTextMap[k]] ?? '';
+                        return `<td>${escapeHtmlText(val || '—')}</td>`;
+                    }).join('');
                     const isNew = !seenIds.has(r.registrationId);
                     return `<tr>
-                        <td>${r.timestamp || '—'}${isNew ? ' <span style="color:#2ecc71; font-weight:700;">· NEW</span>' : ''}</td>
+                        <td>${escapeHtmlText(r.timestamp || '—')}${isNew ? ' <span style="color:#2ecc71; font-weight:700;">· NEW</span>' : ''}</td>
                         ${cells}
                     </tr>`;
                 }).join('');
@@ -1625,18 +1643,10 @@
             const keys = Array.from(answerKeys);
 
             const event = eventsData[currentParticipantsEventId];
-            const questionTextMap = {};
-            if (event && event.questions) {
-                event.questions.forEach(q => {
-                    questionTextMap[`question_${q.id}`] = q.text;
-                });
-            }
-            questionTextMap['name'] = 'Имя';
-            questionTextMap['email'] = 'Email';
-            questionTextMap['phone'] = 'Телефон';
+            const questionTextMap = buildQuestionTextMap(event?.questions || []);
 
             const headerKeys = keys.map(k => questionTextMap[k] || k);
-            const header = ['registrationId', 'createdAt', 'createdAtMs', 'timestamp', 'eventId', 'eventTitle', ...headerKeys].map(escapeCsv).join(',');
+            const header = ['registrationId', 'createdAt', 'createdAtMs', 'timestamp', 'eventId', 'eventTitle', 'contactEmail', ...headerKeys].map(escapeCsv).join(',');
             const rows = records.map(r => {
                 const fixedColumns = [
                     r.registrationId || '',
@@ -1644,7 +1654,8 @@
                     r.createdAtMs || '',
                     r.timestamp || '',
                     r.eventId || '',
-                    r.eventTitle || ''
+                    r.eventTitle || '',
+                    r.contactEmail || ''
                 ];
                 const answers = keys.map(k => r.answers?.[k] || '');
                 return [...fixedColumns, ...answers].map(escapeCsv).join(',');

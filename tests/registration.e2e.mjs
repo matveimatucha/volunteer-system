@@ -100,15 +100,29 @@ async function installBrowserMocks(page, events) {
             }
           },
           where(field, op, value) {
-            return {
+            const filters = [{ field, op, value }];
+            const query = {
+              where(nextField, nextOp, nextValue) {
+                filters.push({ field: nextField, op: nextOp, value: nextValue });
+                return query;
+              },
+              limit(count) {
+                query._limit = count;
+                return query;
+              },
               async get() {
-                if (name !== 'registrations' || op !== '==') return { docs: [] };
-                const docs = registrationsStore
-                  .filter((item) => item[field] === value)
-                  .map((item) => ({ data: () => deepClone(item) }));
-                return { docs };
+                if (name !== 'registrations') return { empty: true, docs: [] };
+                let items = registrationsStore.filter((item) =>
+                  filters.every((f) => f.op === '==' && item[f.field] === f.value)
+                );
+                if (query._limit != null) {
+                  items = items.slice(0, query._limit);
+                }
+                const docs = items.map((item) => ({ data: () => deepClone(item) }));
+                return { empty: docs.length === 0, docs };
               }
             };
+            return query;
           }
         };
       },

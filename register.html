@@ -409,6 +409,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
     <script src="assets/event-images.js"></script>
+    <script src="assets/registration-utils.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script>
         // ================================
@@ -511,7 +512,10 @@
             const isUnlimited = !maxVolunteers;
             const spotsLeft = isUnlimited ? 999999 : Math.max(maxVolunteers - currentVolunteers, 0);
             const eventColor = event.color || '#ff6b35';
-            const isClosed = (event.status || 'open') === 'closed' || (event.status || 'open') === 'draft' || event.isTemplate === true;
+            const isClosed = (event.status || 'open') === 'closed'
+                || (event.status || 'open') === 'draft'
+                || event.isTemplate === true
+                || event.isArchived === true;
             
             const imageUrl = getDirectImageUrl(event.image);
 
@@ -578,18 +582,6 @@
 
             // Добавляем обработчик формы
             document.getElementById('registrationForm').addEventListener('submit', handleSubmit);
-        }
-
-        function findReplyToEmail(answers) {
-            const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-
-            for (const value of Object.values(answers)) {
-                if (typeof value === 'string' && emailPattern.test(value.trim())) {
-                    return value.trim();
-                }
-            }
-
-            return '';
         }
 
         function showSuccessScreen(event) {
@@ -703,13 +695,15 @@
                 const requiredMark = q.required ? '<span class="required">*</span>' : '';
                 const requiredAttr = q.required ? 'required' : '';
                 const fieldName = `question_${q.id}`;
+                const qText = escapeHtmlText(q.text || '');
+                const qDesc = q.description ? escapeHtmlText(q.description) : '';
 
                 switch (q.type) {
                     case 'text':
                         return `
                             <div class="form-group">
-                                <label>${q.text} ${requiredMark}</label>
-                                ${q.description ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${q.description}</small>` : ''}
+                                <label>${qText} ${requiredMark}</label>
+                                ${qDesc ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${qDesc}</small>` : ''}
                                 <input type="text" name="${fieldName}" ${requiredAttr} placeholder="Ваш ответ" minlength="1" maxlength="500">
                                 <div class="field-error">Это поле обязательно для заполнения</div>
                             </div>
@@ -718,8 +712,8 @@
                     case 'email':
                         return `
                             <div class="form-group">
-                                <label>${q.text} ${requiredMark}</label>
-                                ${q.description ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${q.description}</small>` : ''}
+                                <label>${qText} ${requiredMark}</label>
+                                ${qDesc ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${qDesc}</small>` : ''}
                                 <input type="email" name="${fieldName}" ${requiredAttr} placeholder="example@email.com" 
                                        pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}">
                                 <div class="field-error">Введите корректный email (например: name@example.com)</div>
@@ -729,8 +723,8 @@
                     case 'tel':
                         return `
                             <div class="form-group">
-                                <label>${q.text} ${requiredMark}</label>
-                                ${q.description ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${q.description}</small>` : ''}
+                                <label>${qText} ${requiredMark}</label>
+                                ${qDesc ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${qDesc}</small>` : ''}
                                 <input type="tel" name="${fieldName}" ${requiredAttr} placeholder="+7 (___) ___-__-__"
                                        pattern="[+]?[0-9\\s\\-\\(\\)]{10,20}">
                                 <div class="field-error">Введите корректный телефон (10-20 цифр)</div>
@@ -740,8 +734,8 @@
                     case 'number':
                         return `
                             <div class="form-group">
-                                <label>${q.text} ${requiredMark}</label>
-                                ${q.description ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${q.description}</small>` : ''}
+                                <label>${qText} ${requiredMark}</label>
+                                ${qDesc ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${qDesc}</small>` : ''}
                                 <input type="number" name="${fieldName}" ${requiredAttr} placeholder="Введите число" 
                                        min="0" max="150">
                                 <div class="field-error">Введите число от 0 до 150</div>
@@ -751,8 +745,8 @@
                     case 'textarea':
                         return `
                             <div class="form-group">
-                                <label>${q.text} ${requiredMark}</label>
-                                ${q.description ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${q.description}</small>` : ''}
+                                <label>${qText} ${requiredMark}</label>
+                                ${qDesc ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${qDesc}</small>` : ''}
                                 <textarea name="${fieldName}" ${requiredAttr} placeholder="Ваш ответ" 
                                           minlength="1" maxlength="2000"></textarea>
                                 <div class="field-error">Это поле обязательно для заполнения</div>
@@ -762,11 +756,14 @@
                     case 'select':
                         return `
                             <div class="form-group">
-                                <label>${q.text} ${requiredMark}</label>
-                                ${q.description ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${q.description}</small>` : ''}
+                                <label>${qText} ${requiredMark}</label>
+                                ${qDesc ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${qDesc}</small>` : ''}
                                 <select name="${fieldName}" ${requiredAttr}>
                                     <option value="">Выберите вариант</option>
-                                    ${(q.options || []).map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                                    ${(q.options || []).map(opt => {
+                                        const safe = escapeHtmlAttr(opt);
+                                        return `<option value="${safe}">${escapeHtmlText(opt)}</option>`;
+                                    }).join('')}
                                 </select>
                                 <div class="field-error">Выберите один из вариантов</div>
                             </div>
@@ -775,19 +772,21 @@
                     case 'radio':
                         return `
                             <div class="form-group">
-                                <label>${q.text} ${requiredMark}</label>
-                                ${q.description ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${q.description}</small>` : ''}
+                                <label>${qText} ${requiredMark}</label>
+                                ${qDesc ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${qDesc}</small>` : ''}
                                 <div class="radio-group">
-                                    ${(q.options || []).map((opt, i) => `
+                                    ${(q.options || []).map((opt, i) => {
+                                        const safe = escapeHtmlAttr(opt);
+                                        return `
                                         <div class="radio-item">
                                             <input type="radio" 
                                                    id="${fieldName}_${i}" 
                                                    name="${fieldName}" 
-                                                   value="${opt}" 
+                                                   value="${safe}" 
                                                    ${requiredAttr}>
-                                            <label for="${fieldName}_${i}">${opt}</label>
-                                        </div>
-                                    `).join('')}
+                                            <label for="${fieldName}_${i}">${escapeHtmlText(opt)}</label>
+                                        </div>`;
+                                    }).join('')}
                                 </div>
                                 <div class="field-error">Выберите один из вариантов</div>
                             </div>
@@ -802,9 +801,9 @@
                                            name="${fieldName}" 
                                            value="yes" 
                                            ${requiredAttr}>
-                                    <label for="${fieldName}">${q.text} ${requiredMark}</label>
+                                    <label for="${fieldName}">${qText} ${requiredMark}</label>
                                 </div>
-                                ${q.description ? `<small style="color: #666; margin-top: 0.5rem; display: block;">${q.description}</small>` : ''}
+                                ${qDesc ? `<small style="color: #666; margin-top: 0.5rem; display: block;">${qDesc}</small>` : ''}
                                 <div class="field-error">Необходимо поставить галочку</div>
                             </div>
                         `;
@@ -812,8 +811,8 @@
                     case 'faculty':
                         return `
                             <div class="form-group">
-                                <label>${q.text} ${requiredMark}</label>
-                                ${q.description ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${q.description}</small>` : ''}
+                                <label>${qText} ${requiredMark}</label>
+                                ${qDesc ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${qDesc}</small>` : ''}
                                 <select name="${fieldName}" ${requiredAttr}>
                                     <option value="">Выберите факультет</option>
                                     ${MGU_FACULTIES.map(f => `<option value="${f}">${f}</option>`).join('')}
@@ -825,8 +824,8 @@
                     case 'course':
                         return `
                             <div class="form-group">
-                                <label>${q.text} ${requiredMark}</label>
-                                ${q.description ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${q.description}</small>` : ''}
+                                <label>${qText} ${requiredMark}</label>
+                                ${qDesc ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${qDesc}</small>` : ''}
                                 <select name="${fieldName}" ${requiredAttr}>
                                     <option value="">Выберите курс</option>
                                     ${COURSE_OPTIONS.map(c => `<option value="${c}">${c}</option>`).join('')}
@@ -836,10 +835,10 @@
                         `;
 
                     case 'vk':
-                        const vkDescription = q.description || 'Пример: https://vk.com/your_id';
+                        const vkDescription = qDesc || 'Пример: https://vk.com/your_id';
                         return `
                             <div class="form-group">
-                                <label>${q.text} ${requiredMark}</label>
+                                <label>${qText} ${requiredMark}</label>
                                 <small style="color: #666; margin-bottom: 0.5rem; display: block;">${vkDescription}</small>
                                 <input type="url" name="${fieldName}" ${requiredAttr} 
                                        placeholder="https://vk.com/your_id"
@@ -849,10 +848,10 @@
                         `;
 
                     case 'telegram':
-                        const tgDescription = q.description || 'Начинается с @, например: @username';
+                        const tgDescription = qDesc || 'Начинается с @, например: @username';
                         return `
                             <div class="form-group">
-                                <label>${q.text} ${requiredMark}</label>
+                                <label>${qText} ${requiredMark}</label>
                                 <small style="color: #666; margin-bottom: 0.5rem; display: block;">${tgDescription}</small>
                                 <input type="text" name="${fieldName}" ${requiredAttr} 
                                        placeholder="@username"
@@ -891,15 +890,22 @@
             submitBtn.textContent = 'Отправка...';
             statusMessage.className = 'message';
 
-            const formData = new FormData(form);
-            
-            // Собираем ответы на вопросы
-            const answers = {};
-            for (let [key, value] of formData.entries()) {
-                answers[key] = value;
-            }
+            const questions = currentEvent?.questions || [];
+            const { answers, answersLabeled, contactEmail } = collectAnswersFromForm(form, questions);
+            let registrationSaved = false;
 
             try {
+                if (contactEmail) {
+                    const dupSnap = await db.collection('registrations')
+                        .where('eventId', '==', eventId)
+                        .where('contactEmail', '==', contactEmail)
+                        .limit(1)
+                        .get();
+                    if (!dupSnap.empty) {
+                        throw new Error('DUPLICATE_REGISTRATION');
+                    }
+                }
+
                 const eventRef = db.collection('events').doc(eventId);
                 const registrationRef = db.collection('registrations').doc();
                 let latestEvent = null;
@@ -913,7 +919,10 @@
                     latestEvent = eventSnap.data();
                     const latestMax = Number(latestEvent.maxVolunteers) ? Number(latestEvent.maxVolunteers) : 999999;
                     const latestCurrent = Number(latestEvent.currentVolunteers) || 0;
-                    const isClosed = (latestEvent.status || 'open') === 'closed' || (latestEvent.status || 'open') === 'draft' || latestEvent.isTemplate === true;
+                    const isClosed = (latestEvent.status || 'open') === 'closed'
+                        || (latestEvent.status || 'open') === 'draft'
+                        || latestEvent.isTemplate === true
+                        || latestEvent.isArchived === true;
 
                     if (isClosed || latestCurrent >= latestMax) {
                         throw new Error('REGISTRATION_CLOSED');
@@ -923,10 +932,12 @@
                         registrationId: registrationRef.id,
                         eventId: eventId,
                         eventTitle: latestEvent.title,
+                        contactEmail: contactEmail || '',
                         createdAt: new Date().toISOString(),
                         createdAtMs: Date.now(),
                         timestamp: new Date().toLocaleString('ru-RU'),
-                        answers: answers
+                        answers: answers,
+                        answersLabeled: answersLabeled
                     });
 
                     transaction.update(eventRef, {
@@ -934,41 +945,42 @@
                     });
                 });
 
-                // Сбрасываем кэш мероприятия, чтобы обновить число мест
+                registrationSaved = true;
+
                 localStorage.removeItem(EVENT_CACHE_KEY);
                 localStorage.removeItem('volunteer_events');
 
-                // Отправляем email-уведомление (если EmailJS настроен)
                 if (EMAILJS_PUBLIC_KEY !== 'ВСТАВЬТЕ_PUBLIC_KEY') {
-                    const summary = Object.entries(answers)
-                        .map(([k, v]) => `${k}: ${v}`)
-                        .join('\n');
+                    const summary = formatAnswersForEmail(answersLabeled);
                     emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
                         to_email:   ADMIN_EMAIL,
                         event_name: latestEvent?.title || currentEvent?.title || '',
                         event_date: latestEvent?.date || currentEvent?.date || '',
                         answers:    summary,
-                        reply_to:   findReplyToEmail(answers)
+                        reply_to:   contactEmail
                     }).catch(err => console.warn('EmailJS:', err));
                 }
 
                 statusMessage.className = 'message success';
                 statusMessage.textContent = '✓ Вы успешно зарегистрированы! Скоро с вами свяжутся.';
-                form.reset();
                 showSuccessScreen(latestEvent || currentEvent);
 
             } catch (error) {
                 console.error('Ошибка:', error);
                 statusMessage.className = 'message error';
-                if (error && (error.message === 'REGISTRATION_CLOSED' || error.message === 'EVENT_NOT_FOUND')) {
+                if (error && error.message === 'DUPLICATE_REGISTRATION') {
+                    statusMessage.textContent = '✗ Вы уже регистрировались на это мероприятие с этим email.';
+                } else if (error && (error.message === 'REGISTRATION_CLOSED' || error.message === 'EVENT_NOT_FOUND')) {
                     statusMessage.textContent = '✗ Регистрация уже закрыта или мест больше нет. Страница будет обновлена.';
                     fetchEvent(false);
                 } else {
                     statusMessage.textContent = '✗ Ошибка при регистрации. Попробуйте снова.';
                 }
             } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Зарегистрироваться';
+                if (!registrationSaved) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Зарегистрироваться';
+                }
             }
         }
 

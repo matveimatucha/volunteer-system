@@ -565,6 +565,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
     <script src="assets/event-images.js"></script>
+    <script src="assets/registration-utils.js"></script>
     <script>
         // ================================
         // ВАЖНО! ВСТАВЬТЕ ВАШ FIREBASE КОНФИГ
@@ -615,7 +616,11 @@
             card.style.setProperty('--card-accent', eventColor);
 
             const imageUrl = getDirectImageUrl(event.image);
-            const logoUrl = getEventLogoUrl(event.logo);
+            const logoUrl = typeof getEventLogoUrl === 'function'
+                ? getEventLogoUrl(event.logo)
+                : (getDirectImageUrl(event.logo) || 'assets/logo.png');
+            const eventId = event.id || '';
+            const displayDate = event.date || event.dateRaw || '';
             const hasCover = !!imageUrl;
             const headerBg = hasCover
                 ? 'background: #1a1f2e;'
@@ -634,19 +639,19 @@
                     ${coverImg}
                     <div class="event-header-scrim"></div>
                     <div class="event-header-top">
-                        <span class="event-date-badge">${event.date}</span>
+                        <span class="event-date-badge">${escapeHtmlText(displayDate)}</span>
                         <div class="event-card-logo-wrap">
                             <img src="${escapeHtmlAttr(logoUrl)}" alt="Логотип" class="event-card-logo" referrerpolicy="no-referrer" onerror="handleEventLogoError(this)">
                         </div>
                     </div>
                     <div class="event-header-content">
-                        <div class="event-title">${event.title}</div>
-                        <div class="event-location"><span aria-hidden="true">📍</span> ${event.location}</div>
+                        <div class="event-title">${escapeHtmlText(event.title)}</div>
+                        <div class="event-location"><span aria-hidden="true">📍</span> ${escapeHtmlText(event.location)}</div>
                     </div>
                 </div>
                 <div class="event-body">
                     <div class="event-body-main">
-                        <div class="event-description">${event.description || ' '}</div>
+                        <div class="event-description">${escapeHtmlText(event.description || ' ')}</div>
                     </div>
                     <div class="event-body-actions">
                         <div class="spots-block">
@@ -666,7 +671,7 @@
                             `}
                         </div>
                         <div class="event-footer">
-                            <button type="button" class="register-btn" onclick="goToRegistration('${event.id}')" ${!canRegister ? 'disabled' : ''}>${btnLabel}</button>
+                            <button type="button" class="register-btn" onclick="goToRegistration('${escapeHtmlAttr(eventId)}')" ${!canRegister ? 'disabled' : ''}>${btnLabel}</button>
                         </div>
                     </div>
                 </div>
@@ -689,7 +694,7 @@
             window.location.href = `register.html?event=${eventId}`;
         }
 
-        const CACHE_KEY = 'volunteer_events';
+        const CACHE_KEY = 'volunteer_events_v2';
         const CACHE_DURATION = 5 * 60 * 1000; // 5 минут
 
         function getCachedEvents() {
@@ -739,19 +744,13 @@
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
-            const parseLocalDate = (dateStr) => {
-                if (!dateStr) return new Date(0);
-                const [year, month, day] = dateStr.split('-').map(Number);
-                return new Date(year, month - 1, day);
-            };
-
-            // Черновики скрыты, остальные делим на актуальные и архив
+            // Черновики и шаблоны скрыты; архив — вручную или по дате (см. isEventArchived)
             const visible = events.filter(e => {
                 const status = e.status || 'open';
                 return status !== 'draft' && e.isTemplate !== true;
             });
-            const active  = visible.filter(e => parseLocalDate(e.date) >= today && !e.isArchived);
-            const past    = visible.filter(e => parseLocalDate(e.date) < today || e.isArchived);
+            const active  = visible.filter(e => !isEventArchived(e, today));
+            const past    = visible.filter(e => isEventArchived(e, today));
 
             let html = '';
 
@@ -759,6 +758,11 @@
                 html += '<div class="events-grid">' +
                     active.map(() => '').join('') +
                 '</div>';
+            } else if (visible.length > 0) {
+                html += `<div class="empty-state">
+                    <h2>Актуальных мероприятий нет</h2>
+                    <p>Все события перенесены в архив — откройте его ниже.</p>
+                </div>`;
             } else {
                 html += `<div class="empty-state">
                     <h2>Пока нет мероприятий</h2>
@@ -781,11 +785,40 @@
             // Рендерим активные карточки
             if (active.length > 0) {
                 const grid = container.querySelector('.events-grid');
-                active.forEach(event => grid.appendChild(createEventCard(event)));
+                active.forEach(event => {
+                    try {
+                        grid.appendChild(createEventCard(event));
+                    } catch (err) {
+                        console.error('Не удалось отрисовать карточку:', event?.id, err);
+                    }
+                });
             }
 
-            // Сохраняем прошедшие для ленивой отрисовки
             container._pastEvents = past;
+
+            // Если актуальных нет, но архив есть — раскрываем его сразу
+            if (active.length === 0 && past.length > 0) {
+                renderArchiveCards(container);
+                const section = document.getElementById('archiveSection');
+                const btn = document.querySelector('.archive-btn');
+                if (section) section.style.display = 'block';
+                if (btn) btn.textContent = 'Скрыть архив';
+            }
+        }
+
+        function renderArchiveCards(container) {
+            const grid = document.getElementById('archiveGrid');
+            if (!grid || !container._pastEvents?.length) return;
+            grid.innerHTML = '';
+            container._pastEvents.forEach(event => {
+                try {
+                    const card = createEventCard(event);
+                    card.classList.add('past');
+                    grid.appendChild(card);
+                } catch (err) {
+                    console.error('Не удалось отрисовать архивную карточку:', event?.id, err);
+                }
+            });
         }
 
         function toggleArchive() {
@@ -797,14 +830,8 @@
                 section.style.display = 'block';
                 btn.textContent = 'Скрыть архив';
 
-                // Рендерим прошедшие карточки один раз
-                const grid = document.getElementById('archiveGrid');
-                if (!grid.hasChildNodes() && container._pastEvents) {
-                    container._pastEvents.forEach(event => {
-                        const card = createEventCard(event);
-                        card.classList.add('past');
-                        grid.appendChild(card);
-                    });
+                if (!document.getElementById('archiveGrid')?.hasChildNodes()) {
+                    renderArchiveCards(container);
                 }
             } else {
                 section.style.display = 'none';
@@ -815,7 +842,10 @@
         async function loadEvents(silent = false) {
             try {
                 const snap = await db.collection('events').get();
-                const events = snap.docs.map(d => d.data());
+                const events = snap.docs.map(d => ({
+                    ...d.data(),
+                    id: d.data().id || d.id
+                }));
                 setCachedEvents(events);
                 displayEvents(events);
             } catch (error) {
