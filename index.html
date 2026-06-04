@@ -190,6 +190,21 @@
             min-height: 180px;
         }
 
+        .event-cover-image {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .event-header > :not(.event-cover-image) {
+            position: relative;
+            z-index: 1;
+        }
+
         .event-card-logo {
             position: absolute;
             top: 1.5rem;
@@ -451,6 +466,7 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+    <script src="assets/event-images.js"></script>
     <script>
         // ================================
         // ВАЖНО! ВСТАВЬТЕ ВАШ FIREBASE КОНФИГ
@@ -468,17 +484,6 @@
         const db = firebase.firestore();
 
 
-
-        function getDirectImageUrl(url) {
-            if (!url) return '';
-            const trimmed = url.trim();
-            // Поддержка Google Диска (как view ссылок, так и d/ или open?id=)
-            const driveMatch = trimmed.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=)|docs\.google\.com\/file\/d\/)([a-zA-Z0-9_-]+)/);
-            if (driveMatch && driveMatch[1]) {
-                return `https://docs.google.com/uc?export=download&id=${driveMatch[1]}`;
-            }
-            return trimmed;
-        }
 
         function hexToRgba(hex, alpha) {
             const num = parseInt(hex.replace('#', ''), 16);
@@ -502,13 +507,15 @@
             const eventColor = event.color || '#ff6b35';
             const imageUrl = getDirectImageUrl(event.image);
             const logoUrl = getDirectImageUrl(event.logo) || 'assets/logo.png';
-            const bgStyle = imageUrl 
-                ? `background: linear-gradient(135deg, ${hexToRgba(eventColor, 0.8)} 0%, ${hexToRgba(adjustColor(eventColor, -20), 0.85)} 100%), url('${imageUrl}') no-repeat center center / cover;`
-                : `background: linear-gradient(135deg, ${eventColor} 0%, ${adjustColor(eventColor, -20)} 100%);`;
+            const gradientStyle = `background: linear-gradient(135deg, ${hexToRgba(eventColor, 0.8)} 0%, ${hexToRgba(adjustColor(eventColor, -20), 0.85)} 100%);`;
+            const coverImg = imageUrl
+                ? `<img class="event-cover-image" src="${escapeHtmlAttr(imageUrl)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`
+                : '';
             
             card.innerHTML = `
-                <div class="event-header" style="${bgStyle}">
-                    <img src="${logoUrl}" alt="Логотип мероприятия" class="event-card-logo" onerror="this.style.display='none'">
+                <div class="event-header" style="${gradientStyle}">
+                    ${coverImg}
+                    <img src="${escapeHtmlAttr(logoUrl)}" alt="Логотип мероприятия" class="event-card-logo" referrerpolicy="no-referrer" onerror="this.style.display='none'">
                     <div class="event-date">${event.date}</div>
                     <div class="event-title">${event.title}</div>
                     <div class="event-location">📍 ${event.location}</div>

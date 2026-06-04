@@ -90,6 +90,21 @@
             position: relative;
         }
 
+        .event-cover-image {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .event-header > :not(.event-cover-image) {
+            position: relative;
+            z-index: 1;
+        }
+
         .event-header-logo {
             position: absolute;
             top: 2rem;
@@ -393,6 +408,7 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+    <script src="assets/event-images.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script>
         // ================================
@@ -481,17 +497,6 @@
             }
         }
 
-        function getDirectImageUrl(url) {
-            if (!url) return '';
-            const trimmed = url.trim();
-            // Поддержка Google Диска (как view ссылок, так и d/ или open?id=)
-            const driveMatch = trimmed.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=)|docs\.google\.com\/file\/d\/)([a-zA-Z0-9_-]+)/);
-            if (driveMatch && driveMatch[1]) {
-                return `https://docs.google.com/uc?export=download&id=${driveMatch[1]}`;
-            }
-            return trimmed;
-        }
-
         function hexToRgba(hex, alpha) {
             const num = parseInt(hex.replace('#', ''), 16);
             const r = (num >> 16);
@@ -511,19 +516,25 @@
             const imageUrl = getDirectImageUrl(event.image);
 
             const logoUrl = getDirectImageUrl(event.logo) || 'assets/logo.png';
+            const gradientStyle = `background: linear-gradient(135deg, ${hexToRgba(eventColor, 0.8)} 0%, ${hexToRgba(adjustColor(eventColor, -20), 0.85)} 100%);`;
+            const coverImg = imageUrl
+                ? `<img class="event-cover-image" src="${escapeHtmlAttr(imageUrl)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`
+                : '';
+            const hasCover = !!imageUrl;
 
             if (spotsLeft <= 0 || isClosed) {
-                const bgStyle = imageUrl 
-                    ? `background: linear-gradient(135deg, ${hexToRgba(eventColor, 0.8)} 0%, ${hexToRgba(adjustColor(eventColor, -20), 0.85)} 100%), url('${imageUrl}') no-repeat center center / cover; color: white;`
+                const headerStyle = hasCover
+                    ? `${gradientStyle} color: white;`
                     : `background: white; color: var(--dark);`;
 
                 document.getElementById('contentArea').innerHTML = `
-                    <div class="event-header" style="${bgStyle}">
-                        <img src="${logoUrl}" alt="Логотип мероприятия" class="event-header-logo" onerror="this.style.display='none'">
-                        <div class="event-date" style="color: ${imageUrl ? 'white' : eventColor}; opacity: ${imageUrl ? '0.9' : '1'};">${event.date}</div>
-                        <h1 style="color: ${imageUrl ? 'white' : 'var(--dark)'};">${event.title}</h1>
-                        <div class="event-location" style="color: ${imageUrl ? 'rgba(255,255,255,0.9)' : '#666'};">📍 ${event.location}</div>
-                        <div class="event-description" style="color: ${imageUrl ? 'rgba(255,255,255,0.95)' : '#444'};">${event.description}</div>
+                    <div class="event-header" style="${headerStyle}">
+                        ${coverImg}
+                        <img src="${escapeHtmlAttr(logoUrl)}" alt="Логотип мероприятия" class="event-header-logo" referrerpolicy="no-referrer" onerror="this.style.display='none'">
+                        <div class="event-date" style="color: ${hasCover ? 'white' : eventColor}; opacity: ${hasCover ? '0.9' : '1'};">${event.date}</div>
+                        <h1 style="color: ${hasCover ? 'white' : 'var(--dark)'};">${event.title}</h1>
+                        <div class="event-location" style="color: ${hasCover ? 'rgba(255,255,255,0.9)' : '#666'};">📍 ${event.location}</div>
+                        <div class="event-description" style="color: ${hasCover ? 'rgba(255,255,255,0.95)' : '#444'};">${event.description}</div>
                         <div class="spots-badge" style="background: #e74c3c;">${isClosed ? 'Регистрация закрыта' : 'Мест нет'}</div>
                     </div>
                     <div class="form-container">
@@ -536,17 +547,18 @@
             }
 
             const formFields = generateFormFields(event.questions || []);
-            const bgStyle = imageUrl 
-                ? `background: linear-gradient(135deg, ${hexToRgba(eventColor, 0.8)} 0%, ${hexToRgba(adjustColor(eventColor, -20), 0.85)} 100%), url('${imageUrl}') no-repeat center center / cover; color: white;`
+            const headerStyle = hasCover
+                ? `${gradientStyle} color: white;`
                 : `background: white; color: var(--dark);`;
 
             document.getElementById('contentArea').innerHTML = `
-                <div class="event-header" style="${bgStyle}">
-                    <img src="${logoUrl}" alt="Логотип мероприятия" class="event-header-logo" onerror="this.style.display='none'">
-                    <div class="event-date" style="color: ${imageUrl ? 'white' : eventColor}; opacity: ${imageUrl ? '0.9' : '1'};">${event.date}</div>
-                    <h1 style="color: ${imageUrl ? 'white' : 'var(--dark)'};">${event.title}</h1>
-                    <div class="event-location" style="color: ${imageUrl ? 'rgba(255,255,255,0.9)' : '#666'};">📍 ${event.location}</div>
-                    <div class="event-description" style="color: ${imageUrl ? 'rgba(255,255,255,0.95)' : '#444'};">${event.description}</div>
+                <div class="event-header" style="${headerStyle}">
+                    ${coverImg}
+                    <img src="${escapeHtmlAttr(logoUrl)}" alt="Логотип мероприятия" class="event-header-logo" referrerpolicy="no-referrer" onerror="this.style.display='none'">
+                    <div class="event-date" style="color: ${hasCover ? 'white' : eventColor}; opacity: ${hasCover ? '0.9' : '1'};">${event.date}</div>
+                    <h1 style="color: ${hasCover ? 'white' : 'var(--dark)'};">${event.title}</h1>
+                    <div class="event-location" style="color: ${hasCover ? 'rgba(255,255,255,0.9)' : '#666'};">📍 ${event.location}</div>
+                    <div class="event-description" style="color: ${hasCover ? 'rgba(255,255,255,0.95)' : '#444'};">${event.description}</div>
                     <div class="spots-badge" style="background: linear-gradient(135deg, ${eventColor}, ${adjustColor(eventColor, -20)});">
                         ${isUnlimited ? `Уже записалось: ${currentVolunteers}` : `Осталось ${spotsLeft} из ${maxVolunteers} мест`}
                     </div>
