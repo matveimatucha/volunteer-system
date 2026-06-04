@@ -143,9 +143,13 @@
             grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
             gap: 2rem;
             margin-bottom: 3rem;
+            align-items: stretch;
         }
 
         .event-card {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
             background: white;
             border-radius: 20px;
             overflow: hidden;
@@ -252,15 +256,29 @@
             pointer-events: none;
         }
 
-        .event-card-logo {
-            width: 44px;
-            height: 44px;
-            object-fit: contain;
-            background: #fff;
-            border-radius: 12px;
-            padding: 5px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        .event-card-logo-wrap {
+            width: 56px;
+            height: 56px;
             flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(180deg, #ffffff 0%, #e9edf3 100%);
+            border: 1px solid rgba(15, 18, 28, 0.14);
+            border-radius: 14px;
+            padding: 7px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+        }
+
+        .event-card-logo-wrap.is-empty {
+            display: none;
+        }
+
+        .event-card-logo {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
         }
 
         .event-header-content {
@@ -314,14 +332,24 @@
         }
 
         .event-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
             padding: 1.35rem 1.35rem 1.5rem;
             border-top: 4px solid var(--card-accent);
+            min-height: 200px;
+        }
+
+        .event-body-main {
+            flex: 1;
+            min-height: 4.75rem;
+            margin-bottom: 1rem;
         }
 
         .event-description {
             color: #4a5568;
             line-height: 1.6;
-            margin-bottom: 1.15rem;
+            margin-bottom: 0;
             font-size: 0.95rem;
             display: -webkit-box;
             -webkit-line-clamp: 3;
@@ -329,8 +357,13 @@
             overflow: hidden;
         }
 
+        .event-body-actions {
+            flex-shrink: 0;
+            margin-top: auto;
+        }
+
         .spots-block {
-            margin-bottom: 1.15rem;
+            margin-bottom: 1rem;
         }
 
         .spots-row {
@@ -550,6 +583,15 @@
 
 
 
+        function handleEventLogoError(img) {
+            if (!img.dataset.fallback) {
+                img.dataset.fallback = '1';
+                img.src = 'assets/logo.png';
+                return;
+            }
+            img.closest('.event-card-logo-wrap')?.classList.add('is-empty');
+        }
+
         function hexToRgba(hex, alpha) {
             const num = parseInt(hex.replace('#', ''), 16);
             const r = (num >> 16);
@@ -573,7 +615,7 @@
             card.style.setProperty('--card-accent', eventColor);
 
             const imageUrl = getDirectImageUrl(event.image);
-            const logoUrl = getDirectImageUrl(event.logo) || 'assets/logo.png';
+            const logoUrl = getEventLogoUrl(event.logo);
             const hasCover = !!imageUrl;
             const headerBg = hasCover
                 ? 'background: #1a1f2e;'
@@ -593,7 +635,9 @@
                     <div class="event-header-scrim"></div>
                     <div class="event-header-top">
                         <span class="event-date-badge">${event.date}</span>
-                        <img src="${escapeHtmlAttr(logoUrl)}" alt="" class="event-card-logo" referrerpolicy="no-referrer" onerror="this.style.display='none'">
+                        <div class="event-card-logo-wrap">
+                            <img src="${escapeHtmlAttr(logoUrl)}" alt="Логотип" class="event-card-logo" referrerpolicy="no-referrer" onerror="handleEventLogoError(this)">
+                        </div>
                     </div>
                     <div class="event-header-content">
                         <div class="event-title">${event.title}</div>
@@ -601,25 +645,29 @@
                     </div>
                 </div>
                 <div class="event-body">
-                    <div class="event-description">${event.description}</div>
-                    <div class="spots-block">
-                        <div class="spots-row">
-                            ${isUnlimited ? `
-                                <span>Уже записалось</span>
-                                <span class="spots-count">${currentVolunteers}</span>
-                            ` : `
-                                <span>Свободно мест</span>
-                                <span><span class="spots-count">${spotsLeft}</span> из ${maxVolunteers}</span>
+                    <div class="event-body-main">
+                        <div class="event-description">${event.description || ' '}</div>
+                    </div>
+                    <div class="event-body-actions">
+                        <div class="spots-block">
+                            <div class="spots-row">
+                                ${isUnlimited ? `
+                                    <span>Уже записалось</span>
+                                    <span class="spots-count">${currentVolunteers}</span>
+                                ` : `
+                                    <span>Свободно мест</span>
+                                    <span><span class="spots-count">${spotsLeft}</span> из ${maxVolunteers}</span>
+                                `}
+                            </div>
+                            ${isUnlimited ? '' : `
+                                <div class="spots-meter" role="presentation">
+                                    <div class="spots-meter-fill" style="width: ${spotsPercent}%;"></div>
+                                </div>
                             `}
                         </div>
-                        ${isUnlimited ? '' : `
-                            <div class="spots-meter" role="presentation">
-                                <div class="spots-meter-fill" style="width: ${spotsPercent}%;"></div>
-                            </div>
-                        `}
-                    </div>
-                    <div class="event-footer">
-                        <button type="button" class="register-btn" onclick="goToRegistration('${event.id}')" ${!canRegister ? 'disabled' : ''}>${btnLabel}</button>
+                        <div class="event-footer">
+                            <button type="button" class="register-btn" onclick="goToRegistration('${event.id}')" ${!canRegister ? 'disabled' : ''}>${btnLabel}</button>
+                        </div>
                     </div>
                 </div>
             `;

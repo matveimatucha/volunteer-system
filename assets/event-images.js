@@ -35,6 +35,15 @@ function getDirectImageUrl(url) {
     return trimmed;
 }
 
+function getEventLogoUrl(url) {
+    if (!url || !String(url).trim()) return 'assets/logo.png';
+    const direct = getDirectImageUrl(url);
+    if (/drive\.google\.com\/thumbnail/i.test(direct)) {
+        return direct.replace(/sz=w\d+/i, 'sz=w256');
+    }
+    return direct;
+}
+
 function escapeHtmlAttr(value) {
     return String(value)
         .replace(/&/g, '&amp;')
