@@ -1,6 +1,11 @@
 /**
  * Сбор и нормализация ответов анкеты регистрации.
  */
+const REGISTRATION_STATUS = {
+    CONFIRMED: 'confirmed',
+    WAITLIST: 'waitlist'
+};
+
 function escapeHtmlText(value) {
     return String(value ?? '')
         .replace(/&/g, '&amp;')
@@ -30,6 +35,15 @@ function normalizeEmail(value) {
     return pattern.test(trimmed) ? trimmed : '';
 }
 
+function normalizePhone(value) {
+    if (value == null) return '';
+    const digits = String(value).replace(/\D/g, '');
+    if (digits.length === 11 && digits.startsWith('8')) return '7' + digits.slice(1);
+    if (digits.length === 11 && digits.startsWith('7')) return digits;
+    if (digits.length === 10) return '7' + digits;
+    return digits.length >= 10 ? digits : '';
+}
+
 function findContactEmail(answers, questions) {
     const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
@@ -49,11 +63,35 @@ function findContactEmail(answers, questions) {
     return '';
 }
 
+function findContactPhone(answers, questions) {
+    for (const q of questions || []) {
+        if (q.type !== 'tel') continue;
+        const normalized = normalizePhone(answers[`question_${q.id}`]);
+        if (normalized) return normalized;
+    }
+
+    if (answers?.phone) {
+        const normalized = normalizePhone(answers.phone);
+        if (normalized) return normalized;
+    }
+
+    return '';
+}
+
+function getRegistrationStatus(record) {
+    return record?.status || REGISTRATION_STATUS.CONFIRMED;
+}
+
+function isConfirmedRegistration(record) {
+    return getRegistrationStatus(record) !== REGISTRATION_STATUS.WAITLIST;
+}
+
 function collectAnswersFromForm(form, questions) {
     const formData = new FormData(form);
     const answers = {};
 
     for (const [key, value] of formData.entries()) {
+        if (key === 'registrationMode') continue;
         answers[key] = typeof value === 'string' ? value.trim() : value;
     }
 
@@ -65,8 +103,9 @@ function collectAnswersFromForm(form, questions) {
     }
 
     const contactEmail = findContactEmail(answers, questions);
+    const contactPhone = findContactPhone(answers, questions);
 
-    return { answers, answersLabeled, contactEmail };
+    return { answers, answersLabeled, contactEmail, contactPhone };
 }
 
 function formatAnswersForEmail(answersLabeled) {
@@ -90,7 +129,6 @@ const RU_MONTHS = {
     'июля': 6, 'августа': 7, 'сентября': 8, 'октября': 9, 'ноября': 10, 'декабря': 11
 };
 
-/** Парсит дату мероприятия (ISO, ДД.ММ.ГГГГ, «12 декабря 2026»). null — дата не распознана. */
 function parseEventDateValue(dateStr) {
     if (!dateStr || !String(dateStr).trim()) return null;
     const raw = String(dateStr).trim();
@@ -118,7 +156,6 @@ function getEventDate(event) {
     return parseEventDateValue(event?.dateRaw || event?.date);
 }
 
-/** В архив: вручную или дата в прошлом (если дата не распознана — остаётся в актуальных). */
 function isEventArchived(event, today) {
     if (event?.isArchived) return true;
     const eventDate = getEventDate(event);
@@ -126,4 +163,27 @@ function isEventArchived(event, today) {
     const day = new Date(eventDate);
     day.setHours(0, 0, 0, 0);
     return day < today;
+}
+
+function getBaseTemplateQuestions() {
+    const baseId = Date.now();
+    return [
+        { id: baseId, text: 'Имя', type: 'text', required: true, description: 'Ваше имя', options: [] },
+        { id: baseId + 1, text: 'Фамилия', type: 'text', required: true, description: 'Ваша фамилия', options: [] },
+        { id: baseId + 2, text: 'Факультет', type: 'faculty', required: true, description: 'Выберите ваш факультет из списка', options: [] },
+        { id: baseId + 3, text: 'Курс обучения', type: 'course', required: true, description: 'Укажите на каком курсе вы учитесь', options: [] },
+        { id: baseId + 4, text: 'ВКонтакте', type: 'vk', required: true, description: 'Пример: https://vk.com/your_id', options: [] },
+        { id: baseId + 5, text: 'Telegram', type: 'telegram', required: true, description: 'Начинается с @, например: @username', options: [] },
+        { id: baseId + 6, text: 'Номер телефона', type: 'tel', required: true, description: 'Для срочной связи', options: [] },
+        { id: baseId + 7, text: 'Размер футболки', type: 'select', required: true, description: 'Нужно для заказа формы', options: ['XS', 'S', 'M', 'L', 'XL', 'XXL'] },
+        { id: baseId + 8, text: 'Опыт волонтёрства', type: 'textarea', required: false, description: 'Расскажите где и когда вы были волонтёром (если был опыт)', options: [] },
+        {
+            id: baseId + 9,
+            text: 'Согласие на обработку персональных данных',
+            type: 'checkbox',
+            required: true,
+            description: 'Даю согласие на обработку персональных данных для организации волонтёрского мероприятия',
+            options: []
+        }
+    ];
 }

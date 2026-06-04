@@ -628,6 +628,12 @@
         .participants-table tr:hover td {
             background: rgba(255,255,255,0.03);
         }
+
+        .participants-filter-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
         .empty-participants {
             text-align: center;
             padding: 3rem;
@@ -662,20 +668,30 @@
     <div class="container">
         <header>
             <h1>⚙️ АДМИН-ПАНЕЛЬ</h1>
-            <a href="index.html" class="back-link">← На главную</a>
+            <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+                <button type="button" id="logoutBtn" class="back-link" style="display:none;border:none;cursor:pointer;font-family:inherit;" onclick="logoutAdmin()">Выйти</button>
+                <a href="index.html" class="back-link">← На главную</a>
+            </div>
         </header>
 
-        <!-- Форма авторизации -->
+        <!-- Вход через Firebase Auth -->
         <div id="authSection" class="auth-section">
             <h2>Вход для администратора</h2>
             <div id="authMessage" class="message"></div>
             <form id="authForm">
                 <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="adminEmail" required placeholder="admin@example.com" autocomplete="username">
+                </div>
+                <div class="form-group">
                     <label>Пароль</label>
-                    <input type="password" id="adminPassword" required placeholder="Введите пароль администратора">
+                    <input type="password" id="adminPassword" required placeholder="Пароль Firebase Auth" autocomplete="current-password">
                 </div>
                 <button type="submit" class="btn btn-primary">Войти</button>
             </form>
+            <p style="margin-top:1rem;font-size:0.85rem;opacity:0.75;text-align:center;">
+                Пользователь создаётся в Firebase Console → Authentication → Users
+            </p>
         </div>
 
         <!-- Админ-панель -->
@@ -699,20 +715,15 @@
             <p>Хотите автоматически добавить готовый набор базовых вопросов для волонтёров?</p>
             
             <div style="background: rgba(255, 107, 53, 0.1); padding: 1.5rem; border-radius: 10px; border-left: 4px solid var(--primary);">
-                <p style="margin: 0 0 1rem 0; font-weight: 600; text-align: left;">Будут добавлены 9 базовых вопросов:</p>
+                <p style="margin: 0 0 1rem 0; font-weight: 600; text-align: left;">Будут добавлены 10 базовых вопросов:</p>
                 <ul>
-                    <li>Имя</li>
-                    <li>Фамилия</li>
-                    <li>Факультет МГУ (41 вариант)</li>
-                    <li>Курс обучения (специалитет/бакалавриат/магистратура)</li>
-                    <li>ВКонтакте (с проверкой ссылки)</li>
-                    <li>Telegram (с проверкой @username)</li>
-                    <li>Номер телефона (с проверкой)</li>
-                    <li>Размер футболки (XS-XXL)</li>
-                    <li>Опыт волонтёрства</li>
+                    <li>Имя, фамилия, факультет, курс</li>
+                    <li>ВКонтакте, Telegram, телефон</li>
+                    <li>Размер футболки, опыт волонтёрства</li>
+                    <li>Согласие на обработку персональных данных</li>
                 </ul>
                 <p style="margin: 1rem 0 0 0; font-size: 0.9rem; opacity: 0.8; text-align: left;">
-                    💡 После добавления можете редактировать вопросы или добавить свои (например, согласие на обработку данных, аллергии, навыки и т.д.)
+                    💡 После добавления можете редактировать вопросы или добавить свои.
                 </p>
             </div>
 
@@ -736,6 +747,14 @@
                 </div>
             </div>
             <div id="participantsMeta" style="margin-bottom: 1rem; opacity: 0.75;"></div>
+            <div class="participants-toolbar" style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1rem;align-items:center;">
+                <input type="search" id="participantsSearch" placeholder="Поиск по имени, email, телефону…" style="flex:1;min-width:200px;padding:0.65rem 1rem;" oninput="onParticipantsSearch()">
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                    <button type="button" class="btn btn-small participants-filter-btn active" data-filter="all" onclick="setParticipantsFilter('all')">Все</button>
+                    <button type="button" class="btn btn-small participants-filter-btn" data-filter="confirmed" onclick="setParticipantsFilter('confirmed')">Записанные</button>
+                    <button type="button" class="btn btn-small participants-filter-btn" data-filter="waitlist" onclick="setParticipantsFilter('waitlist')">Лист ожидания</button>
+                </div>
+            </div>
             <div id="participantsContent">
                 <p class="empty-participants">Загрузка...</p>
             </div>
@@ -857,6 +876,7 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth-compat.js"></script>
     <script src="assets/registration-utils.js"></script>
     <script>
         // ================================
@@ -874,11 +894,18 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        const ADMIN_PASSWORD = 'admin123'; // ИЗМЕНИТЕ ПАРОЛЬ!
+        /** Email-адреса с доступом к админке (добавьте свой в Firebase Auth) */
+        const ALLOWED_ADMIN_EMAILS = [
+            'matvei.sukmanov@chemistry.msu.ru'
+        ];
 
         let isAuthenticated = false;
         let currentQuestions = [];
         let eventsData = {};
+        let currentParticipantsData = [];
+        let currentParticipantsEventId = null;
+        let participantsFilter = 'all';
+        let participantsSearchQuery = '';
 
         // Обновление предпросмотра цвета
         document.addEventListener('DOMContentLoaded', () => {
@@ -892,18 +919,58 @@
             }
         });
 
-        // Авторизация
-        document.getElementById('authForm').addEventListener('submit', (e) => {
+        const auth = firebase.auth();
+
+        function isAllowedAdmin(user) {
+            if (!user?.email) return false;
+            return ALLOWED_ADMIN_EMAILS.map(e => e.toLowerCase()).includes(user.email.toLowerCase());
+        }
+
+        function showAdminPanel() {
+            isAuthenticated = true;
+            document.getElementById('authSection').style.display = 'none';
+            document.getElementById('adminPanel').classList.add('active');
+            document.getElementById('logoutBtn').style.display = '';
+            loadEvents();
+        }
+
+        function hideAdminPanel() {
+            isAuthenticated = false;
+            document.getElementById('authSection').style.display = '';
+            document.getElementById('adminPanel').classList.remove('active');
+            document.getElementById('logoutBtn').style.display = 'none';
+        }
+
+        async function logoutAdmin() {
+            await auth.signOut();
+            hideAdminPanel();
+        }
+
+        document.getElementById('authForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const email = document.getElementById('adminEmail').value.trim();
             const password = document.getElementById('adminPassword').value;
-            
-            if (password === ADMIN_PASSWORD) {
-                isAuthenticated = true;
-                document.getElementById('authSection').style.display = 'none';
-                document.getElementById('adminPanel').classList.add('active');
-                loadEvents();
+
+            try {
+                const cred = await auth.signInWithEmailAndPassword(email, password);
+                if (!isAllowedAdmin(cred.user)) {
+                    await auth.signOut();
+                    showAuthMessage('error', 'У этого аккаунта нет доступа к админке.');
+                    return;
+                }
+                showAdminPanel();
+            } catch (error) {
+                console.error(error);
+                showAuthMessage('error', 'Ошибка входа. Проверьте email и пароль в Firebase Auth.');
+            }
+        });
+
+        auth.onAuthStateChanged(async (user) => {
+            if (user && isAllowedAdmin(user)) {
+                showAdminPanel();
             } else {
-                showAuthMessage('error', 'Неверный пароль!');
+                if (user) await auth.signOut();
+                hideAdminPanel();
             }
         });
 
@@ -1016,82 +1083,7 @@
 
         // Добавить полный шаблон вопросов (для нового мероприятия)
         function addFullTemplateQuestions() {
-            const templates = [
-                {
-                    id: Date.now(),
-                    text: 'Имя',
-                    type: 'text',
-                    required: true,
-                    description: 'Ваше имя',
-                    options: []
-                },
-                {
-                    id: Date.now() + 1,
-                    text: 'Фамилия',
-                    type: 'text',
-                    required: true,
-                    description: 'Ваша фамилия',
-                    options: []
-                },
-                {
-                    id: Date.now() + 2,
-                    text: 'Факультет',
-                    type: 'faculty',
-                    required: true,
-                    description: 'Выберите ваш факультет из списка',
-                    options: []
-                },
-                {
-                    id: Date.now() + 3,
-                    text: 'Курс обучения',
-                    type: 'course',
-                    required: true,
-                    description: 'Укажите на каком курсе вы учитесь',
-                    options: []
-                },
-                {
-                    id: Date.now() + 4,
-                    text: 'ВКонтакте',
-                    type: 'vk',
-                    required: true,
-                    description: 'Пример: https://vk.com/your_id',
-                    options: []
-                },
-                {
-                    id: Date.now() + 5,
-                    text: 'Telegram',
-                    type: 'telegram',
-                    required: true,
-                    description: 'Начинается с @, например: @username',
-                    options: []
-                },
-                {
-                    id: Date.now() + 6,
-                    text: 'Номер телефона',
-                    type: 'tel',
-                    required: true,
-                    description: 'Для срочной связи',
-                    options: []
-                },
-                {
-                    id: Date.now() + 7,
-                    text: 'Размер футболки',
-                    type: 'select',
-                    required: true,
-                    description: 'Нужно для заказа формы',
-                    options: ['XS', 'S', 'M', 'L', 'XL', 'XXL']
-                },
-                {
-                    id: Date.now() + 8,
-                    text: 'Опыт волонтёрства',
-                    type: 'textarea',
-                    required: false,
-                    description: 'Расскажите где и когда вы были волонтёром (если был опыт)',
-                    options: []
-                }
-            ];
-
-            currentQuestions = [...templates];
+            currentQuestions = getBaseTemplateQuestions();
             renderQuestions();
         }
 
@@ -1135,84 +1127,9 @@
 
         // Добавить шаблонные вопросы (кнопка внутри формы)
         function addTemplateQuestions() {
-            const templates = [
-                {
-                    id: Date.now(),
-                    text: 'Имя',
-                    type: 'text',
-                    required: true,
-                    description: 'Ваше имя',
-                    options: []
-                },
-                {
-                    id: Date.now() + 1,
-                    text: 'Фамилия',
-                    type: 'text',
-                    required: true,
-                    description: 'Ваша фамилия',
-                    options: []
-                },
-                {
-                    id: Date.now() + 2,
-                    text: 'Факультет',
-                    type: 'faculty',
-                    required: true,
-                    description: 'Выберите ваш факультет из списка',
-                    options: []
-                },
-                {
-                    id: Date.now() + 3,
-                    text: 'Курс обучения',
-                    type: 'course',
-                    required: true,
-                    description: 'Укажите на каком курсе вы учитесь',
-                    options: []
-                },
-                {
-                    id: Date.now() + 4,
-                    text: 'ВКонтакте',
-                    type: 'vk',
-                    required: true,
-                    description: 'Пример: https://vk.com/your_id',
-                    options: []
-                },
-                {
-                    id: Date.now() + 5,
-                    text: 'Telegram',
-                    type: 'telegram',
-                    required: true,
-                    description: 'Начинается с @, например: @username',
-                    options: []
-                },
-                {
-                    id: Date.now() + 6,
-                    text: 'Номер телефона',
-                    type: 'tel',
-                    required: true,
-                    description: 'Для срочной связи',
-                    options: []
-                },
-                {
-                    id: Date.now() + 7,
-                    text: 'Размер футболки',
-                    type: 'select',
-                    required: true,
-                    description: 'Нужно для заказа формы',
-                    options: ['XS', 'S', 'M', 'L', 'XL', 'XXL']
-                },
-                {
-                    id: Date.now() + 8,
-                    text: 'Опыт волонтёрства',
-                    type: 'textarea',
-                    required: false,
-                    description: 'Расскажите где и когда вы были волонтёром (если был опыт)',
-                    options: []
-                }
-            ];
-
-            currentQuestions = [...templates];
+            currentQuestions = getBaseTemplateQuestions();
             renderQuestions();
-            showMessage('success', '✓ Добавлены 9 базовых вопросов! Можете добавить дополнительные вопросы (например, согласие на обработку данных).');
+            showMessage('success', '✓ Добавлены 10 базовых вопросов (включая согласие на обработку ПДн).');
         }
 
         // Добавить вопрос
@@ -1466,9 +1383,6 @@
         }
 
         // Показать участников мероприятия
-        let currentParticipantsData = [];
-        let currentParticipantsEventId = null;
-
         function getSeenIdsKey(eventId) {
             return `participants_seen_ids_${eventId}`;
         }
@@ -1502,15 +1416,59 @@
             const meta = document.getElementById('participantsMeta');
             if (!meta) return;
             const total = currentParticipantsData.length;
+            const confirmed = currentParticipantsData.filter(isConfirmedRegistration).length;
+            const waitlist = total - confirmed;
+            const filtered = getFilteredParticipants().length;
             const newCount = getNewParticipants().length;
-            meta.innerHTML = `Всего заявок: <strong>${total}</strong> · Новых: <strong>${newCount}</strong>`;
+            meta.innerHTML = `Всего: <strong>${total}</strong> · Записано: <strong>${confirmed}</strong> · Ожидание: <strong>${waitlist}</strong> · Показано: <strong>${filtered}</strong> · Новых: <strong>${newCount}</strong>`;
+        }
+
+        function setParticipantsFilter(filter) {
+            participantsFilter = filter;
+            document.querySelectorAll('.participants-filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === filter);
+            });
+            renderParticipantsTable();
+        }
+
+        function onParticipantsSearch() {
+            participantsSearchQuery = (document.getElementById('participantsSearch')?.value || '').trim().toLowerCase();
+            renderParticipantsTable();
+        }
+
+        function getFilteredParticipants() {
+            let list = [...currentParticipantsData];
+            if (participantsFilter === 'confirmed') {
+                list = list.filter(isConfirmedRegistration);
+            } else if (participantsFilter === 'waitlist') {
+                list = list.filter(r => getRegistrationStatus(r) === REGISTRATION_STATUS.WAITLIST);
+            }
+            if (participantsSearchQuery) {
+                list = list.filter(r => {
+                    const blob = [
+                        r.contactEmail,
+                        r.contactPhone,
+                        r.eventTitle,
+                        JSON.stringify(r.answers || {}),
+                        JSON.stringify(r.answersLabeled || {})
+                    ].join(' ').toLowerCase();
+                    return blob.includes(participantsSearchQuery);
+                });
+            }
+            return list;
+        }
+
+        function getStatusLabel(record) {
+            return getRegistrationStatus(record) === REGISTRATION_STATUS.WAITLIST
+                ? 'Лист ожидания'
+                : 'Записан';
         }
 
         async function syncVolunteerCount(eventId) {
             if (!eventId) return;
             try {
                 const snap = await db.collection('registrations').where('eventId', '==', eventId).get();
-                const count = snap.size;
+                const count = snap.docs.filter(d => isConfirmedRegistration(d.data())).length;
                 await db.collection('events').doc(eventId).update({ currentVolunteers: count });
                 localStorage.removeItem('volunteer_events');
                 localStorage.removeItem(`volunteer_event_${eventId}`);
@@ -1525,12 +1483,76 @@
             }
         }
 
+        function renderParticipantsTable() {
+            const event = eventsData[currentParticipantsEventId];
+            const container = document.getElementById('participantsContent');
+            if (!container) return;
+
+            updateParticipantsMeta();
+
+            if (!currentParticipantsData.length) {
+                container.innerHTML = '<p class="empty-participants">Заявок пока нет</p>';
+                return;
+            }
+
+            const records = getFilteredParticipants();
+            if (!records.length) {
+                container.innerHTML = '<p class="empty-participants">Ничего не найдено по фильтру</p>';
+                return;
+            }
+
+            const answerKeys = new Set();
+            currentParticipantsData.forEach(r => {
+                if (r.answers) Object.keys(r.answers).forEach(k => answerKeys.add(k));
+            });
+            const keys = Array.from(answerKeys);
+            const seenIds = getSeenIds(currentParticipantsEventId);
+            const questionTextMap = buildQuestionTextMap(event?.questions || []);
+
+            const thead = keys.map(k => `<th>${escapeHtmlText(questionTextMap[k] || k)}</th>`).join('');
+            const tbody = records.map(r => {
+                const cells = keys.map(k => {
+                    const val = r.answers?.[k] ?? r.answersLabeled?.[questionTextMap[k]] ?? '';
+                    return `<td>${escapeHtmlText(val || '—')}</td>`;
+                }).join('');
+                const isNew = !seenIds.has(r.registrationId);
+                const rid = escapeHtmlAttr(r.registrationId);
+                const isWait = getRegistrationStatus(r) === REGISTRATION_STATUS.WAITLIST;
+                const actions = `
+                    <button type="button" class="btn btn-danger btn-icon" title="Удалить" onclick="deleteRegistration('${rid}')">×</button>
+                    ${isWait ? `<button type="button" class="btn btn-success btn-small" onclick="promoteFromWaitlist('${rid}')">Принять</button>` : ''}
+                `;
+                return `<tr>
+                    <td>${escapeHtmlText(r.timestamp || '—')}${isNew ? ' <span style="color:#2ecc71;font-weight:700;">· NEW</span>' : ''}</td>
+                    <td>${escapeHtmlText(getStatusLabel(r))}</td>
+                    <td style="white-space:nowrap;">${actions}</td>
+                    ${cells}
+                </tr>`;
+            }).join('');
+
+            container.innerHTML = `
+                <div class="participants-table-wrap">
+                    <table class="participants-table">
+                        <thead><tr><th>Время</th><th>Статус</th><th></th>${thead}</tr></thead>
+                        <tbody>${tbody}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
         async function showParticipants(eventId) {
             const event = eventsData[eventId];
             const eventTitle = event ? event.title : '';
             currentParticipantsEventId = eventId;
+            participantsFilter = 'all';
+            participantsSearchQuery = '';
             document.getElementById('participantsTitle').textContent = 'Участники: ' + eventTitle;
             document.getElementById('participantsMeta').innerHTML = '';
+            const searchInput = document.getElementById('participantsSearch');
+            if (searchInput) searchInput.value = '';
+            document.querySelectorAll('.participants-filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === 'all');
+            });
             document.getElementById('participantsContent').innerHTML = '<p class="empty-participants">Загрузка...</p>';
             document.getElementById('participantsModal').classList.add('active');
 
@@ -1546,50 +1568,78 @@
                     };
                 });
                 currentParticipantsData.sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
-                updateParticipantsMeta();
-
-                if (currentParticipantsData.length === 0) {
-                    document.getElementById('participantsContent').innerHTML =
-                        '<p class="empty-participants">Заявок пока нет</p>';
-                    return;
-                }
-
-                // Собираем все ключи ответов
-                const answerKeys = new Set();
-                currentParticipantsData.forEach(r => {
-                    if (r.answers) Object.keys(r.answers).forEach(k => answerKeys.add(k));
-                });
-                const keys = Array.from(answerKeys);
-                const seenIds = getSeenIds(currentParticipantsEventId);
-
-                // Создаём карту: ID вопроса -> Текст вопроса
-                const questionTextMap = buildQuestionTextMap(event?.questions || []);
-
-                const thead = keys.map(k => `<th>${escapeHtmlText(questionTextMap[k] || k)}</th>`).join('');
-                const tbody = currentParticipantsData.map(r => {
-                    const cells = keys.map(k => {
-                        const val = r.answers?.[k] ?? r.answersLabeled?.[questionTextMap[k]] ?? '';
-                        return `<td>${escapeHtmlText(val || '—')}</td>`;
-                    }).join('');
-                    const isNew = !seenIds.has(r.registrationId);
-                    return `<tr>
-                        <td>${escapeHtmlText(r.timestamp || '—')}${isNew ? ' <span style="color:#2ecc71; font-weight:700;">· NEW</span>' : ''}</td>
-                        ${cells}
-                    </tr>`;
-                }).join('');
-
-                document.getElementById('participantsContent').innerHTML = `
-                    <div class="participants-table-wrap">
-                        <table class="participants-table">
-                            <thead><tr><th>Время подачи</th>${thead}</tr></thead>
-                            <tbody>${tbody}</tbody>
-                        </table>
-                    </div>
-                `;
+                renderParticipantsTable();
             } catch (error) {
                 console.error('Ошибка загрузки участников:', error);
                 document.getElementById('participantsContent').innerHTML =
                     '<p class="empty-participants" style="color: var(--danger);">Ошибка загрузки</p>';
+            }
+        }
+
+        async function deleteRegistration(registrationId) {
+            if (!registrationId || !currentParticipantsEventId) return;
+            if (!confirm('Удалить эту заявку безвозвратно?')) return;
+
+            try {
+                const regRef = db.collection('registrations').doc(registrationId);
+                const regSnap = await regRef.get();
+                if (!regSnap.exists) return;
+
+                const data = regSnap.data();
+                const wasConfirmed = isConfirmedRegistration(data);
+                await regRef.delete();
+
+                if (wasConfirmed) {
+                    await db.collection('events').doc(currentParticipantsEventId).update({
+                        currentVolunteers: firebase.firestore.FieldValue.increment(-1)
+                    });
+                }
+
+                localStorage.removeItem('volunteer_events');
+                localStorage.removeItem(`volunteer_event_${currentParticipantsEventId}`);
+                await showParticipants(currentParticipantsEventId);
+                loadEvents();
+                showMessage('success', '✓ Заявка удалена');
+            } catch (error) {
+                console.error(error);
+                showMessage('error', 'Не удалось удалить заявку');
+            }
+        }
+
+        async function promoteFromWaitlist(registrationId) {
+            if (!registrationId || !currentParticipantsEventId) return;
+            const eventId = currentParticipantsEventId;
+            const eventRef = db.collection('events').doc(eventId);
+            const regRef = db.collection('registrations').doc(registrationId);
+
+            try {
+                await db.runTransaction(async (transaction) => {
+                    const eventSnap = await transaction.get(eventRef);
+                    const regSnap = await transaction.get(regRef);
+                    if (!eventSnap.exists || !regSnap.exists) throw new Error('NOT_FOUND');
+
+                    const event = eventSnap.data();
+                    const max = Number(event.maxVolunteers) ? Number(event.maxVolunteers) : 999999;
+                    const current = Number(event.currentVolunteers) || 0;
+                    if (current >= max) throw new Error('NO_SPOTS');
+
+                    transaction.update(regRef, { status: REGISTRATION_STATUS.CONFIRMED });
+                    transaction.update(eventRef, {
+                        currentVolunteers: firebase.firestore.FieldValue.increment(1)
+                    });
+                });
+
+                localStorage.removeItem('volunteer_events');
+                await showParticipants(eventId);
+                loadEvents();
+                showMessage('success', '✓ Участник перенесён из листа ожидания');
+            } catch (error) {
+                if (error.message === 'NO_SPOTS') {
+                    showMessage('error', 'Нет свободных мест для перевода');
+                } else {
+                    console.error(error);
+                    showMessage('error', 'Не удалось принять участника');
+                }
             }
         }
 
@@ -1630,7 +1680,7 @@
                 return;
             }
 
-            const records = mode === 'new' ? getNewParticipants() : currentParticipantsData;
+            const records = mode === 'new' ? getNewParticipants() : getFilteredParticipants();
             if (!records.length) {
                 alert(mode === 'new' ? 'Новых заявок нет' : 'Нет данных для экспорта');
                 return;
@@ -1646,16 +1696,18 @@
             const questionTextMap = buildQuestionTextMap(event?.questions || []);
 
             const headerKeys = keys.map(k => questionTextMap[k] || k);
-            const header = ['registrationId', 'createdAt', 'createdAtMs', 'timestamp', 'eventId', 'eventTitle', 'contactEmail', ...headerKeys].map(escapeCsv).join(',');
+            const header = ['registrationId', 'status', 'createdAt', 'createdAtMs', 'timestamp', 'eventId', 'eventTitle', 'contactEmail', 'contactPhone', ...headerKeys].map(escapeCsv).join(',');
             const rows = records.map(r => {
                 const fixedColumns = [
                     r.registrationId || '',
+                    getRegistrationStatus(r),
                     r.createdAt || '',
                     r.createdAtMs || '',
                     r.timestamp || '',
                     r.eventId || '',
                     r.eventTitle || '',
-                    r.contactEmail || ''
+                    r.contactEmail || '',
+                    r.contactPhone || ''
                 ];
                 const answers = keys.map(k => r.answers?.[k] || '');
                 return [...fixedColumns, ...answers].map(escapeCsv).join(',');

@@ -526,7 +526,10 @@
                 : '';
             const hasCover = !!imageUrl;
 
-            if (spotsLeft <= 0 || isClosed) {
+            const formFields = generateFormFields(event.questions || []);
+            const isWaitlistMode = !isClosed && !isUnlimited && spotsLeft <= 0;
+
+            if (isClosed) {
                 const headerStyle = hasCover
                     ? `${gradientStyle} color: white;`
                     : `background: white; color: var(--dark);`;
@@ -539,18 +542,16 @@
                         <h1 style="color: ${hasCover ? 'white' : 'var(--dark)'};">${event.title}</h1>
                         <div class="event-location" style="color: ${hasCover ? 'rgba(255,255,255,0.9)' : '#666'};">📍 ${event.location}</div>
                         <div class="event-description" style="color: ${hasCover ? 'rgba(255,255,255,0.95)' : '#444'};">${event.description}</div>
-                        <div class="spots-badge" style="background: #e74c3c;">${isClosed ? 'Регистрация закрыта' : 'Мест нет'}</div>
+                        <div class="spots-badge" style="background: #e74c3c;">Регистрация закрыта</div>
                     </div>
                     <div class="form-container">
                         <p style="text-align: center; color: #e74c3c; font-size: 1.2rem; font-weight: 600;">
-                            ${isClosed ? 'Регистрация на это мероприятие закрыта администратором.' : 'К сожалению, все места на это мероприятие уже заняты.'}
+                            Регистрация на это мероприятие закрыта администратором.
                         </p>
                     </div>
                 `;
                 return;
             }
-
-            const formFields = generateFormFields(event.questions || []);
             const headerStyle = hasCover
                 ? `${gradientStyle} color: white;`
                 : `background: white; color: var(--dark);`;
@@ -563,36 +564,41 @@
                     <h1 style="color: ${hasCover ? 'white' : 'var(--dark)'};">${event.title}</h1>
                     <div class="event-location" style="color: ${hasCover ? 'rgba(255,255,255,0.9)' : '#666'};">📍 ${event.location}</div>
                     <div class="event-description" style="color: ${hasCover ? 'rgba(255,255,255,0.95)' : '#444'};">${event.description}</div>
-                    <div class="spots-badge" style="background: linear-gradient(135deg, ${eventColor}, ${adjustColor(eventColor, -20)});">
-                        ${isUnlimited ? `Уже записалось: ${currentVolunteers}` : `Осталось ${spotsLeft} из ${maxVolunteers} мест`}
+                    <div class="spots-badge" style="background: ${isWaitlistMode ? '#f39c12' : `linear-gradient(135deg, ${eventColor}, ${adjustColor(eventColor, -20)})`};">
+                        ${isWaitlistMode ? 'Мест нет — лист ожидания' : (isUnlimited ? `Уже записалось: ${currentVolunteers}` : `Осталось ${spotsLeft} из ${maxVolunteers} мест`)}
                     </div>
                 </div>
                 <div class="form-container">
-                    <h2 class="form-title">Регистрация на мероприятие</h2>
+                    <h2 class="form-title">${isWaitlistMode ? 'Лист ожидания' : 'Регистрация на мероприятие'}</h2>
+                    ${isWaitlistMode ? '<p style="text-align:center;color:#666;margin-bottom:1.25rem;">Все места заняты. Оставьте заявку — если освободится место, мы свяжемся с вами.</p>' : ''}
                     
                     <div id="statusMessage" class="message"></div>
 
-                    <form id="registrationForm">
+                    <form id="registrationForm" data-waitlist="${isWaitlistMode ? 'true' : 'false'}">
                         ${formFields}
 
-                        <button type="submit" class="submit-btn" id="submitBtn" style="background: linear-gradient(135deg, ${eventColor}, ${adjustColor(eventColor, -20)});">Зарегистрироваться</button>
+                        <button type="submit" class="submit-btn" id="submitBtn" style="background: linear-gradient(135deg, ${isWaitlistMode ? '#f39c12' : eventColor}, ${adjustColor(isWaitlistMode ? '#e67e22' : eventColor, -20)});">
+                            ${isWaitlistMode ? 'Встать в лист ожидания' : 'Зарегистрироваться'}
+                        </button>
                     </form>
                 </div>
             `;
 
-            // Добавляем обработчик формы
             document.getElementById('registrationForm').addEventListener('submit', handleSubmit);
         }
 
-        function showSuccessScreen(event) {
-            const message = event?.successMessage?.trim()
-                || 'Твоя заявка принята, жди добавления в чат (оставь личные сообщения открытыми).';
+        function showSuccessScreen(event, options = {}) {
+            const isWaitlist = options.waitlist === true;
+            const message = isWaitlist
+                ? 'Вы в листе ожидания. Если освободится место, мы свяжемся с вами по указанным контактам.'
+                : (event?.successMessage?.trim()
+                || 'Твоя заявка принята, жди добавления в чат (оставь личные сообщения открытыми).');
             const chatLink = event?.chatLink?.trim() || '';
             const safeLink = chatLink.startsWith('http://') || chatLink.startsWith('https://') ? chatLink : '';
 
             document.getElementById('contentArea').innerHTML = `
                 <div class="success-screen">
-                    <h2>✓ Заявка принята</h2>
+                    <h2>${isWaitlist ? '✓ Вы в листе ожидания' : '✓ Заявка принята'}</h2>
                     <p>${message}</p>
                     ${safeLink ? `<p>Если уже готовы, можете перейти в чат мероприятия:</p>` : ''}
                     <div class="success-actions">
@@ -891,7 +897,8 @@
             statusMessage.className = 'message';
 
             const questions = currentEvent?.questions || [];
-            const { answers, answersLabeled, contactEmail } = collectAnswersFromForm(form, questions);
+            const { answers, answersLabeled, contactEmail, contactPhone } = collectAnswersFromForm(form, questions);
+            const isWaitlist = form.dataset.waitlist === 'true';
             let registrationSaved = false;
 
             try {
@@ -902,7 +909,18 @@
                         .limit(1)
                         .get();
                     if (!dupSnap.empty) {
-                        throw new Error('DUPLICATE_REGISTRATION');
+                        throw new Error('DUPLICATE_EMAIL');
+                    }
+                }
+
+                if (contactPhone) {
+                    const dupPhone = await db.collection('registrations')
+                        .where('eventId', '==', eventId)
+                        .where('contactPhone', '==', contactPhone)
+                        .limit(1)
+                        .get();
+                    if (!dupPhone.empty) {
+                        throw new Error('DUPLICATE_PHONE');
                     }
                 }
 
@@ -924,7 +942,12 @@
                         || latestEvent.isTemplate === true
                         || latestEvent.isArchived === true;
 
-                    if (isClosed || latestCurrent >= latestMax) {
+                    if (isClosed) {
+                        throw new Error('REGISTRATION_CLOSED');
+                    }
+
+                    const savingAsWaitlist = isWaitlist || latestCurrent >= latestMax;
+                    if (!savingAsWaitlist && latestCurrent >= latestMax) {
                         throw new Error('REGISTRATION_CLOSED');
                     }
 
@@ -932,7 +955,9 @@
                         registrationId: registrationRef.id,
                         eventId: eventId,
                         eventTitle: latestEvent.title,
+                        status: savingAsWaitlist ? REGISTRATION_STATUS.WAITLIST : REGISTRATION_STATUS.CONFIRMED,
                         contactEmail: contactEmail || '',
+                        contactPhone: contactPhone || '',
                         createdAt: new Date().toISOString(),
                         createdAtMs: Date.now(),
                         timestamp: new Date().toLocaleString('ru-RU'),
@@ -940,9 +965,11 @@
                         answersLabeled: answersLabeled
                     });
 
-                    transaction.update(eventRef, {
-                        currentVolunteers: firebase.firestore.FieldValue.increment(1)
-                    });
+                    if (!savingAsWaitlist) {
+                        transaction.update(eventRef, {
+                            currentVolunteers: firebase.firestore.FieldValue.increment(1)
+                        });
+                    }
                 });
 
                 registrationSaved = true;
@@ -952,9 +979,10 @@
 
                 if (EMAILJS_PUBLIC_KEY !== 'ВСТАВЬТЕ_PUBLIC_KEY') {
                     const summary = formatAnswersForEmail(answersLabeled);
+                    const statusNote = isWaitlist ? '\n[Лист ожидания]' : '';
                     emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
                         to_email:   ADMIN_EMAIL,
-                        event_name: latestEvent?.title || currentEvent?.title || '',
+                        event_name: (latestEvent?.title || currentEvent?.title || '') + statusNote,
                         event_date: latestEvent?.date || currentEvent?.date || '',
                         answers:    summary,
                         reply_to:   contactEmail
@@ -962,14 +990,18 @@
                 }
 
                 statusMessage.className = 'message success';
-                statusMessage.textContent = '✓ Вы успешно зарегистрированы! Скоро с вами свяжутся.';
-                showSuccessScreen(latestEvent || currentEvent);
+                statusMessage.textContent = isWaitlist
+                    ? '✓ Вы добавлены в лист ожидания.'
+                    : '✓ Вы успешно зарегистрированы! Скоро с вами свяжутся.';
+                showSuccessScreen(latestEvent || currentEvent, { waitlist: isWaitlist });
 
             } catch (error) {
                 console.error('Ошибка:', error);
                 statusMessage.className = 'message error';
-                if (error && error.message === 'DUPLICATE_REGISTRATION') {
+                if (error && error.message === 'DUPLICATE_EMAIL') {
                     statusMessage.textContent = '✗ Вы уже регистрировались на это мероприятие с этим email.';
+                } else if (error && error.message === 'DUPLICATE_PHONE') {
+                    statusMessage.textContent = '✗ Вы уже регистрировались на это мероприятие с этим номером телефона.';
                 } else if (error && (error.message === 'REGISTRATION_CLOSED' || error.message === 'EVENT_NOT_FOUND')) {
                     statusMessage.textContent = '✗ Регистрация уже закрыта или мест больше нет. Страница будет обновлена.';
                     fetchEvent(false);
@@ -979,7 +1011,9 @@
             } finally {
                 if (!registrationSaved) {
                     submitBtn.disabled = false;
-                    submitBtn.textContent = 'Зарегистрироваться';
+                    submitBtn.textContent = form.dataset.waitlist === 'true'
+                        ? 'Встать в лист ожидания'
+                        : 'Зарегистрироваться';
                 }
             }
         }

@@ -609,8 +609,9 @@
             const currentVolunteers = Number(event.currentVolunteers) || 0;
             const isUnlimited = !maxVolunteers;
             const spotsLeft = isUnlimited ? 999999 : Math.max(maxVolunteers - currentVolunteers, 0);
-            const isClosed = (event.status || 'open') === 'closed';
-            const canRegister = spotsLeft > 0 && !isClosed;
+            const isClosed = (event.status || 'open') === 'closed' || event.isArchived === true;
+            const isWaitlistOnly = !isUnlimited && spotsLeft <= 0;
+            const canRegister = !isClosed && (isUnlimited || spotsLeft > 0 || isWaitlistOnly);
             
             const eventColor = event.color || '#ff6b35';
             card.style.setProperty('--card-accent', eventColor);
@@ -632,7 +633,9 @@
             const spotsPercent = isUnlimited
                 ? 0
                 : (spotsLeft > 0 ? Math.max(6, Math.round((spotsLeft / maxVolunteers) * 100)) : 0);
-            const btnLabel = isClosed ? 'Регистрация закрыта' : (spotsLeft > 0 ? 'Записаться' : 'Мест нет');
+            const btnLabel = isClosed
+                ? 'Регистрация закрыта'
+                : (isWaitlistOnly ? 'Лист ожидания' : (spotsLeft > 0 ? 'Записаться' : 'Мест нет'));
             
             card.innerHTML = `
                 <div class="${headerClass}" style="${headerBg}">

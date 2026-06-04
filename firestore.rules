@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Пример правил — настройте под Firebase Auth админов.
+    // Опубликуйте: Firebase Console → Firestore → Rules
+
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email in [
+          'matvei.sukmanov@chemistry.msu.ru'
+        ];
+    }
+
+    match /events/{eventId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /registrations/{registrationId} {
+      allow read: if isAdmin();
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+  }
+}
