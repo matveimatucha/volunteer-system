@@ -13,7 +13,7 @@ test('index.html blocks signup for closed events', async () => {
 
   assert.match(indexHtml, /const isClosed = \(event\.status \|\| 'open'\) === 'closed';/);
   assert.match(indexHtml, /const canRegister = spotsLeft > 0 && !isClosed;/);
-  assert.match(indexHtml, /const btnLabel = isClosed \? 'Регистрация закрыта' : \(spotsLeft > 0 \? 'Записаться' : 'Заполнено'\);/);
+  assert.match(indexHtml, /const btnLabel = isClosed \? 'Регистрация закрыта' : \(spotsLeft > 0 \? 'Записаться' : 'Мест нет'\);/);
   assert.match(indexHtml, /\$\{!canRegister \? 'disabled' : ''\}/);
   assert.match(indexHtml, /status !== 'draft' && e\.isTemplate !== true/);
 });
