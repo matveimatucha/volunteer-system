@@ -147,10 +147,11 @@
 
         .event-card {
             background: white;
-            border-radius: 16px;
+            border-radius: 20px;
             overflow: hidden;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 8px 32px rgba(26, 26, 46, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            transition: transform 0.35s ease, box-shadow 0.35s ease;
             opacity: 0;
             animation: fadeInUp 0.6s ease-out forwards;
             cursor: pointer;
@@ -175,19 +176,65 @@
         }
 
         .event-card:hover {
-            transform: translateY(-10px) scale(1.02);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+            transform: translateY(-6px);
+            box-shadow: 0 16px 48px rgba(26, 26, 46, 0.18);
         }
 
         .event-header {
-            padding: 2rem;
+            padding: 0;
             color: white;
             position: relative;
             overflow: hidden;
             display: flex;
             flex-direction: column;
             justify-content: flex-end;
-            min-height: 180px;
+            aspect-ratio: 16 / 9;
+            min-height: 200px;
+        }
+
+        .event-header-scrim {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+            background: linear-gradient(
+                180deg,
+                rgba(26, 26, 46, 0.12) 0%,
+                rgba(26, 26, 46, 0.45) 50%,
+                rgba(26, 26, 46, 0.88) 100%
+            );
+        }
+
+        .event-header.has-cover .event-header-scrim {
+            background: linear-gradient(
+                180deg,
+                rgba(26, 26, 46, 0.25) 0%,
+                rgba(26, 26, 46, 0.55) 42%,
+                rgba(26, 26, 46, 0.92) 100%
+            );
+        }
+
+        .event-header-content {
+            position: relative;
+            z-index: 2;
+            padding: 1.25rem 1.5rem 1.5rem;
+            text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
+        }
+
+        .event-date-badge {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            z-index: 3;
+            background: rgba(255, 255, 255, 0.96);
+            color: var(--dark);
+            padding: 0.4rem 0.75rem;
+            border-radius: 10px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
         }
 
         .event-cover-image {
@@ -207,13 +254,16 @@
 
         .event-card-logo {
             position: absolute;
-            top: 1.5rem;
-            right: 1.5rem;
-            width: 45px;
-            height: 45px;
+            top: 1rem;
+            right: 1rem;
+            width: 48px;
+            height: 48px;
             object-fit: contain;
-            filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25));
-            z-index: 2;
+            z-index: 3;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 6px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
         }
 
         /* Разноцветные плашки для мероприятий */
@@ -242,96 +292,146 @@
             background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
         }
 
-        .event-header::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-            animation: rotate 20s linear infinite;
-        }
-
-        @keyframes rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        .event-date {
-            font-size: 0.9rem;
-            opacity: 0.9;
-            font-weight: 600;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            margin-bottom: 0.5rem;
-            position: relative;
-            z-index: 1;
-        }
-
         .event-title {
             font-family: 'Bebas Neue', sans-serif;
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-            position: relative;
-            z-index: 1;
-            letter-spacing: 1px;
+            font-size: 1.85rem;
+            margin-bottom: 0.35rem;
+            letter-spacing: 0.5px;
+            line-height: 1.05;
         }
 
         .event-location {
-            font-size: 0.95rem;
-            opacity: 0.95;
-            position: relative;
-            z-index: 1;
+            font-size: 0.9rem;
+            opacity: 0.92;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
         }
 
         .event-body {
-            padding: 1.5rem 2rem 2rem;
+            padding: 1.25rem 1.5rem 1.5rem;
         }
 
         .event-description {
-            color: #666;
-            line-height: 1.6;
-            margin-bottom: 1.5rem;
+            color: #5c6570;
+            line-height: 1.55;
+            margin-bottom: 1.25rem;
+            font-size: 0.95rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
 
-        .event-footer {
+        .spots-block {
+            margin-bottom: 1rem;
+        }
+
+        .spots-row {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            padding-top: 1rem;
-            border-top: 1px solid #eee;
-        }
-
-        .spots-info {
-            font-size: 0.9rem;
-            color: #666;
+            align-items: baseline;
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin-bottom: 0.45rem;
         }
 
         .spots-count {
             font-weight: 700;
-            color: var(--primary);
-            font-size: 1.1rem;
+            font-size: 1rem;
+        }
+
+        .spots-meter {
+            height: 6px;
+            background: #e8ecf1;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .spots-meter-fill {
+            height: 100%;
+            border-radius: 999px;
+            transition: width 0.4s ease;
+        }
+
+        .event-footer {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            padding-top: 0.25rem;
         }
 
         .register-btn {
-            background: var(--primary);
-            color: white;
+            position: relative;
             border: none;
-            padding: 0.8rem 2rem;
-            border-radius: 50px;
-            font-weight: 700;
-            font-size: 0.95rem;
             cursor: pointer;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            padding: 0;
+            width: 172px;
+            height: 48px;
+            background: transparent;
+            flex-shrink: 0;
+            transition: transform 0.2s ease, filter 0.2s ease;
         }
 
-        .register-btn:hover {
-            background: var(--primary-dark);
-            transform: scale(1.05);
-            box-shadow: 0 5px 20px rgba(255, 107, 53, 0.4);
+        .register-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            filter: brightness(1.05);
+        }
+
+        .register-btn:disabled {
+            cursor: not-allowed;
+            filter: grayscale(0.2);
+            opacity: 0.85;
+        }
+
+        .register-btn__visual {
+            position: absolute;
+            inset: 0;
+            background-color: var(--btn-color, var(--primary));
+            -webkit-mask: url('assets/buttons/btn-register.svg') center / 100% 100% no-repeat;
+            mask: url('assets/buttons/btn-register.svg') center / 100% 100% no-repeat;
+            box-shadow: 0 6px 18px color-mix(in srgb, var(--btn-color, var(--primary)) 38%, transparent);
+        }
+
+        .register-btn:disabled .register-btn__visual {
+            background-color: #9ca3af;
+            -webkit-mask-image: url('assets/buttons/btn-disabled.svg');
+            mask-image: url('assets/buttons/btn-disabled.svg');
+            box-shadow: none;
+        }
+
+        .register-btn--png .register-btn__visual {
+            -webkit-mask: none;
+            mask: none;
+            background: transparent url('assets/buttons/btn-register.png') center / contain no-repeat;
+            box-shadow: none;
+        }
+
+        .register-btn--png:disabled .register-btn__visual {
+            background-image: url('assets/buttons/btn-full.png');
+            filter: grayscale(0.35) brightness(0.92);
+        }
+
+        .register-btn__label {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 48px;
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.8rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding-right: 18px;
+            pointer-events: none;
+        }
+
+        .register-btn--png .register-btn__label {
+            color: transparent;
+            user-select: none;
         }
 
         .empty-state {
@@ -435,6 +535,15 @@
                 grid-template-columns: 1fr;
             }
 
+            .event-footer {
+                justify-content: stretch;
+            }
+
+            .register-btn {
+                width: 100%;
+                max-width: 100%;
+            }
+
             .admin-link {
                 top: 1rem;
                 right: 1rem;
@@ -493,6 +602,9 @@
             return `rgba(${r}, ${g}, ${b}, ${alpha})`;
         }
 
+        /** true — картинки assets/buttons/btn-register.png; false — SVG-форма в цвете мероприятия */
+        const USE_PNG_REGISTER_BUTTON = false;
+
         function createEventCard(event) {
             const card = document.createElement('div');
             card.className = 'event-card';
@@ -507,33 +619,52 @@
             const eventColor = event.color || '#ff6b35';
             const imageUrl = getDirectImageUrl(event.image);
             const logoUrl = getDirectImageUrl(event.logo) || 'assets/logo.png';
-            const gradientStyle = `background: linear-gradient(135deg, ${hexToRgba(eventColor, 0.8)} 0%, ${hexToRgba(adjustColor(eventColor, -20), 0.85)} 100%);`;
+            const hasCover = !!imageUrl;
+            const gradientStyle = `background: linear-gradient(135deg, ${hexToRgba(eventColor, 0.92)} 0%, ${hexToRgba(adjustColor(eventColor, -25), 0.95)} 100%);`;
             const coverImg = imageUrl
-                ? `<img class="event-cover-image" src="${escapeHtmlAttr(imageUrl)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`
+                ? `<img class="event-cover-image" src="${escapeHtmlAttr(imageUrl)}" alt="" referrerpolicy="no-referrer" onerror="this.remove(); this.closest('.event-header')?.classList.remove('has-cover')">`
                 : '';
+            const headerClass = `event-header${hasCover ? ' has-cover' : ''}`;
+            const headerStyle = gradientStyle;
+            const spotsPercent = isUnlimited
+                ? Math.min(100, Math.max(8, currentVolunteers > 0 ? 40 : 12))
+                : Math.min(100, Math.round((currentVolunteers / maxVolunteers) * 100) || 0);
+            const btnLabel = isClosed ? 'Регистрация закрыта' : (spotsLeft > 0 ? 'Записаться' : 'Заполнено');
+            const btnClass = `register-btn${USE_PNG_REGISTER_BUTTON ? ' register-btn--png' : ''}`;
             
             card.innerHTML = `
-                <div class="event-header" style="${gradientStyle}">
+                <div class="${headerClass}" style="${headerStyle}">
                     ${coverImg}
+                    <div class="event-header-scrim"></div>
+                    <span class="event-date-badge">${event.date}</span>
                     <img src="${escapeHtmlAttr(logoUrl)}" alt="Логотип мероприятия" class="event-card-logo" referrerpolicy="no-referrer" onerror="this.style.display='none'">
-                    <div class="event-date">${event.date}</div>
-                    <div class="event-title">${event.title}</div>
-                    <div class="event-location">📍 ${event.location}</div>
+                    <div class="event-header-content">
+                        <div class="event-title">${event.title}</div>
+                        <div class="event-location"><span aria-hidden="true">📍</span> ${event.location}</div>
+                    </div>
                 </div>
                 <div class="event-body">
                     <div class="event-description">${event.description}</div>
-                    <div class="event-footer">
-                        <div class="spots-info">
+                    <div class="spots-block">
+                        <div class="spots-row">
                             ${isUnlimited ? `
-                                <span>Уже записалось: <span class="spots-count" style="color: ${eventColor};">${currentVolunteers}</span></span>
+                                <span>Участников</span>
+                                <span class="spots-count" style="color: ${eventColor};">${currentVolunteers}</span>
                             ` : `
-                                <span class="spots-count" style="color: ${eventColor};">${spotsLeft}</span>
-                                <span>из ${maxVolunteers} мест</span>
+                                <span>Свободно мест</span>
+                                <span><span class="spots-count" style="color: ${eventColor};">${spotsLeft}</span> из ${maxVolunteers}</span>
                             `}
                         </div>
-                        <button class="register-btn" style="background: ${eventColor};" onmouseover="this.style.background='${adjustColor(eventColor, -20)}'" onmouseout="this.style.background='${eventColor}'" onclick="goToRegistration('${event.id}')" 
-                                ${!canRegister ? 'disabled' : ''}>
-                            ${isClosed ? 'Регистрация закрыта' : (spotsLeft > 0 ? 'Записаться' : 'Заполнено')}
+                        ${isUnlimited ? '' : `
+                            <div class="spots-meter" aria-hidden="true">
+                                <div class="spots-meter-fill" style="width: ${spotsPercent}%; background: ${eventColor};"></div>
+                            </div>
+                        `}
+                    </div>
+                    <div class="event-footer">
+                        <button type="button" class="${btnClass}" style="--btn-color: ${eventColor};" onclick="goToRegistration('${event.id}')" ${!canRegister ? 'disabled' : ''}>
+                            <span class="register-btn__visual" aria-hidden="true"></span>
+                            <span class="register-btn__label">${btnLabel}</span>
                         </button>
                     </div>
                 </div>
