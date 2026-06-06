@@ -180,6 +180,37 @@ input:focus, textarea:focus, select:focus {
   .flower-corner { display: none; }
 }
 
+/* ===== Общие мобильные правки ===== */
+@media (max-width: 480px) {
+  /* убираем горизонтальный скролл */
+  html, body { overflow-x: hidden; }
+
+  /* шапки и форма */
+  .container { padding: 0.85rem !important; }
+
+  /* кнопки — увеличенная зона касания */
+  .register-btn,
+  .submit-btn,
+  .archive-btn,
+  .btn-primary {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+  .share-btn { min-height: 44px; }
+
+  /* модалка «Поделиться» */
+  .share-modal { padding: 1rem; }
+  .share-modal-content { border-radius: 14px; }
+
+  /* карточки событий */
+  .event-date-badge { font-size: 0.68rem; padding: 0.35rem 0.65rem; }
+
+  /* успешная регистрация */
+  .success-actions > * {
+    flex: 1 1 100%;
+  }
+}
+
 /* ================================================================
    ADMIN — светлая тема поверх тёмной
    ================================================================ */

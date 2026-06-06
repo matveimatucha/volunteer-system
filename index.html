@@ -539,26 +539,110 @@
             filter: grayscale(30%);
         }
 
+        /* ===== ПЛАНШЕТ ===== */
         @media (max-width: 768px) {
+            .container {
+                padding: 1.25rem;
+            }
             header {
                 aspect-ratio: auto;
-                padding: 3rem 1.5rem;
+                padding: 2.5rem 1.5rem;
+                margin-bottom: 2.5rem;
             }
-
             h1 {
-                font-size: 3.5rem;
+                font-size: 3rem;
             }
-
             .events-grid {
                 grid-template-columns: 1fr;
+                gap: 1.25rem;
             }
-
             .admin-link {
                 top: 1rem;
                 right: 1rem;
-                padding: 0.6rem 1.2rem;
-                font-size: 0.9rem;
+                padding: 0.55rem 1rem;
+                font-size: 0.85rem;
             }
+            .search-controls {
+                gap: 0.6rem 1rem;
+            }
+        }
+
+        /* ===== ТЕЛЕФОН ===== */
+        @media (max-width: 480px) {
+            .container {
+                padding: 0.85rem;
+            }
+            header {
+                padding: 2rem 1.1rem 1.6rem;
+                margin-bottom: 1.75rem;
+                border-radius: 14px;
+            }
+            .logo-wrapper { margin-bottom: 0.6rem; }
+            .main-logo { max-height: 56px; }
+            h1 {
+                font-size: 2.4rem;
+                letter-spacing: 1px;
+                margin-bottom: 0.5rem;
+            }
+            .tagline { font-size: 0.95rem; }
+            .admin-link {
+                top: 0.7rem;
+                right: 0.7rem;
+                padding: 0.45rem 0.8rem;
+                font-size: 0.78rem;
+                border-radius: 40px;
+            }
+            .events-grid {
+                gap: 1rem;
+            }
+            .event-header {
+                min-height: 150px;
+            }
+            .event-title {
+                font-size: 1.55rem;
+            }
+            .event-body {
+                padding: 1rem 1rem 1.1rem;
+            }
+            .event-footer {
+                gap: 0.4rem;
+            }
+            .register-btn, .share-btn {
+                height: 46px;
+            }
+            .search-controls {
+                margin-bottom: 1.5rem;
+                gap: 0.5rem;
+            }
+            .search-box {
+                flex-basis: 100%;
+                min-width: 0;
+            }
+            .archive-toggle {
+                flex-direction: column;
+                gap: 0.6rem;
+                align-items: center;
+            }
+            .archive-section .events-grid {
+                opacity: 0.7;
+            }
+            .share-modal-content {
+                padding: 1.5rem 1.2rem 1.2rem;
+            }
+            .share-qr {
+                width: 170px;
+                height: 170px;
+            }
+        }
+
+        /* ===== МАЛЕНЬКИЙ ТЕЛЕФОН ===== */
+        @media (max-width: 360px) {
+            .container { padding: 0.65rem; }
+            h1 { font-size: 2rem; }
+            .event-title { font-size: 1.35rem; }
+            .event-body { padding: 0.85rem 0.85rem 1rem; }
+            .register-btn { font-size: 0.8rem; letter-spacing: 0.04em; }
+            .admin-link { display: none; }
         }
 
         .search-controls {
@@ -587,29 +671,30 @@
         #eventSearch {
             width: 100%;
             padding: 0.85rem 1rem 0.85rem 2.6rem;
-            border: 1px solid rgba(255, 255, 255, 0.6);
+            border: 1.5px solid rgba(27, 36, 128, 0.22);
             border-radius: 14px;
             font-size: 1rem;
             font-family: inherit;
             background: rgba(255, 255, 255, 0.92);
-            box-shadow: 0 8px 24px rgba(40, 25, 90, 0.12);
+            box-shadow: 0 6px 20px rgba(27, 36, 128, 0.09);
             outline: none;
+            color: #1a2060;
         }
         #eventSearch:focus {
-            border-color: var(--primary, #6a3de8);
-            box-shadow: 0 8px 28px rgba(106, 61, 232, 0.25);
+            border-color: #1B2480;
+            box-shadow: 0 8px 28px rgba(27, 36, 128, 0.20);
         }
         .free-toggle {
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
             font-size: 0.95rem;
-            color: #fff;
+            color: #1B2480;
             cursor: pointer;
             user-select: none;
             white-space: nowrap;
         }
-        .free-toggle input { width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary, #6a3de8); }
+        .free-toggle input { width: 18px; height: 18px; cursor: pointer; accent-color: #1B2480; }
 
         .share-modal {
             position: fixed;
@@ -643,7 +728,7 @@
             cursor: pointer;
             color: #9aa0ad;
         }
-        .share-modal-content h3 { margin: 0 0 1rem; color: #2a2350; font-size: 1.15rem; }
+        .share-modal-content h3 { margin: 0 0 1rem; color: #1B2480; font-size: 1.15rem; }
         .share-qr {
             width: 220px;
             height: 220px;
@@ -670,7 +755,7 @@
             font-weight: 600;
             font-family: inherit;
             cursor: pointer;
-            background: linear-gradient(135deg, #5b6fd6 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1B2480 0%, #121963 100%);
             color: #fff;
             white-space: nowrap;
         }

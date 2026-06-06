@@ -61,6 +61,11 @@
         .hidden { display: none; }
         .ok { color: #1f9d55; }
         .err { color: var(--danger); }
+        @media (max-width: 480px) {
+            body { padding: 1rem; align-items: flex-start; padding-top: 2.5rem; }
+            .card { padding: 2rem 1.25rem; border-radius: 14px; }
+            .btn { display: block; width: 100%; margin: 0.35rem 0; }
+        }
     </style>
 </head>
 <body>
