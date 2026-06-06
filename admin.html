@@ -780,7 +780,74 @@
             overflow: hidden;
             min-width: 80px;
         }
-        .mini-meter > div { height: 100%; background: linear-gradient(90deg, #5b6fd6, #764ba2); }
+        .mini-meter > div { height: 100%; background: linear-gradient(90deg, #1B2480, #2639B0); }
+
+        /* ---- Google Sheets panel ---- */
+        .sheets-panel {
+            background: rgba(255,255,255,.80);
+            border: 1px solid rgba(27,36,128,.14);
+            border-radius: 16px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 18px rgba(27,36,128,.07);
+        }
+        .sheets-panel-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.85rem;
+            flex-wrap: wrap;
+        }
+        .sheets-panel-header h2 {
+            margin: 0;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.5rem;
+            letter-spacing: 1px;
+            color: #1B2480;
+            flex: 1;
+        }
+        .sheets-url-row {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        .sheets-url-row input {
+            flex: 1 1 320px;
+            min-width: 0;
+            padding: 0.65rem 0.9rem;
+            border: 1.5px solid rgba(27,36,128,.20);
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            color: #1a2060;
+            background: #fff;
+        }
+        .sheets-url-row input:focus {
+            outline: none;
+            border-color: #1B2480;
+            box-shadow: 0 0 0 3px rgba(27,36,128,.10);
+        }
+        .sheets-status {
+            font-size: 0.88rem;
+            padding: 0.5rem 0.85rem;
+            border-radius: 8px;
+            display: none;
+        }
+        .sheets-status.ok  { display:inline-block; background:#d4edda; color:#155724; }
+        .sheets-status.err { display:inline-block; background:#f8d7da; color:#721c24; }
+        .sheets-hint {
+            font-size: 0.83rem;
+            color: rgba(27,36,128,.60);
+            line-height: 1.5;
+            margin-top: 0.5rem;
+        }
+        .sheets-hint a { color: #1B2480; }
+        @media (max-width: 480px) {
+            .sheets-panel { padding: 1rem; }
+            .sheets-url-row input { flex-basis: 100%; }
+        }
     </style>
 </head>
 <body class="admin-theme">
@@ -812,6 +879,28 @@
         <!-- Админ-панель -->
         <div id="adminPanel" class="admin-panel">
             <div id="globalMessage" class="message" style="margin-bottom: 1rem;"></div>
+
+            <!-- Google Sheets интеграция -->
+            <div class="sheets-panel" id="sheetsPanel">
+                <div class="sheets-panel-header">
+                    <h2>🟢 Google Таблицы</h2>
+                    <span id="sheetsStatusBadge" class="sheets-status"></span>
+                </div>
+                <div class="sheets-url-row">
+                    <input type="url" id="sheetsUrlInput"
+                           placeholder="Вставьте URL вашего Google Apps Script…"
+                           oninput="onSheetsUrlChange(this.value)">
+                    <button class="btn btn-small" onclick="testSheetsConnection()" title="Проверить соединение">🔗 Тест</button>
+                    <button class="btn btn-primary btn-small" id="sheetsSyncBtn" onclick="bulkSyncToSheets()">⬆ Синхронизировать всё</button>
+                </div>
+                <p class="sheets-hint">
+                    📋 <strong>Как настроить:</strong>
+                    откройте <a href="assets/google-apps-script.js" target="_blank">assets/google-apps-script.js</a>,
+                    скопируйте код в <strong>Google Apps Script</strong> вашей таблицы,
+                    опубликуйте как <em>Web App (Anyone can access)</em>, вставьте URL выше.
+                    После этого каждая новая регистрация будет автоматически попадать в таблицу.
+                </p>
+            </div>
 
             <div class="dashboard">
                 <div class="dashboard-header">
@@ -1007,6 +1096,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
     <script src="assets/registration-utils.js"></script>
+    <script src="assets/sheets-sync.js"></script>
     <script>
         // ================================
         // ВАЖНО! ВСТАВЬТЕ ВАШ FIREBASE КОНФИГ
@@ -1053,6 +1143,7 @@
             document.getElementById('logoutBtn').style.display = '';
             loadEvents();
             loadDashboard();
+            initSheetsPanel();
         }
 
         function hideAdminPanel() {
@@ -1860,6 +1951,111 @@
                 document.body.removeChild(ta);
             }
             showMessage('success', `✓ Скопировано адресов: ${emails.length}. Вставьте в поле «Скрытая копия» письма-напоминания.`);
+        }
+
+        // ================================================================
+        // Google Sheets интеграция
+        // ================================================================
+
+        function initSheetsPanel() {
+            const input = document.getElementById('sheetsUrlInput');
+            if (input) input.value = getSheetsUrl();
+        }
+
+        function onSheetsUrlChange(val) {
+            setSheetsUrl(val);
+            const badge = document.getElementById('sheetsStatusBadge');
+            if (badge) { badge.textContent = ''; badge.className = 'sheets-status'; }
+        }
+
+        function setSheetsStatus(ok, msg) {
+            const badge = document.getElementById('sheetsStatusBadge');
+            if (!badge) return;
+            badge.textContent = msg;
+            badge.className = 'sheets-status ' + (ok ? 'ok' : 'err');
+        }
+
+        async function testSheetsConnection() {
+            const url = getSheetsUrl();
+            if (!url) { setSheetsStatus(false, '⚠ Введите URL'); return; }
+            setSheetsStatus(true, '⏳ Проверяю…');
+            try {
+                const res = await fetch(url + '?ping=1', { mode: 'cors' });
+                const json = await res.json();
+                if (json.ok) setSheetsStatus(true, '✓ Подключено — лист «' + (json.sheet || '?') + '»');
+                else setSheetsStatus(false, '✗ Скрипт ответил неожиданно');
+            } catch (e) {
+                // Apps Script не всегда допускает CORS для GET — пробуем no-cors
+                try {
+                    await fetch(url + '?ping=1', { mode: 'no-cors' });
+                    setSheetsStatus(true, '✓ URL принят (CORS ограничен — это нормально)');
+                } catch (e2) {
+                    setSheetsStatus(false, '✗ Не удалось подключиться: ' + e2.message);
+                }
+            }
+        }
+
+        async function bulkSyncToSheets() {
+            const url = getSheetsUrl();
+            if (!url) { setSheetsStatus(false, '⚠ Сначала введите URL'); return; }
+
+            const btn = document.getElementById('sheetsSyncBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Загрузка…';
+            setSheetsStatus(true, '⏳ Получаю данные…');
+
+            try {
+                const [evSnap, regSnap] = await Promise.all([
+                    db.collection('events').get(),
+                    db.collection('registrations').get()
+                ]);
+
+                // Карта eventId → название
+                const evMap = {};
+                evSnap.forEach(doc => { evMap[doc.id] = doc.data().title || doc.id; });
+
+                const registrations = [];
+                regSnap.forEach(doc => {
+                    const d = doc.data();
+                    const common = extractCommonFields(d.answersLabeled);
+                    registrations.push({
+                        id:           doc.id,
+                        registeredAt: d.createdAt || '',
+                        eventName:    d.eventTitle || evMap[d.eventId] || d.eventId || '',
+                        name:         common.name,
+                        email:        d.contactEmail || '',
+                        phone:        d.contactPhone || '',
+                        faculty:      common.faculty,
+                        year:         common.year,
+                        status:       d.status || 'pending',
+                        cancelledAt:  d.cancelledAt || '',
+                        answers:      formatAnswersList(d.answersLabeled)
+                    });
+                });
+
+                btn.textContent = '⏳ Отправляю…';
+                setSheetsStatus(true, '⏳ Отправляю ' + registrations.length + ' записей…');
+
+                await fetch(url, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({ action: 'bulk_sync', registrations })
+                });
+
+                setSheetsStatus(true, '✓ Синхронизировано ' + registrations.length + ' записей');
+                btn.textContent = '✓ Готово (' + registrations.length + ')';
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.textContent = '⬆ Синхронизировать всё';
+                }, 4000);
+
+            } catch (err) {
+                console.error(err);
+                setSheetsStatus(false, '✗ Ошибка: ' + err.message);
+                btn.disabled = false;
+                btn.textContent = '⬆ Синхронизировать всё';
+            }
         }
 
         async function loadDashboard() {

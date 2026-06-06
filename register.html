@@ -454,6 +454,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
     <script src="assets/event-images.js"></script>
     <script src="assets/registration-utils.js"></script>
+    <script src="assets/sheets-sync.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script>
         // ================================
@@ -1107,6 +1108,18 @@
                 showSuccessScreen(latestEvent || currentEvent, {
                     waitlist: isWaitlist,
                     registrationId: registrationRef.id
+                });
+
+                // Фоновая синхронизация с Google Таблицами (если настроена)
+                syncRegistration({
+                    registrationId: registrationRef.id,
+                    eventId:        eventId,
+                    eventName:      latestEvent?.title || currentEvent?.title || '',
+                    status:         isWaitlist ? REGISTRATION_STATUS.WAITLIST : REGISTRATION_STATUS.CONFIRMED,
+                    contactEmail:   contactEmail || '',
+                    contactPhone:   contactPhone || '',
+                    createdAt:      new Date().toISOString(),
+                    answersLabeled: answersLabeled
                 });
 
             } catch (error) {

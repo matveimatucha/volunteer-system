@@ -77,6 +77,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
     <script src="assets/registration-utils.js"></script>
+    <script src="assets/sheets-sync.js"></script>
     <script>
         const firebaseConfig = {
             apiKey:            "AIzaSyCh17f9EFqQ-fAEGXTGpuzja-vY1RpePsc",
@@ -178,6 +179,9 @@
                 localStorage.removeItem('volunteer_events');
                 localStorage.removeItem('volunteer_events_v2');
                 localStorage.removeItem(`volunteer_event_${eventId}`);
+
+                // Фоновая синхронизация статуса в Google Таблицу
+                syncCancellation(registrationId, new Date().toISOString());
 
                 render(`<h1 class="ok">✓ Запись отменена</h1><p>Спасибо, что предупредили! Место освободилось для других.</p>${backHome()}`);
             } catch (err) {
