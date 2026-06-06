@@ -56,15 +56,12 @@ test('admin.html template count message is consistent', async () => {
   assert.match(adminHtml, /dateRaw:/);
 });
 
-test('admin.html uses Firebase Auth for admin login', async () => {
+test('admin.html uses password-based login', async () => {
   const adminHtml = await readProjectFile('admin.html');
 
-  assert.match(adminHtml, /firebase-auth-compat\.js/);
-  assert.match(adminHtml, /const auth = firebase\.auth\(\)/);
-  assert.match(adminHtml, /const ALLOWED_ADMIN_EMAILS = \[/);
-  assert.match(adminHtml, /auth\.signInWithEmailAndPassword/);
-  assert.match(adminHtml, /auth\.onAuthStateChanged/);
-  assert.doesNotMatch(adminHtml, /const ADMIN_PASSWORD =/);
+  assert.match(adminHtml, /const ADMIN_PASSWORD = '/);
+  assert.doesNotMatch(adminHtml, /firebase-auth-compat/);
+  assert.doesNotMatch(adminHtml, /signInWithEmailAndPassword/);
 });
 
 test('admin.html has dashboard and export-all', async () => {

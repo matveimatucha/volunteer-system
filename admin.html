@@ -739,24 +739,19 @@
             </div>
         </header>
 
-        <!-- Вход через Firebase Authentication -->
+        <!-- Вход по паролю -->
         <div id="authSection" class="auth-section">
             <h2>Вход для администратора</h2>
             <div id="authMessage" class="message"></div>
             <form id="authForm">
                 <div class="form-group">
-                    <label>E-mail</label>
-                    <input type="email" id="adminEmail" required placeholder="admin@example.com" autocomplete="username">
-                </div>
-                <div class="form-group">
                     <label>Пароль</label>
-                    <input type="password" id="adminPassword" required placeholder="Введите пароль" autocomplete="current-password">
+                    <input type="password" id="adminPassword" required placeholder="Введите пароль администратора" autocomplete="current-password">
                 </div>
                 <button type="submit" class="btn btn-primary">Войти</button>
             </form>
             <p style="margin-top:1rem;font-size:0.85rem;opacity:0.75;text-align:center;">
-                Аккаунт создаётся в Firebase Console → Authentication → Users.
-                Список админов — в константе ALLOWED_ADMIN_EMAILS.
+                Пароль задаётся в файле admin.html (константа ADMIN_PASSWORD)
             </p>
         </div>
 
@@ -957,7 +952,6 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth-compat.js"></script>
     <script src="assets/registration-utils.js"></script>
     <script>
         // ================================
@@ -974,17 +968,9 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        const auth = firebase.auth();
 
-        // E-mail администраторов. Должны совпадать со списком в firestore.rules.
-        // Пользователи создаются в Firebase Console → Authentication → Users.
-        const ALLOWED_ADMIN_EMAILS = [
-            'matvei.sukmanov@chemistry.msu.ru'
-        ];
-
-        function isAllowedAdmin(user) {
-            return !!user && ALLOWED_ADMIN_EMAILS.includes((user.email || '').toLowerCase());
-        }
+        /** Измените пароль перед публикацией сайта */
+        const ADMIN_PASSWORD = 'Vlnt2026!msu#adm';
 
         let isAuthenticated = false;
         let currentQuestions = [];
@@ -1023,44 +1009,16 @@
         }
 
         function logoutAdmin() {
-            auth.signOut().catch(err => console.warn('signOut:', err));
+            hideAdminPanel();
         }
 
-        // Следим за состоянием входа: панель показывается только админам из списка
-        auth.onAuthStateChanged(async (user) => {
-            if (user && isAllowedAdmin(user)) {
+        document.getElementById('authForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const password = document.getElementById('adminPassword').value;
+            if (password === ADMIN_PASSWORD) {
                 showAdminPanel();
             } else {
-                if (user && !isAllowedAdmin(user)) {
-                    await auth.signOut();
-                    showAuthMessage('error', 'Этот аккаунт не является администратором.');
-                }
-                hideAdminPanel();
-            }
-        });
-
-        document.getElementById('authForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('adminEmail').value.trim();
-            const password = document.getElementById('adminPassword').value;
-            const submitBtn = e.target.querySelector('button[type="submit"]');
-            if (submitBtn) submitBtn.disabled = true;
-
-            try {
-                await auth.signInWithEmailAndPassword(email, password);
-                // Дальнейшее — в onAuthStateChanged
-            } catch (err) {
-                console.warn('Auth error:', err.code);
-                const messages = {
-                    'auth/invalid-email': 'Некорректный e-mail.',
-                    'auth/user-not-found': 'Пользователь не найден.',
-                    'auth/wrong-password': 'Неверный пароль.',
-                    'auth/invalid-credential': 'Неверный e-mail или пароль.',
-                    'auth/too-many-requests': 'Слишком много попыток. Попробуйте позже.'
-                };
-                showAuthMessage('error', messages[err.code] || 'Не удалось войти. Проверьте данные.');
-            } finally {
-                if (submitBtn) submitBtn.disabled = false;
+                showAuthMessage('error', 'Неверный пароль!');
             }
         });
 
