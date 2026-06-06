@@ -3,7 +3,8 @@
  */
 const REGISTRATION_STATUS = {
     CONFIRMED: 'confirmed',
-    WAITLIST: 'waitlist'
+    WAITLIST: 'waitlist',
+    CANCELLED: 'cancelled'
 };
 
 function escapeHtmlText(value) {
@@ -83,7 +84,11 @@ function getRegistrationStatus(record) {
 }
 
 function isConfirmedRegistration(record) {
-    return getRegistrationStatus(record) !== REGISTRATION_STATUS.WAITLIST;
+    return getRegistrationStatus(record) === REGISTRATION_STATUS.CONFIRMED;
+}
+
+function isCancelledRegistration(record) {
+    return getRegistrationStatus(record) === REGISTRATION_STATUS.CANCELLED;
 }
 
 function collectAnswersFromForm(form, questions) {
@@ -163,6 +168,67 @@ function isEventArchived(event, today) {
     const day = new Date(eventDate);
     day.setHours(0, 0, 0, 0);
     return day < today;
+}
+
+function pad2(n) {
+    return String(n).padStart(2, '0');
+}
+
+function formatIcsDate(date) {
+    return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}`;
+}
+
+function escapeIcsText(value) {
+    return String(value ?? '')
+        .replace(/\\/g, '\\\\')
+        .replace(/;/g, '\\;')
+        .replace(/,/g, '\\,')
+        .replace(/\r?\n/g, '\\n');
+}
+
+/**
+ * Возвращает ссылки на добавление события в календарь.
+ * Событие считается «на весь день» (есть только дата, без времени).
+ */
+function buildCalendarLinks(event) {
+    const date = getEventDate(event);
+    if (!date) return null;
+
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+
+    const title = event?.title || 'Волонтёрское мероприятие';
+    const location = event?.location || '';
+    const details = event?.description || '';
+
+    const gStart = formatIcsDate(start);
+    const gEnd = formatIcsDate(end);
+    const googleUrl = 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+        + `&text=${encodeURIComponent(title)}`
+        + `&dates=${gStart}/${gEnd}`
+        + `&details=${encodeURIComponent(details)}`
+        + `&location=${encodeURIComponent(location)}`;
+
+    const ics = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//volunteer-system//RU',
+        'CALSCALE:GREGORIAN',
+        'BEGIN:VEVENT',
+        `UID:${(event?.id || 'event')}-${Date.now()}@volunteer-system`,
+        `DTSTAMP:${formatIcsDate(new Date())}T000000Z`,
+        `DTSTART;VALUE=DATE:${gStart}`,
+        `DTEND;VALUE=DATE:${gEnd}`,
+        `SUMMARY:${escapeIcsText(title)}`,
+        `DESCRIPTION:${escapeIcsText(details)}`,
+        `LOCATION:${escapeIcsText(location)}`,
+        'END:VEVENT',
+        'END:VCALENDAR'
+    ].join('\r\n');
+
+    return { googleUrl, ics };
 }
 
 function getBaseTemplateQuestions() {

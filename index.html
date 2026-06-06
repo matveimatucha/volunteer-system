@@ -397,9 +397,29 @@
 
         .event-footer {
             padding-top: 0.15rem;
+            display: flex;
+            gap: 0.5rem;
+            align-items: stretch;
+        }
+
+        .share-btn {
+            flex: 0 0 50px;
+            height: 50px;
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            background: rgba(102, 126, 234, 0.12);
+            color: #5b6fd6;
+            transition: background 0.2s, transform 0.2s;
+        }
+        .share-btn:hover {
+            background: rgba(102, 126, 234, 0.22);
+            transform: translateY(-2px);
         }
 
         .register-btn {
+            flex: 1;
             width: 100%;
             height: 50px;
             border: none;
@@ -540,6 +560,121 @@
                 font-size: 0.9rem;
             }
         }
+
+        .search-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem 1.25rem;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 2rem;
+            max-width: 720px;
+        }
+        .search-box {
+            position: relative;
+            flex: 1 1 320px;
+            min-width: 240px;
+        }
+        .search-box .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1rem;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        #eventSearch {
+            width: 100%;
+            padding: 0.85rem 1rem 0.85rem 2.6rem;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 14px;
+            font-size: 1rem;
+            font-family: inherit;
+            background: rgba(255, 255, 255, 0.92);
+            box-shadow: 0 8px 24px rgba(40, 25, 90, 0.12);
+            outline: none;
+        }
+        #eventSearch:focus {
+            border-color: var(--primary, #6a3de8);
+            box-shadow: 0 8px 28px rgba(106, 61, 232, 0.25);
+        }
+        .free-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.95rem;
+            color: #fff;
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+        .free-toggle input { width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary, #6a3de8); }
+
+        .share-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(20, 12, 50, 0.55);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+        .share-modal-content {
+            position: relative;
+            background: #fff;
+            border-radius: 20px;
+            padding: 2rem 1.75rem 1.75rem;
+            max-width: 360px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 24px 60px rgba(30, 15, 70, 0.35);
+        }
+        .share-close {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.9rem;
+            border: none;
+            background: none;
+            font-size: 1.8rem;
+            line-height: 1;
+            cursor: pointer;
+            color: #9aa0ad;
+        }
+        .share-modal-content h3 { margin: 0 0 1rem; color: #2a2350; font-size: 1.15rem; }
+        .share-qr {
+            width: 220px;
+            height: 220px;
+            border-radius: 14px;
+            border: 1px solid #eee;
+            background: #fff;
+        }
+        .share-hint { font-size: 0.85rem; color: #888; margin: 0.6rem 0 1rem; }
+        .share-link-row { display: flex; gap: 0.5rem; }
+        #shareLink {
+            flex: 1;
+            min-width: 0;
+            padding: 0.65rem 0.75rem;
+            border: 1px solid #dcd8ec;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-family: inherit;
+            color: #444;
+        }
+        .share-link-row button, .share-native {
+            border: none;
+            border-radius: 10px;
+            padding: 0.65rem 1rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            background: linear-gradient(135deg, #5b6fd6 0%, #764ba2 100%);
+            color: #fff;
+            white-space: nowrap;
+        }
+        .share-native { width: 100%; margin-top: 0.75rem; padding: 0.8rem; }
     </style>
 </head>
 <body>
@@ -554,11 +689,36 @@
             <p class="tagline">Присоединяйся и меняй мир к лучшему</p>
         </header>
 
+        <div id="searchControls" class="search-controls" style="display:none;">
+            <div class="search-box">
+                <span class="search-icon" aria-hidden="true">🔎</span>
+                <input type="search" id="eventSearch" placeholder="Поиск по названию, месту, описанию..." autocomplete="off">
+            </div>
+            <label class="free-toggle">
+                <input type="checkbox" id="freeOnly">
+                <span>Только со свободными местами</span>
+            </label>
+        </div>
+
         <div id="eventsContainer">
             <div class="loading">
                 <div class="spinner"></div>
                 <p>Загружаем мероприятия...</p>
             </div>
+        </div>
+    </div>
+
+    <div id="shareModal" class="share-modal" style="display:none;" onclick="if(event.target===this)closeShareModal()">
+        <div class="share-modal-content">
+            <button type="button" class="share-close" aria-label="Закрыть" onclick="closeShareModal()">×</button>
+            <h3 id="shareTitle">Поделиться</h3>
+            <img id="shareQr" class="share-qr" alt="QR-код мероприятия" width="220" height="220">
+            <p class="share-hint">Наведите камеру телефона на QR-код</p>
+            <div class="share-link-row">
+                <input type="text" id="shareLink" readonly>
+                <button type="button" id="shareCopyBtn" onclick="copyShareLink()">Копировать</button>
+            </div>
+            <button type="button" id="shareNativeBtn" class="share-native" onclick="nativeShare()" style="display:none;">Поделиться…</button>
         </div>
     </div>
 
@@ -675,6 +835,7 @@
                         </div>
                         <div class="event-footer">
                             <button type="button" class="register-btn" onclick="goToRegistration('${escapeHtmlAttr(eventId)}')" ${!canRegister ? 'disabled' : ''}>${btnLabel}</button>
+                            <button type="button" class="share-btn" title="Поделиться" aria-label="Поделиться мероприятием" onclick="shareEvent('${escapeHtmlAttr(eventId)}')">🔗</button>
                         </div>
                     </div>
                 </div>
@@ -696,6 +857,62 @@
         function goToRegistration(eventId) {
             window.location.href = `register.html?event=${eventId}`;
         }
+
+        let _shareUrl = '';
+        let _shareTitle = '';
+
+        function buildRegistrationUrl(eventId) {
+            const base = window.location.href.split('?')[0].split('#')[0]
+                .replace(/index\.html$/, '')
+                .replace(/\/$/, '');
+            return `${base}/register.html?event=${encodeURIComponent(eventId)}`;
+        }
+
+        function shareEvent(eventId) {
+            const event = (window._allEvents || []).find(e => (e.id || '') === eventId);
+            _shareUrl = buildRegistrationUrl(eventId);
+            _shareTitle = event?.title || 'Волонтёрское мероприятие';
+
+            document.getElementById('shareTitle').textContent = _shareTitle;
+            document.getElementById('shareLink').value = _shareUrl;
+            document.getElementById('shareQr').src =
+                `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=${encodeURIComponent(_shareUrl)}`;
+            document.getElementById('shareCopyBtn').textContent = 'Копировать';
+
+            const nativeBtn = document.getElementById('shareNativeBtn');
+            nativeBtn.style.display = navigator.share ? 'block' : 'none';
+
+            document.getElementById('shareModal').style.display = 'flex';
+        }
+
+        function closeShareModal() {
+            document.getElementById('shareModal').style.display = 'none';
+        }
+
+        async function copyShareLink() {
+            const btn = document.getElementById('shareCopyBtn');
+            try {
+                await navigator.clipboard.writeText(_shareUrl);
+                btn.textContent = 'Скопировано ✓';
+            } catch {
+                const input = document.getElementById('shareLink');
+                input.select();
+                document.execCommand('copy');
+                btn.textContent = 'Скопировано ✓';
+            }
+            setTimeout(() => { btn.textContent = 'Копировать'; }, 2000);
+        }
+
+        async function nativeShare() {
+            if (!navigator.share) return;
+            try {
+                await navigator.share({ title: _shareTitle, url: _shareUrl });
+            } catch {}
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeShareModal();
+        });
 
         const CACHE_KEY = 'volunteer_events_v2';
         const CACHE_DURATION = 5 * 60 * 1000; // 5 минут
@@ -731,10 +948,42 @@
             await loadEvents(false);
         }
 
+        function getEventFilterState() {
+            const search = document.getElementById('eventSearch');
+            const freeOnly = document.getElementById('freeOnly');
+            return {
+                query: (search?.value || '').trim().toLowerCase(),
+                freeOnly: !!freeOnly?.checked
+            };
+        }
+
+        function matchesEventFilter(event, state) {
+            if (state.query) {
+                const haystack = [event.title, event.location, event.description]
+                    .map(v => String(v || '').toLowerCase())
+                    .join(' ');
+                if (!haystack.includes(state.query)) return false;
+            }
+            if (state.freeOnly) {
+                const max = Number(event.maxVolunteers) || 0;
+                const current = Number(event.currentVolunteers) || 0;
+                const isClosed = (event.status || 'open') === 'closed' || event.isArchived === true;
+                const hasRoom = !max || current < max;
+                if (isClosed || !hasRoom) return false;
+            }
+            return true;
+        }
+
+        function applyEventFilters() {
+            if (window._allEvents) displayEvents(window._allEvents);
+        }
+
         function displayEvents(events) {
             const container = document.getElementById('eventsContainer');
+            window._allEvents = events;
 
             if (!events || events.length === 0) {
+                document.getElementById('searchControls').style.display = 'none';
                 container.innerHTML = `
                     <div class="empty-state">
                         <h2>Пока нет мероприятий</h2>
@@ -752,10 +1001,26 @@
                 const status = e.status || 'open';
                 return status !== 'draft' && e.isTemplate !== true;
             });
-            const active  = visible.filter(e => !isEventArchived(e, today));
-            const past    = visible.filter(e => isEventArchived(e, today));
+
+            document.getElementById('searchControls').style.display = visible.length > 0 ? 'flex' : 'none';
+
+            const filterState = getEventFilterState();
+            const hasFilter = filterState.query || filterState.freeOnly;
+            const activeAll  = visible.filter(e => !isEventArchived(e, today));
+            const past       = visible.filter(e => isEventArchived(e, today))
+                .filter(e => matchesEventFilter(e, filterState));
+            const active     = activeAll.filter(e => matchesEventFilter(e, filterState));
 
             let html = '';
+
+            if (hasFilter && active.length === 0 && past.length === 0) {
+                html += `<div class="empty-state">
+                    <h2>Ничего не найдено</h2>
+                    <p>Попробуйте изменить запрос или сбросить фильтры.</p>
+                </div>`;
+                container.innerHTML = html;
+                return;
+            }
 
             if (active.length > 0) {
                 html += '<div class="events-grid">' +
@@ -863,6 +1128,10 @@
                 }
             }
         }
+
+        // Поиск и фильтры
+        document.getElementById('eventSearch')?.addEventListener('input', applyEventFilters);
+        document.getElementById('freeOnly')?.addEventListener('change', applyEventFilters);
 
         // Загружаем мероприятия при загрузке страницы
         loadEventsWithCache();

@@ -662,6 +662,71 @@
                 width: 100%;
             }
         }
+
+        .dashboard {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .dashboard-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        .dashboard-header h2 { margin: 0; }
+        .dashboard-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 0.85rem;
+        }
+        .stat-card {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 1rem 1.1rem;
+            text-align: center;
+        }
+        .stat-card .stat-value {
+            font-size: 1.9rem;
+            font-weight: 800;
+            line-height: 1.1;
+        }
+        .stat-card .stat-label {
+            font-size: 0.8rem;
+            opacity: 0.75;
+            margin-top: 0.35rem;
+        }
+        .stat-card.accent .stat-value { color: #2ecc71; }
+        .stat-card.warn .stat-value { color: #f6c343; }
+        .dashboard-events {
+            grid-column: 1 / -1;
+            margin-top: 0.5rem;
+            overflow-x: auto;
+        }
+        .dashboard-events table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .dashboard-events th, .dashboard-events td {
+            padding: 0.5rem 0.65rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            white-space: nowrap;
+        }
+        .dashboard-events th { opacity: 0.7; font-weight: 600; }
+        .mini-meter {
+            height: 6px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.15);
+            overflow: hidden;
+            min-width: 80px;
+        }
+        .mini-meter > div { height: 100%; background: linear-gradient(90deg, #5b6fd6, #764ba2); }
     </style>
 </head>
 <body>
@@ -674,29 +739,44 @@
             </div>
         </header>
 
-        <!-- Вход через Firebase Auth -->
+        <!-- Вход через Firebase Authentication -->
         <div id="authSection" class="auth-section">
             <h2>Вход для администратора</h2>
             <div id="authMessage" class="message"></div>
             <form id="authForm">
                 <div class="form-group">
-                    <label>Email</label>
+                    <label>E-mail</label>
                     <input type="email" id="adminEmail" required placeholder="admin@example.com" autocomplete="username">
                 </div>
                 <div class="form-group">
                     <label>Пароль</label>
-                    <input type="password" id="adminPassword" required placeholder="Пароль Firebase Auth" autocomplete="current-password">
+                    <input type="password" id="adminPassword" required placeholder="Введите пароль" autocomplete="current-password">
                 </div>
                 <button type="submit" class="btn btn-primary">Войти</button>
             </form>
             <p style="margin-top:1rem;font-size:0.85rem;opacity:0.75;text-align:center;">
-                Пользователь создаётся в Firebase Console → Authentication → Users
+                Аккаунт создаётся в Firebase Console → Authentication → Users.
+                Список админов — в константе ALLOWED_ADMIN_EMAILS.
             </p>
         </div>
 
         <!-- Админ-панель -->
         <div id="adminPanel" class="admin-panel">
             <div id="globalMessage" class="message" style="margin-bottom: 1rem;"></div>
+
+            <div class="dashboard">
+                <div class="dashboard-header">
+                    <h2>📊 Сводка</h2>
+                    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                        <button class="btn btn-small" onclick="loadDashboard()">🔄 Обновить</button>
+                        <button class="btn btn-primary btn-small" onclick="exportAllCSV()">⬇ Экспорт всех заявок</button>
+                    </div>
+                </div>
+                <div id="dashboardStats" class="dashboard-stats">
+                    <p style="opacity:0.6;padding:1rem;">Загрузка статистики...</p>
+                </div>
+            </div>
+
             <div class="panel-header">
                 <h2>Управление мероприятиями</h2>
                 <button class="btn btn-success" onclick="openCreateModal()">+ Создать мероприятие</button>
@@ -742,6 +822,7 @@
                 <div style="display: flex; gap: 0.8rem; flex-wrap: wrap;">
                     <button class="btn btn-success btn-small" onclick="exportCSV('new')">⬇ Скачать новые CSV</button>
                     <button class="btn btn-small" style="background: var(--secondary);" onclick="exportCSV('all')">⬇ Скачать все CSV</button>
+                    <button class="btn btn-small" style="background: #16a085;" onclick="copyConfirmedEmails()" title="Скопировать e-mail записанных для рассылки-напоминания">📧 Копировать e-mail</button>
                     <button class="btn btn-small" style="background: #7f8c8d;" onclick="markAllViewed()">✓ Отметить как просмотренные</button>
                     <button class="btn btn-danger btn-small" onclick="closeParticipantsModal()">✕ Закрыть</button>
                 </div>
@@ -893,11 +974,17 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        const auth = firebase.auth();
 
-        /** Email-адреса с доступом к админке (добавьте свой в Firebase Auth) */
+        // E-mail администраторов. Должны совпадать со списком в firestore.rules.
+        // Пользователи создаются в Firebase Console → Authentication → Users.
         const ALLOWED_ADMIN_EMAILS = [
             'matvei.sukmanov@chemistry.msu.ru'
         ];
+
+        function isAllowedAdmin(user) {
+            return !!user && ALLOWED_ADMIN_EMAILS.includes((user.email || '').toLowerCase());
+        }
 
         let isAuthenticated = false;
         let currentQuestions = [];
@@ -919,19 +1006,13 @@
             }
         });
 
-        const auth = firebase.auth();
-
-        function isAllowedAdmin(user) {
-            if (!user?.email) return false;
-            return ALLOWED_ADMIN_EMAILS.map(e => e.toLowerCase()).includes(user.email.toLowerCase());
-        }
-
         function showAdminPanel() {
             isAuthenticated = true;
             document.getElementById('authSection').style.display = 'none';
             document.getElementById('adminPanel').classList.add('active');
             document.getElementById('logoutBtn').style.display = '';
             loadEvents();
+            loadDashboard();
         }
 
         function hideAdminPanel() {
@@ -941,36 +1022,45 @@
             document.getElementById('logoutBtn').style.display = 'none';
         }
 
-        async function logoutAdmin() {
-            await auth.signOut();
-            hideAdminPanel();
+        function logoutAdmin() {
+            auth.signOut().catch(err => console.warn('signOut:', err));
         }
+
+        // Следим за состоянием входа: панель показывается только админам из списка
+        auth.onAuthStateChanged(async (user) => {
+            if (user && isAllowedAdmin(user)) {
+                showAdminPanel();
+            } else {
+                if (user && !isAllowedAdmin(user)) {
+                    await auth.signOut();
+                    showAuthMessage('error', 'Этот аккаунт не является администратором.');
+                }
+                hideAdminPanel();
+            }
+        });
 
         document.getElementById('authForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('adminEmail').value.trim();
             const password = document.getElementById('adminPassword').value;
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
 
             try {
-                const cred = await auth.signInWithEmailAndPassword(email, password);
-                if (!isAllowedAdmin(cred.user)) {
-                    await auth.signOut();
-                    showAuthMessage('error', 'У этого аккаунта нет доступа к админке.');
-                    return;
-                }
-                showAdminPanel();
-            } catch (error) {
-                console.error(error);
-                showAuthMessage('error', 'Ошибка входа. Проверьте email и пароль в Firebase Auth.');
-            }
-        });
-
-        auth.onAuthStateChanged(async (user) => {
-            if (user && isAllowedAdmin(user)) {
-                showAdminPanel();
-            } else {
-                if (user) await auth.signOut();
-                hideAdminPanel();
+                await auth.signInWithEmailAndPassword(email, password);
+                // Дальнейшее — в onAuthStateChanged
+            } catch (err) {
+                console.warn('Auth error:', err.code);
+                const messages = {
+                    'auth/invalid-email': 'Некорректный e-mail.',
+                    'auth/user-not-found': 'Пользователь не найден.',
+                    'auth/wrong-password': 'Неверный пароль.',
+                    'auth/invalid-credential': 'Неверный e-mail или пароль.',
+                    'auth/too-many-requests': 'Слишком много попыток. Попробуйте позже.'
+                };
+                showAuthMessage('error', messages[err.code] || 'Не удалось войти. Проверьте данные.');
+            } finally {
+                if (submitBtn) submitBtn.disabled = false;
             }
         });
 
@@ -1293,6 +1383,7 @@
 
                 // Сбрасываем кэш на главной странице
                 localStorage.removeItem('volunteer_events');
+                localStorage.removeItem('volunteer_events_v2');
                 localStorage.removeItem(`volunteer_event_${eventData.id}`);
 
                 closeModal();
@@ -1319,6 +1410,7 @@
 
                 // Сбрасываем кэш
                 localStorage.removeItem('volunteer_events');
+                localStorage.removeItem('volunteer_events_v2');
                 localStorage.removeItem(`volunteer_event_${eventId}`);
 
                 showMessage('success', '✓ Мероприятие удалено');
@@ -1417,10 +1509,12 @@
             if (!meta) return;
             const total = currentParticipantsData.length;
             const confirmed = currentParticipantsData.filter(isConfirmedRegistration).length;
-            const waitlist = total - confirmed;
+            const waitlist = currentParticipantsData.filter(r => getRegistrationStatus(r) === REGISTRATION_STATUS.WAITLIST).length;
+            const cancelled = currentParticipantsData.filter(isCancelledRegistration).length;
             const filtered = getFilteredParticipants().length;
             const newCount = getNewParticipants().length;
-            meta.innerHTML = `Всего: <strong>${total}</strong> · Записано: <strong>${confirmed}</strong> · Ожидание: <strong>${waitlist}</strong> · Показано: <strong>${filtered}</strong> · Новых: <strong>${newCount}</strong>`;
+            const cancelledHtml = cancelled ? ` · Отменено: <strong>${cancelled}</strong>` : '';
+            meta.innerHTML = `Всего: <strong>${total}</strong> · Записано: <strong>${confirmed}</strong> · Ожидание: <strong>${waitlist}</strong>${cancelledHtml} · Показано: <strong>${filtered}</strong> · Новых: <strong>${newCount}</strong>`;
         }
 
         function setParticipantsFilter(filter) {
@@ -1459,9 +1553,10 @@
         }
 
         function getStatusLabel(record) {
-            return getRegistrationStatus(record) === REGISTRATION_STATUS.WAITLIST
-                ? 'Лист ожидания'
-                : 'Записан';
+            const status = getRegistrationStatus(record);
+            if (status === REGISTRATION_STATUS.WAITLIST) return 'Лист ожидания';
+            if (status === REGISTRATION_STATUS.CANCELLED) return 'Отменено';
+            return 'Записан';
         }
 
         async function syncVolunteerCount(eventId) {
@@ -1471,6 +1566,7 @@
                 const count = snap.docs.filter(d => isConfirmedRegistration(d.data())).length;
                 await db.collection('events').doc(eventId).update({ currentVolunteers: count });
                 localStorage.removeItem('volunteer_events');
+                localStorage.removeItem('volunteer_events_v2');
                 localStorage.removeItem(`volunteer_event_${eventId}`);
                 if (eventsData[eventId]) {
                     eventsData[eventId].currentVolunteers = count;
@@ -1596,6 +1692,7 @@
                 }
 
                 localStorage.removeItem('volunteer_events');
+                localStorage.removeItem('volunteer_events_v2');
                 localStorage.removeItem(`volunteer_event_${currentParticipantsEventId}`);
                 await showParticipants(currentParticipantsEventId);
                 loadEvents();
@@ -1630,6 +1727,7 @@
                 });
 
                 localStorage.removeItem('volunteer_events');
+                localStorage.removeItem('volunteer_events_v2');
                 await showParticipants(eventId);
                 loadEvents();
                 showMessage('success', '✓ Участник перенесён из листа ожидания');
@@ -1725,6 +1823,137 @@
 
             markAsSeen(records);
             showParticipants(currentParticipantsEventId);
+        }
+
+        async function copyConfirmedEmails() {
+            const emails = [...new Set(
+                currentParticipantsData
+                    .filter(isConfirmedRegistration)
+                    .map(r => (r.contactEmail || '').trim())
+                    .filter(Boolean)
+            )];
+            if (!emails.length) {
+                showMessage('error', 'У записанных участников нет e-mail');
+                return;
+            }
+            const text = emails.join(', ');
+            try {
+                await navigator.clipboard.writeText(text);
+            } catch {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+            }
+            showMessage('success', `✓ Скопировано адресов: ${emails.length}. Вставьте в поле «Скрытая копия» письма-напоминания.`);
+        }
+
+        async function loadDashboard() {
+            const container = document.getElementById('dashboardStats');
+            if (!container) return;
+            try {
+                const [evSnap, regSnap] = await Promise.all([
+                    db.collection('events').get(),
+                    db.collection('registrations').get()
+                ]);
+                const events = evSnap.docs.map(d => ({ ...d.data(), id: d.data().id || d.id }));
+                const regs = regSnap.docs.map(d => ({ ...d.data(), registrationId: d.data().registrationId || d.id }));
+                window._allRegistrations = regs;
+
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const realEvents = events.filter(e => (e.status || 'open') !== 'draft' && e.isTemplate !== true);
+                const activeEvents = realEvents.filter(e => !isEventArchived(e, today));
+                const archivedEvents = realEvents.filter(e => isEventArchived(e, today));
+
+                const confirmed = regs.filter(isConfirmedRegistration).length;
+                const waitlist = regs.filter(r => getRegistrationStatus(r) === REGISTRATION_STATUS.WAITLIST).length;
+                const cancelled = regs.filter(isCancelledRegistration).length;
+
+                const byEvent = {};
+                regs.forEach(r => {
+                    const id = r.eventId || '';
+                    if (!byEvent[id]) byEvent[id] = { confirmed: 0, waitlist: 0, cancelled: 0 };
+                    const s = getRegistrationStatus(r);
+                    if (s === REGISTRATION_STATUS.WAITLIST) byEvent[id].waitlist++;
+                    else if (s === REGISTRATION_STATUS.CANCELLED) byEvent[id].cancelled++;
+                    else byEvent[id].confirmed++;
+                });
+
+                const card = (value, label, cls = '') =>
+                    `<div class="stat-card ${cls}"><div class="stat-value">${value}</div><div class="stat-label">${label}</div></div>`;
+
+                const rows = realEvents.map(e => {
+                    const c = byEvent[e.id] || { confirmed: 0, waitlist: 0, cancelled: 0 };
+                    const max = Number(e.maxVolunteers) || 0;
+                    const pct = max ? Math.min(100, Math.round((c.confirmed / max) * 100)) : 0;
+                    const meter = max
+                        ? `<div class="mini-meter"><div style="width:${pct}%"></div></div>`
+                        : '<span style="opacity:0.6;">∞</span>';
+                    return `<tr>
+                        <td>${escapeHtmlText(e.title || '—')}</td>
+                        <td>${escapeHtmlText(e.date || '')}</td>
+                        <td>${c.confirmed}${max ? ' / ' + max : ''}</td>
+                        <td>${c.waitlist || '—'}</td>
+                        <td>${c.cancelled || '—'}</td>
+                        <td>${meter}</td>
+                    </tr>`;
+                }).join('');
+
+                container.innerHTML =
+                    card(activeEvents.length, 'Активных событий') +
+                    card(archivedEvents.length, 'В архиве') +
+                    card(confirmed, 'Подтверждено', 'accent') +
+                    card(waitlist, 'В листе ожидания', 'warn') +
+                    card(cancelled, 'Отменено') +
+                    `<div class="dashboard-events">
+                        <table>
+                            <thead><tr><th>Мероприятие</th><th>Дата</th><th>Записано</th><th>Ожидание</th><th>Отмен</th><th>Заполнение</th></tr></thead>
+                            <tbody>${rows || '<tr><td colspan="6" style="opacity:0.6;">Нет мероприятий</td></tr>'}</tbody>
+                        </table>
+                    </div>`;
+            } catch (error) {
+                console.error('Ошибка статистики:', error);
+                container.innerHTML = '<p style="color: var(--danger); padding: 1rem;">Не удалось загрузить статистику</p>';
+            }
+        }
+
+        async function exportAllCSV() {
+            try {
+                const snap = await db.collection('registrations').get();
+                const regs = snap.docs.map(d => ({ ...d.data(), registrationId: d.data().registrationId || d.id }));
+                if (!regs.length) {
+                    alert('Заявок пока нет');
+                    return;
+                }
+                const header = ['registrationId', 'status', 'createdAt', 'timestamp', 'eventId', 'eventTitle', 'contactEmail', 'contactPhone']
+                    .map(escapeCsv).join(',');
+                const rows = regs
+                    .sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0))
+                    .map(r => [
+                        r.registrationId || '',
+                        getRegistrationStatus(r),
+                        r.createdAt || '',
+                        r.timestamp || '',
+                        r.eventId || '',
+                        r.eventTitle || '',
+                        r.contactEmail || '',
+                        r.contactPhone || ''
+                    ].map(escapeCsv).join(','));
+                const csv = '\uFEFF' + [header, ...rows].join('\n');
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `all_registrations_${Date.now()}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error('Ошибка экспорта:', error);
+                alert('Не удалось выгрузить заявки');
+            }
         }
 
         function showAuthMessage(type, text) {

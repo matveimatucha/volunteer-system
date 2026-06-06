@@ -434,8 +434,17 @@
         const EMAILJS_PUBLIC_KEY  = 'YbgoGyZqd-dMXimlL';
         const EMAILJS_SERVICE_ID  = 'service_xv6s5gf';
         const EMAILJS_TEMPLATE_ID = 'template_7nfox4n';
+        // Необязательно: отдельный шаблон письма-подтверждения участнику.
+        // Создайте шаблон в EmailJS с переменными {{event_name}}, {{event_date}},
+        // {{status_text}}, {{cancel_url}} и вставьте его ID ниже.
+        const EMAILJS_CONFIRM_TEMPLATE_ID = 'ВСТАВЬТЕ_CONFIRM_TEMPLATE';
         const ADMIN_EMAIL         = 'matvei.sukmanov@chemistry.msu.ru';
         emailjs.init(EMAILJS_PUBLIC_KEY);
+
+        function buildCancelUrl(registrationId, eventId) {
+            const base = window.location.href.split('?')[0].replace(/register\.html$/, 'cancel.html');
+            return `${base}?reg=${encodeURIComponent(registrationId)}&event=${encodeURIComponent(eventId)}`;
+        }
 
         // Получаем ID мероприятия из URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -589,12 +598,35 @@
 
         function showSuccessScreen(event, options = {}) {
             const isWaitlist = options.waitlist === true;
+            const registrationId = options.registrationId || '';
             const message = isWaitlist
                 ? 'Вы в листе ожидания. Если освободится место, мы свяжемся с вами по указанным контактам.'
                 : (event?.successMessage?.trim()
                 || 'Твоя заявка принята, жди добавления в чат (оставь личные сообщения открытыми).');
             const chatLink = event?.chatLink?.trim() || '';
             const safeLink = chatLink.startsWith('http://') || chatLink.startsWith('https://') ? chatLink : '';
+
+            const calendar = typeof buildCalendarLinks === 'function' ? buildCalendarLinks(event) : null;
+            const btnStyle = 'display:inline-block;text-decoration:none;width:auto;padding:0.9rem 1.4rem;margin-top:0;';
+            const ghostStyle = btnStyle + 'background:transparent;color:var(--primary);border:2px solid var(--primary);';
+
+            const calendarHtml = (calendar && !isWaitlist) ? `
+                <a href="${escapeHtmlAttr(calendar.googleUrl)}" target="_blank" rel="noopener noreferrer" class="submit-btn" style="${ghostStyle}">
+                    📅 В Google Календарь
+                </a>
+                <button type="button" class="submit-btn" style="${ghostStyle}" onclick="downloadIcs()">
+                    📥 Скачать .ics
+                </button>
+            ` : '';
+
+            const cancelHtml = registrationId ? `
+                <p style="margin-top:1.5rem;font-size:0.9rem;opacity:0.8;">
+                    Передумали? <a href="${escapeHtmlAttr(buildCancelUrl(registrationId, eventId))}">Отменить запись</a>
+                </p>
+            ` : '';
+
+            window._icsContent = calendar?.ics || '';
+            window._icsName = `${(event?.title || 'event').replace(/[^\wа-яё\- ]/gi, '').trim() || 'event'}.ics`;
 
             document.getElementById('contentArea').innerHTML = `
                 <div class="success-screen">
@@ -603,16 +635,31 @@
                     ${safeLink ? `<p>Если уже готовы, можете перейти в чат мероприятия:</p>` : ''}
                     <div class="success-actions">
                         ${safeLink ? `
-                            <a href="${safeLink}" target="_blank" rel="noopener noreferrer" class="submit-btn" style="display: inline-block; text-decoration: none; width: auto; padding: 0.9rem 1.4rem; margin-top: 0;">
+                            <a href="${safeLink}" target="_blank" rel="noopener noreferrer" class="submit-btn" style="${btnStyle}">
                                 Перейти в чат
                             </a>
                         ` : ''}
-                        <a href="index.html" class="submit-btn" style="display: inline-block; text-decoration: none; width: auto; padding: 0.9rem 1.4rem; margin-top: 0;">
+                        <a href="index.html" class="submit-btn" style="${btnStyle}">
                             На главную
                         </a>
+                        ${calendarHtml}
                     </div>
+                    ${cancelHtml}
                 </div>
             `;
+        }
+
+        function downloadIcs() {
+            if (!window._icsContent) return;
+            const blob = new Blob([window._icsContent], { type: 'text/calendar;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = window._icsName || 'event.ics';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
         // Список факультетов МГУ (по алфавиту)
@@ -902,26 +949,28 @@
             let registrationSaved = false;
 
             try {
-                if (contactEmail) {
-                    const dupSnap = await db.collection('registrations')
-                        .where('eventId', '==', eventId)
-                        .where('contactEmail', '==', contactEmail)
-                        .limit(1)
-                        .get();
-                    if (!dupSnap.empty) {
-                        throw new Error('DUPLICATE_EMAIL');
+                // Проверка дублей не должна блокировать регистрацию, если чтение
+                // registrations недоступно (правила безопасности/отсутствие индекса).
+                async function findDuplicate(field, value) {
+                    if (!value) return false;
+                    try {
+                        const snap = await db.collection('registrations')
+                            .where('eventId', '==', eventId)
+                            .where(field, '==', value)
+                            .limit(1)
+                            .get();
+                        return !snap.empty;
+                    } catch (dupErr) {
+                        console.warn('Проверка дублей пропущена:', dupErr);
+                        return false;
                     }
                 }
 
-                if (contactPhone) {
-                    const dupPhone = await db.collection('registrations')
-                        .where('eventId', '==', eventId)
-                        .where('contactPhone', '==', contactPhone)
-                        .limit(1)
-                        .get();
-                    if (!dupPhone.empty) {
-                        throw new Error('DUPLICATE_PHONE');
-                    }
+                if (await findDuplicate('contactEmail', contactEmail)) {
+                    throw new Error('DUPLICATE_EMAIL');
+                }
+                if (await findDuplicate('contactPhone', contactPhone)) {
+                    throw new Error('DUPLICATE_PHONE');
                 }
 
                 const eventRef = db.collection('events').doc(eventId);
@@ -976,24 +1025,45 @@
 
                 localStorage.removeItem(EVENT_CACHE_KEY);
                 localStorage.removeItem('volunteer_events');
+                localStorage.removeItem('volunteer_events_v2');
 
                 if (EMAILJS_PUBLIC_KEY !== 'ВСТАВЬТЕ_PUBLIC_KEY') {
                     const summary = formatAnswersForEmail(answersLabeled);
                     const statusNote = isWaitlist ? '\n[Лист ожидания]' : '';
+                    const eventTitle = latestEvent?.title || currentEvent?.title || '';
+                    const eventDate = latestEvent?.date || currentEvent?.date || '';
+
+                    // Уведомление администратору
                     emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
                         to_email:   ADMIN_EMAIL,
-                        event_name: (latestEvent?.title || currentEvent?.title || '') + statusNote,
-                        event_date: latestEvent?.date || currentEvent?.date || '',
+                        event_name: eventTitle + statusNote,
+                        event_date: eventDate,
                         answers:    summary,
                         reply_to:   contactEmail
-                    }).catch(err => console.warn('EmailJS:', err));
+                    }).catch(err => console.warn('EmailJS (админ):', err));
+
+                    // Письмо-подтверждение участнику (если настроен отдельный шаблон)
+                    if (EMAILJS_CONFIRM_TEMPLATE_ID && EMAILJS_CONFIRM_TEMPLATE_ID !== 'ВСТАВЬТЕ_CONFIRM_TEMPLATE' && contactEmail) {
+                        emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_CONFIRM_TEMPLATE_ID, {
+                            to_email:    contactEmail,
+                            event_name:  eventTitle,
+                            event_date:  eventDate,
+                            status_text: isWaitlist
+                                ? 'Вы добавлены в лист ожидания. Мы свяжемся с вами, если освободится место.'
+                                : 'Ваша заявка принята. Скоро с вами свяжутся.',
+                            cancel_url:  buildCancelUrl(registrationRef.id, eventId)
+                        }).catch(err => console.warn('EmailJS (участник):', err));
+                    }
                 }
 
                 statusMessage.className = 'message success';
                 statusMessage.textContent = isWaitlist
                     ? '✓ Вы добавлены в лист ожидания.'
                     : '✓ Вы успешно зарегистрированы! Скоро с вами свяжутся.';
-                showSuccessScreen(latestEvent || currentEvent, { waitlist: isWaitlist });
+                showSuccessScreen(latestEvent || currentEvent, {
+                    waitlist: isWaitlist,
+                    registrationId: registrationRef.id
+                });
 
             } catch (error) {
                 console.error('Ошибка:', error);

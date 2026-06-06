@@ -46,8 +46,6 @@ test('admin.html template count message is consistent', async () => {
   const adminHtml = await readProjectFile('admin.html');
 
   assert.match(adminHtml, /Добавлены 10 базовых вопросов/);
-  assert.match(adminHtml, /ALLOWED_ADMIN_EMAILS/);
-  assert.match(adminHtml, /firebase-auth-compat/);
   assert.match(adminHtml, /deleteRegistration/);
   assert.match(adminHtml, /promoteFromWaitlist/);
   assert.match(adminHtml, /onclick="exportCSV\('new'\)"/);
@@ -56,4 +54,56 @@ test('admin.html template count message is consistent', async () => {
   assert.match(adminHtml, /'contactPhone', \.\.\.headerKeys/);
   assert.match(adminHtml, /syncVolunteerCount/);
   assert.match(adminHtml, /dateRaw:/);
+});
+
+test('admin.html uses Firebase Auth for admin login', async () => {
+  const adminHtml = await readProjectFile('admin.html');
+
+  assert.match(adminHtml, /firebase-auth-compat\.js/);
+  assert.match(adminHtml, /const auth = firebase\.auth\(\)/);
+  assert.match(adminHtml, /const ALLOWED_ADMIN_EMAILS = \[/);
+  assert.match(adminHtml, /auth\.signInWithEmailAndPassword/);
+  assert.match(adminHtml, /auth\.onAuthStateChanged/);
+  assert.doesNotMatch(adminHtml, /const ADMIN_PASSWORD =/);
+});
+
+test('admin.html has dashboard and export-all', async () => {
+  const adminHtml = await readProjectFile('admin.html');
+
+  assert.match(adminHtml, /function loadDashboard\(\)/);
+  assert.match(adminHtml, /function exportAllCSV\(\)/);
+  assert.match(adminHtml, /copyConfirmedEmails/);
+});
+
+test('index.html has search, share and QR', async () => {
+  const indexHtml = await readProjectFile('index.html');
+
+  assert.match(indexHtml, /id="eventSearch"/);
+  assert.match(indexHtml, /function applyEventFilters\(\)/);
+  assert.match(indexHtml, /function shareEvent\(/);
+  assert.match(indexHtml, /api\.qrserver\.com/);
+});
+
+test('register.html offers calendar and self-cancel links', async () => {
+  const registerHtml = await readProjectFile('register.html');
+
+  assert.match(registerHtml, /buildCalendarLinks/);
+  assert.match(registerHtml, /function downloadIcs\(\)/);
+  assert.match(registerHtml, /buildCancelUrl/);
+});
+
+test('cancel.html allows participants to cancel their registration', async () => {
+  const cancelHtml = await readProjectFile('cancel.html');
+
+  assert.match(cancelHtml, /async function doCancel\(\)/);
+  assert.match(cancelHtml, /status: 'cancelled'/);
+  assert.match(cancelHtml, /isConfirmedRegistration/);
+});
+
+test('registration-utils exposes calendar helpers and cancelled status', async () => {
+  const utils = await readProjectFile('assets/registration-utils.js');
+
+  assert.match(utils, /function buildCalendarLinks\(event\)/);
+  assert.match(utils, /CANCELLED: 'cancelled'/);
+  assert.match(utils, /function isCancelledRegistration/);
 });
