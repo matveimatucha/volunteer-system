@@ -18,7 +18,8 @@ function setSheetsUrl(url) {
  */
 function extractCommonFields(answersLabeled) {
     const fields = { name: '', faculty: '', year: '' };
-    for (const item of (answersLabeled || [])) {
+    if (!Array.isArray(answersLabeled)) return fields;
+    for (const item of answersLabeled) {
         const q = (item.question || '').toLowerCase();
         const a = item.answer || '';
         if (!fields.name && (q.includes('имя') || q.includes('фио') || q.includes('ф.и.о') || q.includes('name'))) {
