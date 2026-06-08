@@ -563,7 +563,7 @@
             img.style.display = 'none';
             const box = document.createElement('div');
             box.className = 'event-header-logo';
-            box.style.cssText = 'display:flex;align-items:center;justify-content:center;font-family:"Bebas Neue",sans-serif;font-size:1.1rem;color:white;letter-spacing:1.5px;text-shadow:0 2px 8px rgba(0,0,0,.35);';
+            box.style.cssText = 'position:absolute;top:1.25rem;right:1.25rem;left:auto;display:flex;align-items:center;justify-content:center;font-family:"Bebas Neue",sans-serif;font-size:1.1rem;color:white;letter-spacing:1.5px;text-shadow:0 2px 8px rgba(0,0,0,.35);';
             box.textContent = 'ОПК';
             img.parentNode.insertBefore(box, img.nextSibling);
         }
@@ -615,7 +615,7 @@
             const headerContent = `
                 ${coverImg}
                 ${scrimHtml}
-                <img src="${escapeHtmlAttr(logoUrl)}" alt="Логотип мероприятия" class="event-header-logo" referrerpolicy="no-referrer" onerror="handleRegisterLogoError(this)">
+                <img src="${escapeHtmlAttr(logoUrl)}" alt="Логотип мероприятия" class="event-header-logo" style="position:absolute;top:1.25rem;right:1.25rem;left:auto;" referrerpolicy="no-referrer" onerror="handleRegisterLogoError(this)">
                 <div style="position:relative;z-index:2;">
                     <div class="event-date" style="color:${dateColor};margin-bottom:.4rem;">${escapeHtmlText(displayDate)}</div>
                     <h1 style="color:${textColor};text-shadow:${hasCover ? '0 2px 12px rgba(0,0,0,.5)' : 'none'};">${escapeHtmlText(event.title)}</h1>
