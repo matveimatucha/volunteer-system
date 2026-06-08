@@ -14,12 +14,25 @@ function setSheetsUrl(url) {
 }
 
 /**
- * Пытается угадать имя, факультет и курс из массива answersLabeled.
+ * Нормализует answersLabeled в массив [{question, answer}].
+ * Поддерживает новый формат (array) и старый (object {label: value}).
+ */
+function normalizeAnswers(answersLabeled) {
+    if (Array.isArray(answersLabeled)) return answersLabeled;
+    if (answersLabeled && typeof answersLabeled === 'object') {
+        return Object.entries(answersLabeled).map(([question, answer]) => ({ question, answer }));
+    }
+    return [];
+}
+
+/**
+ * Пытается угадать имя, факультет и курс из answersLabeled.
+ * Принимает и массив [{question,answer}], и объект {label:value}.
  */
 function extractCommonFields(answersLabeled) {
     const fields = { name: '', faculty: '', year: '' };
-    if (!Array.isArray(answersLabeled)) return fields;
-    for (const item of answersLabeled) {
+    const items = normalizeAnswers(answersLabeled);
+    for (const item of items) {
         const q = (item.question || '').toLowerCase();
         const a = item.answer || '';
         if (!fields.name && (q.includes('имя') || q.includes('фио') || q.includes('ф.и.о') || q.includes('name'))) {
@@ -36,12 +49,13 @@ function extractCommonFields(answersLabeled) {
 }
 
 /**
- * Форматирует все ответы в читаемую строку «Вопрос: ответ; …»
+ * Форматирует все ответы в читаемую строку «Вопрос: ответ | …»
+ * Принимает и массив [{question,answer}], и объект {label:value}.
  */
 function formatAnswersList(answersLabeled) {
-    if (!Array.isArray(answersLabeled)) return '';
-    return answersLabeled
-        .filter(item => item.answer && item.answer !== '')
+    const items = normalizeAnswers(answersLabeled);
+    return items
+        .filter(item => item.answer !== '' && item.answer != null)
         .map(item => `${item.question}: ${item.answer}`)
         .join(' | ');
 }

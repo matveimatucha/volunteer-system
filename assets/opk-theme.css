@@ -164,17 +164,17 @@ input:focus, textarea:focus, select:focus {
 }
 .flower-corner {
   position: absolute;
-  opacity: .50;
+  opacity: .30;
   line-height: 0;
 }
-.flower-tl { top: -8px;   left: -8px; }
-.flower-tr { top: -8px;  right: -8px; transform: scaleX(-1); }
-.flower-bl { bottom: -8px; left: -8px; transform: scaleY(-1); }
-.flower-br { bottom: -8px; right: -8px; transform: scale(-1,-1); }
+.flower-tl { top: -6px;  left: -6px; }
+.flower-tr { top: -6px;  right: -6px; transform: scaleX(-1); }
+.flower-bl { bottom: -6px; left: -6px; }
+.flower-br { bottom: -6px; right: -6px; transform: scaleX(-1); }
 
 @media (max-width: 900px) {
-  .flower-corner { opacity: .28; }
-  .flower-corner svg { width: 140px; height: 140px; }
+  .flower-corner { opacity: .18; }
+  .flower-corner svg { width: 130px; height: 130px; }
 }
 @media (max-width: 600px) {
   .flower-corner { display: none; }

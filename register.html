@@ -73,18 +73,19 @@
 
         .event-header {
             width: 100%;
-            aspect-ratio: 4 / 1;
+            min-height: 180px;
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 2rem;
+            justify-content: flex-end;
+            align-items: flex-start;
+            text-align: left;
+            padding: 2rem 2.5rem 2rem;
             border-radius: 20px 20px 0 0;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
             animation: slideDown 0.6s ease-out;
             box-sizing: border-box;
             position: relative;
+            overflow: hidden;
         }
 
         .event-cover-image {
@@ -104,13 +105,16 @@
 
         .event-header-logo {
             position: absolute;
-            top: 2rem;
-            right: 2rem;
-            width: 70px;
-            height: 70px;
+            top: 1.25rem;
+            right: 1.25rem;
+            width: 58px;
+            height: 58px;
             object-fit: contain;
-            filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.25));
-            z-index: 2;
+            background: rgba(255,255,255,0.92);
+            border-radius: 12px;
+            padding: 6px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.22);
+            z-index: 3;
         }
 
         @keyframes slideDown {
@@ -379,9 +383,9 @@
         @media (max-width: 768px) {
             body { padding: 1.25rem; }
             .event-header {
-                aspect-ratio: auto;
-                padding: 2.5rem 1.5rem;
+                padding: 1.75rem 1.5rem 1.5rem;
                 border-radius: 14px 14px 0 0;
+                min-height: 140px;
             }
             h1 { font-size: 2rem; }
             .form-container {
@@ -400,10 +404,11 @@
                 margin-bottom: 1.25rem;
             }
             .event-header {
-                padding: 2rem 1rem;
+                padding: 1.5rem 1rem 1.25rem;
                 border-radius: 12px 12px 0 0;
+                min-height: 120px;
             }
-            .event-header-logo { width: 52px; height: 52px; top: 1rem; right: 1rem; }
+            .event-header-logo { width: 48px; height: 48px; top: 0.85rem; right: 0.85rem; }
             h1 { font-size: 1.75rem; }
             .event-location { font-size: 0.95rem; }
             .form-container {
@@ -582,56 +587,68 @@
 
             const formFields = generateFormFields(event.questions || []);
             const isWaitlistMode = !isClosed && !isUnlimited && spotsLeft <= 0;
+            const displayDate = typeof formatEventDisplayDate === 'function'
+                ? formatEventDisplayDate(event.date || event.dateRaw || '')
+                : (event.date || '');
+
+            const scrimHtml = hasCover
+                ? `<div style="position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(10,12,30,.45) 0%,rgba(10,12,30,.75) 60%,rgba(10,12,30,.92) 100%);pointer-events:none;"></div>`
+                : '';
+            const textColor = hasCover ? 'white' : 'var(--dark)';
+            const subColor  = hasCover ? 'rgba(255,255,255,0.85)' : '#555';
+            const dateColor = hasCover ? 'rgba(255,255,255,0.9)' : eventColor;
+            const headerBg  = hasCover
+                ? `background:${eventColor};`
+                : `background: linear-gradient(135deg, ${hexToRgba(adjustColor(eventColor, 50), 0.15)} 0%, ${hexToRgba(eventColor, 0.08)} 100%); border-bottom: 4px solid ${eventColor};`;
+
+            const headerContent = `
+                ${coverImg}
+                ${scrimHtml}
+                <img src="${escapeHtmlAttr(logoUrl)}" alt="Логотип мероприятия" class="event-header-logo" referrerpolicy="no-referrer" onerror="this.style.background='rgba(255,255,255,.9)';this.src='assets/logo.png'">
+                <div style="position:relative;z-index:2;">
+                    <div class="event-date" style="color:${dateColor};margin-bottom:.4rem;">${escapeHtmlText(displayDate)}</div>
+                    <h1 style="color:${textColor};text-shadow:${hasCover ? '0 2px 12px rgba(0,0,0,.5)' : 'none'};">${escapeHtmlText(event.title)}</h1>
+                    <div class="event-location" style="color:${subColor};">📍 ${escapeHtmlText(event.location)}</div>
+                </div>
+            `;
 
             if (isClosed) {
-                const headerStyle = hasCover
-                    ? `${gradientStyle} color: white;`
-                    : `background: white; color: var(--dark);`;
-
                 document.getElementById('contentArea').innerHTML = `
-                    <div class="event-header" style="${headerStyle}">
-                        ${coverImg}
-                        <img src="${escapeHtmlAttr(logoUrl)}" alt="Логотип мероприятия" class="event-header-logo" referrerpolicy="no-referrer" onerror="this.style.display='none'">
-                        <div class="event-date" style="color: ${hasCover ? 'white' : eventColor}; opacity: ${hasCover ? '0.9' : '1'};">${event.date}</div>
-                        <h1 style="color: ${hasCover ? 'white' : 'var(--dark)'};">${event.title}</h1>
-                        <div class="event-location" style="color: ${hasCover ? 'rgba(255,255,255,0.9)' : '#666'};">📍 ${event.location}</div>
-                        <div class="event-description" style="color: ${hasCover ? 'rgba(255,255,255,0.95)' : '#444'};">${event.description}</div>
-                        <div class="spots-badge" style="background: #e74c3c;">Регистрация закрыта</div>
+                    <div class="event-header" style="${headerBg}">
+                        ${headerContent}
                     </div>
                     <div class="form-container">
-                        <p style="text-align: center; color: #e74c3c; font-size: 1.2rem; font-weight: 600;">
-                            Регистрация на это мероприятие закрыта администратором.
+                        ${event.description ? `<p style="color:#555;margin-bottom:1.5rem;line-height:1.7;">${escapeHtmlText(event.description)}</p>` : ''}
+                        <p style="text-align: center; color: #e74c3c; font-size: 1.1rem; font-weight: 600; padding: 1rem; background: rgba(231,76,60,.07); border-radius: 12px;">
+                            Регистрация на это мероприятие закрыта.
                         </p>
                     </div>
                 `;
                 return;
             }
-            const headerStyle = hasCover
-                ? `${gradientStyle} color: white;`
-                : `background: white; color: var(--dark);`;
 
             document.getElementById('contentArea').innerHTML = `
-                <div class="event-header" style="${headerStyle}">
-                    ${coverImg}
-                    <img src="${escapeHtmlAttr(logoUrl)}" alt="Логотип мероприятия" class="event-header-logo" referrerpolicy="no-referrer" onerror="this.style.display='none'">
-                    <div class="event-date" style="color: ${hasCover ? 'white' : eventColor}; opacity: ${hasCover ? '0.9' : '1'};">${event.date}</div>
-                    <h1 style="color: ${hasCover ? 'white' : 'var(--dark)'};">${event.title}</h1>
-                    <div class="event-location" style="color: ${hasCover ? 'rgba(255,255,255,0.9)' : '#666'};">📍 ${event.location}</div>
-                    <div class="event-description" style="color: ${hasCover ? 'rgba(255,255,255,0.95)' : '#444'};">${event.description}</div>
-                    <div class="spots-badge" style="background: ${isWaitlistMode ? '#f39c12' : `linear-gradient(135deg, ${eventColor}, ${adjustColor(eventColor, -20)})`};">
-                        ${isWaitlistMode ? 'Мест нет — лист ожидания' : (isUnlimited ? `Уже записалось: ${currentVolunteers}` : `Осталось ${spotsLeft} из ${maxVolunteers} мест`)}
-                    </div>
+                <div class="event-header" style="${headerBg}">
+                    ${headerContent}
                 </div>
                 <div class="form-container">
+                    ${event.description ? `<p style="color:#555;margin-bottom:1.75rem;line-height:1.7;font-size:1rem;">${escapeHtmlText(event.description)}</p>` : ''}
+
+                    <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.75rem;flex-wrap:wrap;">
+                        <div class="spots-badge" style="background: ${isWaitlistMode ? 'linear-gradient(135deg,#e67e22,#d35400)' : `linear-gradient(135deg, ${eventColor}, ${adjustColor(eventColor, -20)})`};">
+                            ${isWaitlistMode ? '📋 Мест нет — лист ожидания' : (isUnlimited ? `Уже записалось: ${currentVolunteers}` : `Осталось ${spotsLeft} из ${maxVolunteers} мест`)}
+                        </div>
+                    </div>
+
                     <h2 class="form-title">${isWaitlistMode ? 'Лист ожидания' : 'Регистрация на мероприятие'}</h2>
-                    ${isWaitlistMode ? '<p style="text-align:center;color:#666;margin-bottom:1.25rem;">Все места заняты. Оставьте заявку — если освободится место, мы свяжемся с вами.</p>' : ''}
+                    ${isWaitlistMode ? '<p style="color:#666;margin-bottom:1.25rem;">Все места заняты. Оставьте заявку — если освободится место, мы свяжемся с вами.</p>' : ''}
                     
                     <div id="statusMessage" class="message"></div>
 
                     <form id="registrationForm" data-waitlist="${isWaitlistMode ? 'true' : 'false'}">
                         ${formFields}
 
-                        <button type="submit" class="submit-btn" id="submitBtn" style="background: linear-gradient(135deg, ${isWaitlistMode ? '#f39c12' : eventColor}, ${adjustColor(isWaitlistMode ? '#e67e22' : eventColor, -20)});">
+                        <button type="submit" class="submit-btn" id="submitBtn" style="background: linear-gradient(135deg, ${isWaitlistMode ? '#e67e22' : eventColor}, ${adjustColor(isWaitlistMode ? '#d35400' : eventColor, -20)});">
                             ${isWaitlistMode ? 'Встать в лист ожидания' : 'Зарегистрироваться'}
                         </button>
                     </form>
