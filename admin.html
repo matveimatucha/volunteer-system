@@ -1218,6 +1218,7 @@
                     </div>
                     <div class="event-item-actions" style="flex-wrap: wrap;">
                         <button class="btn btn-success btn-small" onclick="showParticipants('${event.id}')">👥 Участники</button>
+                        <button class="btn btn-small" style="background: #16a085;" onclick="copyRegLink('${event.id}', this)" title="Скопировать ссылку на форму регистрации">🔗 Ссылка на форму</button>
                         <button class="btn btn-small" onclick="syncVolunteerCount('${event.id}')" title="Пересчитать по заявкам в базе">🔄 Счётчик</button>
                         ${event.isTemplate ? `<button class="btn btn-small" style="background: #4facfe;" onclick="createFromTemplate('${event.id}')">⚡ Создать из шаблона</button>` : ''}
                         <button class="btn btn-small" style="background: var(--secondary);" onclick="duplicateEvent('${event.id}')">⧉ Скопировать</button>
@@ -1935,6 +1936,24 @@
 
             markAsSeen(records);
             showParticipants(currentParticipantsEventId);
+        }
+
+        async function copyRegLink(eventId, btn) {
+            const base = window.location.href.replace(/\/[^/]*$/, '');
+            const url = `${base}/register.html?event=${encodeURIComponent(eventId)}`;
+            try {
+                await navigator.clipboard.writeText(url);
+            } catch {
+                const ta = document.createElement('textarea');
+                ta.value = url;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+            }
+            const orig = btn.textContent;
+            btn.textContent = '✓ Скопировано';
+            setTimeout(() => { btn.textContent = orig; }, 2000);
         }
 
         async function copyConfirmedEmails() {
