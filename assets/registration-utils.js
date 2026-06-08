@@ -266,8 +266,8 @@ function buildCalendarLinks(event) {
 function getBaseTemplateQuestions() {
     const baseId = Date.now();
     return [
-        { id: baseId,     text: 'Имя',      type: 'text', required: true,  description: 'Ваше имя', options: [] },
-        { id: baseId + 1, text: 'Фамилия',  type: 'text', required: true,  description: 'Ваша фамилия', options: [] },
+        { id: baseId,     text: 'Фамилия',  type: 'text', required: true,  description: 'Ваша фамилия', options: [] },
+        { id: baseId + 1, text: 'Имя',      type: 'text', required: true,  description: 'Ваше имя', options: [] },
         { id: baseId + 2, text: 'Отчество', type: 'text', required: false, description: 'Если есть', options: [] },
         { id: baseId + 3, text: 'Факультет', type: 'faculty', required: true, description: 'Выберите ваш факультет из списка', options: [] },
         { id: baseId + 4, text: 'Курс обучения', type: 'course', required: true, description: 'Укажите на каком курсе вы учитесь', options: [] },
