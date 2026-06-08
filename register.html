@@ -107,13 +107,10 @@
             position: absolute;
             top: 1.25rem;
             right: 1.25rem;
-            width: 58px;
-            height: 58px;
+            width: 62px;
+            height: 62px;
             object-fit: contain;
-            background: rgba(255,255,255,0.92);
-            border-radius: 12px;
-            padding: 6px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.22);
+            filter: drop-shadow(0 2px 8px rgba(0,0,0,0.30));
             z-index: 3;
         }
 
@@ -566,7 +563,7 @@
             img.style.display = 'none';
             const box = document.createElement('div');
             box.className = 'event-header-logo';
-            box.style.cssText = 'display:flex;align-items:center;justify-content:center;font-family:"Bebas Neue",sans-serif;font-size:1.05rem;color:#1B2480;letter-spacing:1px;';
+            box.style.cssText = 'display:flex;align-items:center;justify-content:center;font-family:"Bebas Neue",sans-serif;font-size:1.1rem;color:white;letter-spacing:1.5px;text-shadow:0 2px 8px rgba(0,0,0,.35);';
             box.textContent = 'ОПК';
             img.parentNode.insertBefore(box, img.nextSibling);
         }
