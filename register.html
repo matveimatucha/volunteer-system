@@ -557,6 +557,20 @@
             }
         }
 
+        function handleRegisterLogoError(img) {
+            if (!img.dataset.fallback) {
+                img.dataset.fallback = '1';
+                img.src = 'assets/logo.png';
+                return;
+            }
+            img.style.display = 'none';
+            const box = document.createElement('div');
+            box.className = 'event-header-logo';
+            box.style.cssText = 'display:flex;align-items:center;justify-content:center;font-family:"Bebas Neue",sans-serif;font-size:1.05rem;color:#1B2480;letter-spacing:1px;';
+            box.textContent = 'ОПК';
+            img.parentNode.insertBefore(box, img.nextSibling);
+        }
+
         function hexToRgba(hex, alpha) {
             const num = parseInt(hex.replace('#', ''), 16);
             const r = (num >> 16);
@@ -594,17 +608,17 @@
             const scrimHtml = hasCover
                 ? `<div style="position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(10,12,30,.45) 0%,rgba(10,12,30,.75) 60%,rgba(10,12,30,.92) 100%);pointer-events:none;"></div>`
                 : '';
-            const textColor = hasCover ? 'white' : 'var(--dark)';
-            const subColor  = hasCover ? 'rgba(255,255,255,0.85)' : '#555';
-            const dateColor = hasCover ? 'rgba(255,255,255,0.9)' : eventColor;
+            const textColor = 'white';
+            const subColor  = 'rgba(255,255,255,0.82)';
+            const dateColor = 'rgba(255,255,255,0.75)';
             const headerBg  = hasCover
                 ? `background:${eventColor};`
-                : `background: linear-gradient(135deg, ${hexToRgba(adjustColor(eventColor, 50), 0.15)} 0%, ${hexToRgba(eventColor, 0.08)} 100%); border-bottom: 4px solid ${eventColor};`;
+                : `background: linear-gradient(150deg, #1B2480 0%, #1f2ca0 55%, #1B2480 100%);`;
 
             const headerContent = `
                 ${coverImg}
                 ${scrimHtml}
-                <img src="${escapeHtmlAttr(logoUrl)}" alt="Логотип мероприятия" class="event-header-logo" referrerpolicy="no-referrer" onerror="this.style.background='rgba(255,255,255,.9)';this.src='assets/logo.png'">
+                <img src="${escapeHtmlAttr(logoUrl)}" alt="Логотип мероприятия" class="event-header-logo" referrerpolicy="no-referrer" onerror="handleRegisterLogoError(this)">
                 <div style="position:relative;z-index:2;">
                     <div class="event-date" style="color:${dateColor};margin-bottom:.4rem;">${escapeHtmlText(displayDate)}</div>
                     <h1 style="color:${textColor};text-shadow:${hasCover ? '0 2px 12px rgba(0,0,0,.5)' : 'none'};">${escapeHtmlText(event.title)}</h1>
