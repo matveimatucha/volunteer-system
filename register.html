@@ -679,18 +679,7 @@
             const chatLink = event?.chatLink?.trim() || '';
             const safeLink = chatLink.startsWith('http://') || chatLink.startsWith('https://') ? chatLink : '';
 
-            const calendar = typeof buildCalendarLinks === 'function' ? buildCalendarLinks(event) : null;
             const btnStyle = 'display:inline-block;text-decoration:none;width:auto;padding:0.9rem 1.4rem;margin-top:0;';
-            const ghostStyle = btnStyle + 'background:transparent;color:var(--primary);border:2px solid var(--primary);';
-
-            const calendarHtml = (calendar && !isWaitlist) ? `
-                <a href="${escapeHtmlAttr(calendar.googleUrl)}" target="_blank" rel="noopener noreferrer" class="submit-btn" style="${ghostStyle}">
-                    📅 В Google Календарь
-                </a>
-                <button type="button" class="submit-btn" style="${ghostStyle}" onclick="downloadIcs()">
-                    📥 Скачать .ics
-                </button>
-            ` : '';
 
             const cancelHtml = registrationId ? `
                 <p style="margin-top:1.5rem;font-size:0.9rem;opacity:0.8;">
@@ -698,24 +687,14 @@
                 </p>
             ` : '';
 
-            window._icsContent = calendar?.ics || '';
-            window._icsName = `${(event?.title || 'event').replace(/[^\wа-яё\- ]/gi, '').trim() || 'event'}.ics`;
-
             document.getElementById('contentArea').innerHTML = `
                 <div class="success-screen">
                     <h2>${isWaitlist ? '✓ Вы в листе ожидания' : '✓ Заявка принята'}</h2>
                     <p>${message}</p>
-                    ${safeLink ? `<p>Если уже готовы, можете перейти в чат мероприятия:</p>` : ''}
                     <div class="success-actions">
-                        ${safeLink ? `
-                            <a href="${safeLink}" target="_blank" rel="noopener noreferrer" class="submit-btn" style="${btnStyle}">
-                                Перейти в чат
-                            </a>
-                        ` : ''}
                         <a href="index.html" class="submit-btn" style="${btnStyle}">
                             На главную
                         </a>
-                        ${calendarHtml}
                     </div>
                     ${cancelHtml}
                 </div>
