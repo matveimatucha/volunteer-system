@@ -136,20 +136,19 @@ function extractQuestionLabels_(answersLabeled) {
 }
 
 function upsertRegistration_(sheet, data) {
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    const isEventSheet = !headers.includes('Мероприятие');
+    const isEventSheet = !sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].includes('Мероприятие');
 
+    // Расширяем шапку перед любой операцией (новой или обновлением)
+    if (isEventSheet) expandEventSheetHeaders_(sheet, data);
+
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     const existing = findRow_(sheet, data.id || data.registrationId);
-    const row = isEventSheet
-        ? buildEventRow_(headers, data)
-        : buildRow_(data);
+    const row = isEventSheet ? buildEventRow_(headers, data) : buildRow_(data);
 
     if (existing > 0) {
         sheet.getRange(existing, 1, 1, row.length).setValues([row]);
     } else {
-        // Если лист мероприятия и появились новые вопросы — расширить шапку
-        if (isEventSheet) expandEventSheetHeaders_(sheet, data);
-        sheet.appendRow(buildEventRow_(sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0], data));
+        sheet.appendRow(row);
         colorStatus_(sheet, sheet.getLastRow(), data.status);
     }
 }
