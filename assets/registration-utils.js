@@ -95,9 +95,20 @@ function collectAnswersFromForm(form, questions) {
     const formData = new FormData(form);
     const answers = {};
 
+    // Collect entries, joining multiple checkbox values (multiselect) with ", "
+    const rawEntries = {};
     for (const [key, value] of formData.entries()) {
         if (key === 'registrationMode') continue;
-        answers[key] = typeof value === 'string' ? value.trim() : value;
+        const v = typeof value === 'string' ? value.trim() : value;
+        if (rawEntries[key] !== undefined) {
+            if (!Array.isArray(rawEntries[key])) rawEntries[key] = [rawEntries[key]];
+            rawEntries[key].push(v);
+        } else {
+            rawEntries[key] = v;
+        }
+    }
+    for (const [key, val] of Object.entries(rawEntries)) {
+        answers[key] = Array.isArray(val) ? val.join(', ') : val;
     }
 
     const questionTextMap = buildQuestionTextMap(questions);

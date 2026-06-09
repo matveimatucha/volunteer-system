@@ -1396,6 +1396,7 @@
                             <option value="textarea" ${q.type === 'textarea' ? 'selected' : ''}>Длинный текст</option>
                             <option value="select" ${q.type === 'select' ? 'selected' : ''}>Выбор из списка</option>
                             <option value="radio" ${q.type === 'radio' ? 'selected' : ''}>Один вариант</option>
+                            <option value="multiselect" ${q.type === 'multiselect' ? 'selected' : ''}>Несколько вариантов</option>
                             <option value="checkbox" ${q.type === 'checkbox' ? 'selected' : ''}>Галочка</option>
                             <option value="faculty" ${q.type === 'faculty' ? 'selected' : ''}>Факультет МГУ</option>
                             <option value="course" ${q.type === 'course' ? 'selected' : ''}>Курс обучения</option>
@@ -1421,7 +1422,7 @@
                         Обязательный вопрос
                     </label>
 
-                    ${(q.type === 'select' || q.type === 'radio') ? `
+                    ${(q.type === 'select' || q.type === 'radio' || q.type === 'multiselect') ? `
                         <div class="question-options">
                             <label style="font-size: 0.85rem; margin-bottom: 0.5rem;">Варианты ответов:</label>
                             ${(q.options || []).map((opt, i) => `
@@ -1445,10 +1446,12 @@
             const question = currentQuestions.find(q => q.id === id);
             if (question) {
                 question[field] = value;
-                if (field === 'type' && (value === 'select' || value === 'radio')) {
+                if (field === 'type' && (value === 'select' || value === 'radio' || value === 'multiselect')) {
                     if (!question.options || question.options.length === 0) {
                         question.options = ['Вариант 1', 'Вариант 2'];
                     }
+                    renderQuestions();
+                } else if (field === 'type') {
                     renderQuestions();
                 }
             }
@@ -2047,17 +2050,18 @@
                     const d = doc.data();
                     const common = extractCommonFields(d.answersLabeled);
                     registrations.push({
-                        id:           doc.id,
-                        registeredAt: d.createdAt || '',
-                        eventName:    d.eventTitle || evMap[d.eventId] || d.eventId || '',
-                        name:         common.name,
-                        email:        d.contactEmail || '',
-                        phone:        d.contactPhone || '',
-                        faculty:      common.faculty,
-                        year:         common.year,
-                        status:       d.status || 'pending',
-                        cancelledAt:  d.cancelledAt || '',
-                        answers:      formatAnswersList(d.answersLabeled)
+                        id:             doc.id,
+                        registeredAt:   d.createdAt || '',
+                        eventName:      d.eventTitle || evMap[d.eventId] || d.eventId || '',
+                        name:           common.name,
+                        email:          d.contactEmail || '',
+                        phone:          d.contactPhone || '',
+                        faculty:        common.faculty,
+                        year:           common.year,
+                        status:         d.status || 'pending',
+                        cancelledAt:    d.cancelledAt || '',
+                        answers:        formatAnswersList(d.answersLabeled),
+                        answersLabeled: d.answersLabeled || []
                     });
                 });
 

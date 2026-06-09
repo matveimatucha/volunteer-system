@@ -84,17 +84,18 @@ function _postToSheets(payload) {
 function syncRegistration(data) {
     const common = extractCommonFields(data.answersLabeled);
     _postToSheets({
-        action: 'register',
-        id:           data.registrationId || '',
-        registeredAt: data.createdAt || new Date().toISOString(),
-        eventName:    data.eventName || '',
-        name:         common.name,
-        email:        data.contactEmail || '',
-        phone:        data.contactPhone || '',
-        faculty:      common.faculty,
-        year:         common.year,
-        status:       data.status || 'confirmed',
-        answers:      formatAnswersList(data.answersLabeled)
+        action:        'register',
+        id:            data.registrationId || '',
+        registeredAt:  data.createdAt || new Date().toISOString(),
+        eventName:     data.eventName || '',
+        name:          common.name,
+        email:         data.contactEmail || '',
+        phone:         data.contactPhone || '',
+        faculty:       common.faculty,
+        year:          common.year,
+        status:        data.status || 'confirmed',
+        answers:       formatAnswersList(data.answersLabeled),
+        answersLabeled: data.answersLabeled || []
     });
 }
 

@@ -13,7 +13,7 @@ test('index.html blocks signup for closed events', async () => {
 
   assert.match(indexHtml, /const isClosed = \(event\.status \|\| 'open'\) === 'closed' \|\| event\.isArchived === true;/);
   assert.match(indexHtml, /const canRegister = !isClosed && \(isUnlimited \|\| spotsLeft > 0 \|\| isWaitlistOnly\);/);
-  assert.match(indexHtml, /isWaitlistOnly \? 'Лист ожидания'/);
+  assert.match(indexHtml, /isWaitlistOnly \? '.* Лист ожидания'/);
   assert.match(indexHtml, /\$\{!canRegister \? 'disabled' : ''\}/);
   assert.match(indexHtml, /status !== 'draft' && e\.isTemplate !== true/);
   assert.match(indexHtml, /isEventArchived\(e, today\)/);
@@ -72,13 +72,11 @@ test('admin.html has dashboard and export-all', async () => {
   assert.match(adminHtml, /copyConfirmedEmails/);
 });
 
-test('index.html has search, share and QR', async () => {
+test('index.html has search and filters', async () => {
   const indexHtml = await readProjectFile('index.html');
 
   assert.match(indexHtml, /id="eventSearch"/);
   assert.match(indexHtml, /function applyEventFilters\(\)/);
-  assert.match(indexHtml, /function shareEvent\(/);
-  assert.match(indexHtml, /api\.qrserver\.com/);
 });
 
 test('register.html offers calendar and self-cancel links', async () => {

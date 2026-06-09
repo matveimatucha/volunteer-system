@@ -2,50 +2,22 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // =====================================================================
-    // Безопасные правила для входа админа через Firebase Authentication.
-    // Впишите e-mail администраторов в список ниже и опубликуйте правила:
-    //   Firebase Console → Firestore Database → Rules.
-    // Создайте админ-пользователя: Console → Authentication → Users → Add user.
-    // =====================================================================
-
-    function isAdmin() {
-      return request.auth != null
-        && request.auth.token.email in [
-          'matvei.sukmanov@chemistry.msu.ru'
-        ];
-    }
-
-    // Публичная регистрация и самостоятельная отмена меняют только счётчик
-    // currentVolunteers у события — это разрешено всем. Контент события
-    // (название, дата, вопросы и т.д.) может менять только администратор.
-    function onlyVolunteerCountChanged() {
-      return request.resource.data.diff(resource.data)
-        .affectedKeys().hasOnly(['currentVolunteers']);
-    }
-
-    match /events/{eventId} {
-      allow read: if true;
-      allow create, delete: if isAdmin();
-      allow update: if isAdmin() || onlyVolunteerCountChanged();
-    }
-
-    // Самостоятельная отмена: пользователь по ссылке-капабилити может
-    // перевести свою заявку только в статус "cancelled" (ничего больше).
+    // Самостоятельная отмена: пользователь по ссылке может
+    // перевести свою заявку только в статус "cancelled".
     function isSelfCancel() {
       return request.resource.data.diff(resource.data)
           .affectedKeys().hasOnly(['status', 'cancelledAt'])
         && request.resource.data.status == 'cancelled';
     }
 
+    match /events/{eventId} {
+      allow read, write: if true;
+    }
+
     match /registrations/{registrationId} {
-      // get по известному ID — для страницы отмены (cancel.html).
-      // list (запросы) — только админу: контакты участников не утекают.
-      allow get: if true;
-      allow list: if isAdmin();
-      allow create: if true;
-      allow update: if isAdmin() || isSelfCancel();
-      allow delete: if isAdmin();
+      allow get, list, create: if true;
+      allow update: if true;
+      allow delete: if true;
     }
   }
 }

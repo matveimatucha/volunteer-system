@@ -917,6 +917,30 @@
                             </div>
                         `;
 
+                    case 'multiselect':
+                        return `
+                            <div class="form-group">
+                                <label>${qText} ${requiredMark}</label>
+                                ${qDesc ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${qDesc}</small>` : ''}
+                                <div class="checkbox-group"
+                                     ${q.required ? 'data-multiselect-required="true"' : ''}
+                                     data-fieldname="${fieldName}">
+                                    ${(q.options || []).map((opt, i) => {
+                                        const safe = escapeHtmlAttr(opt);
+                                        return `
+                                        <div class="checkbox-item">
+                                            <input type="checkbox"
+                                                   id="${fieldName}_${i}"
+                                                   name="${fieldName}"
+                                                   value="${safe}">
+                                            <label for="${fieldName}_${i}">${escapeHtmlText(opt)}</label>
+                                        </div>`;
+                                    }).join('')}
+                                </div>
+                                <div class="field-error">Выберите хотя бы один вариант</div>
+                            </div>
+                        `;
+
                     case 'checkbox':
                         return `
                             <div class="form-group">
@@ -1179,6 +1203,17 @@
             // Скрываем все предыдущие ошибки
             form.querySelectorAll('.field-error').forEach(error => {
                 error.classList.remove('show');
+            });
+
+            // Multiselect — обязательно выбрать хотя бы один вариант
+            form.querySelectorAll('.checkbox-group[data-multiselect-required]').forEach(group => {
+                const checkboxes = group.querySelectorAll('input[type="checkbox"]');
+                const isChecked = Array.from(checkboxes).some(cb => cb.checked);
+                if (!isChecked) {
+                    isValid = false;
+                    const errorDiv = group.closest('.form-group').querySelector('.field-error');
+                    if (errorDiv) errorDiv.classList.add('show');
+                }
             });
             
             // Проверяем все обязательные поля
