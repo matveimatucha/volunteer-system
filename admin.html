@@ -902,14 +902,14 @@
                            placeholder="Вставьте URL вашего Google Apps Script…"
                            oninput="onSheetsUrlChange(this.value)">
                     <button class="btn btn-small" onclick="testSheetsConnection()" title="Проверить соединение">🔗 Тест</button>
-                    <button class="btn btn-primary btn-small" id="sheetsSyncBtn" onclick="bulkSyncToSheets()">⬆ Синхронизировать всё</button>
+                    <button class="btn btn-primary btn-small" id="sheetsSyncBtn" onclick="bulkSyncToSheets()">⬆ Синхр. все мероприятия</button>
                 </div>
                 <p class="sheets-hint">
                     📋 <strong>Как настроить:</strong>
                     откройте <a href="assets/google-apps-script.js" target="_blank">assets/google-apps-script.js</a>,
                     скопируйте код в <strong>Расширения → Apps Script</strong> вашей таблицы,
                     затем <em>Развернуть → Новое развёртывание → Веб-приложение → Все</em>, вставьте URL выше.
-                    После этого каждая новая регистрация будет автоматически попадать в таблицу.
+                    Каждое мероприятие попадает на <strong>отдельный лист</strong> (вкладку) с названием мероприятия.
                 </p>
             </div>
 
@@ -969,6 +969,7 @@
             <div class="participants-modal-header">
                 <h2 id="participantsTitle">Участники</h2>
                 <div style="display: flex; gap: 0.8rem; flex-wrap: wrap;">
+                    <button class="btn btn-small" style="background: #27ae60;" onclick="syncCurrentEventToSheets()" title="Отправить участников этого мероприятия в отдельный лист Google Таблицы">📊 В таблицу</button>
                     <button class="btn btn-success btn-small" onclick="exportCSV('new')">⬇ Скачать новые CSV</button>
                     <button class="btn btn-small" style="background: var(--secondary);" onclick="exportCSV('all')">⬇ Скачать все CSV</button>
                     <button class="btn btn-small" style="background: #16a085;" onclick="copyConfirmedEmails()" title="Скопировать e-mail записанных для рассылки-напоминания">📧 Копировать e-mail</button>
@@ -1188,7 +1189,7 @@
                     container.innerHTML = '';
                     eventsData = {};
                     snap.docs.forEach(docSnap => {
-                        const event = docSnap.data();
+                        const event = { ...docSnap.data(), id: docSnap.data().id || docSnap.id };
                         eventsData[event.id] = event;
                         container.appendChild(createEventItem(event));
                     });
@@ -1697,6 +1698,26 @@
             }
         }
 
+        function getParticipantName(record) {
+            const common = extractCommonFields(record.answersLabeled);
+            return common.name || record.contactEmail || '—';
+        }
+
+        function getAnswerValue(record, key, questionTextMap) {
+            if (record.answers?.[key] != null && record.answers[key] !== '') {
+                return record.answers[key];
+            }
+            const label = questionTextMap[key];
+            const labeled = record.answersLabeled;
+            if (Array.isArray(labeled)) {
+                const item = labeled.find(i => i.question === label);
+                if (item && item.answer != null) return item.answer;
+            } else if (labeled && typeof labeled === 'object' && label) {
+                return labeled[label] || '';
+            }
+            return '';
+        }
+
         function renderParticipantsTable() {
             const event = eventsData[currentParticipantsEventId];
             const container = document.getElementById('participantsContent');
@@ -1726,7 +1747,7 @@
             const thead = keys.map(k => `<th>${escapeHtmlText(questionTextMap[k] || k)}</th>`).join('');
             const tbody = records.map(r => {
                 const cells = keys.map(k => {
-                    const val = r.answers?.[k] ?? r.answersLabeled?.[questionTextMap[k]] ?? '';
+                    const val = getAnswerValue(r, k, questionTextMap);
                     return `<td>${escapeHtmlText(val || '—')}</td>`;
                 }).join('');
                 const isNew = !seenIds.has(r.registrationId);
@@ -1737,8 +1758,11 @@
                     ${isWait ? `<button type="button" class="btn btn-success btn-small" onclick="promoteFromWaitlist('${rid}')">Принять</button>` : ''}
                 `;
                 return `<tr>
-                    <td>${escapeHtmlText(r.timestamp || '—')}${isNew ? ' <span style="color:#2ecc71;font-weight:700;">· NEW</span>' : ''}</td>
+                    <td>${escapeHtmlText(r.createdAt || r.timestamp || '—')}${isNew ? ' <span style="color:#2ecc71;font-weight:700;">· NEW</span>' : ''}</td>
                     <td>${escapeHtmlText(getStatusLabel(r))}</td>
+                    <td>${escapeHtmlText(getParticipantName(r))}</td>
+                    <td>${escapeHtmlText(r.contactEmail || '—')}</td>
+                    <td>${escapeHtmlText(r.contactPhone || '—')}</td>
                     <td style="white-space:nowrap;">${actions}</td>
                     ${cells}
                 </tr>`;
@@ -1747,7 +1771,7 @@
             container.innerHTML = `
                 <div class="participants-table-wrap">
                     <table class="participants-table">
-                        <thead><tr><th>Время</th><th>Статус</th><th></th>${thead}</tr></thead>
+                        <thead><tr><th>Дата</th><th>Статус</th><th>Имя</th><th>Email</th><th>Телефон</th><th></th>${thead}</tr></thead>
                         <tbody>${tbody}</tbody>
                     </table>
                 </div>
@@ -1782,11 +1806,66 @@
                     };
                 });
                 currentParticipantsData.sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
-                renderParticipantsTable();
+                try {
+                    renderParticipantsTable();
+                } catch (renderError) {
+                    console.error('Ошибка отображения участников:', renderError);
+                    document.getElementById('participantsContent').innerHTML =
+                        '<p class="empty-participants" style="color: var(--danger);">Ошибка отображения списка</p>';
+                }
             } catch (error) {
                 console.error('Ошибка загрузки участников:', error);
                 document.getElementById('participantsContent').innerHTML =
-                    '<p class="empty-participants" style="color: var(--danger);">Ошибка загрузки</p>';
+                    '<p class="empty-participants" style="color: var(--danger);">Ошибка загрузки: ' + escapeHtmlText(error.message || 'неизвестная ошибка') + '</p>';
+            }
+        }
+
+        function buildSheetsRegistrationRow(docId, data, eventTitle) {
+            const common = extractCommonFields(data.answersLabeled);
+            return {
+                id:             docId,
+                registeredAt:   data.createdAt || '',
+                eventName:      data.eventTitle || eventTitle || data.eventId || '',
+                name:           common.name,
+                email:          data.contactEmail || '',
+                phone:          data.contactPhone || '',
+                faculty:        common.faculty,
+                year:           common.year,
+                status:         data.status || 'pending',
+                cancelledAt:    data.cancelledAt || '',
+                answers:        formatAnswersList(data.answersLabeled),
+                answersLabeled: data.answersLabeled || []
+            };
+        }
+
+        async function syncCurrentEventToSheets() {
+            const url = getSheetsUrl();
+            if (!url) {
+                showMessage('error', 'Сначала укажите URL Google Apps Script в блоке «Google Таблицы»');
+                return;
+            }
+            if (!currentParticipantsEventId || !currentParticipantsData.length) {
+                showMessage('error', 'Нет участников для синхронизации');
+                return;
+            }
+
+            const event = eventsData[currentParticipantsEventId];
+            const eventTitle = event?.title || currentParticipantsData[0]?.eventTitle || 'Мероприятие';
+            const registrations = currentParticipantsData.map(r =>
+                buildSheetsRegistrationRow(r.registrationId, r, eventTitle)
+            );
+
+            try {
+                await fetch(url, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({ action: 'sync_event', eventName: eventTitle, registrations })
+                });
+                showMessage('success', `✓ Участники отправлены в лист «${eventTitle}»`);
+            } catch (error) {
+                console.error('Sheets sync error:', error);
+                showMessage('error', 'Не удалось отправить в Google Таблицу');
             }
         }
 
@@ -2050,21 +2129,7 @@
                 const registrations = [];
                 regSnap.forEach(doc => {
                     const d = doc.data();
-                    const common = extractCommonFields(d.answersLabeled);
-                    registrations.push({
-                        id:             doc.id,
-                        registeredAt:   d.createdAt || '',
-                        eventName:      d.eventTitle || evMap[d.eventId] || d.eventId || '',
-                        name:           common.name,
-                        email:          d.contactEmail || '',
-                        phone:          d.contactPhone || '',
-                        faculty:        common.faculty,
-                        year:           common.year,
-                        status:         d.status || 'pending',
-                        cancelledAt:    d.cancelledAt || '',
-                        answers:        formatAnswersList(d.answersLabeled),
-                        answersLabeled: d.answersLabeled || []
-                    });
+                    registrations.push(buildSheetsRegistrationRow(doc.id, d, evMap[d.eventId]));
                 });
 
                 btn.textContent = '⏳ Отправляю…';

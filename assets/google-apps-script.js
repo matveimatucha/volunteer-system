@@ -13,8 +13,9 @@
 // 7. Вставьте URL в поле «Google Sheets» в админ-панели сайта
 // ================================================================
 
-// Лист «Все регистрации» — общий сводный лист
+// Лист «Все регистрации» — общий сводный лист (можно отключить)
 const MASTER_SHEET_NAME = 'Все регистрации';
+const SYNC_MASTER_SHEET = false;
 
 const HEADERS = [
     'ID регистрации',
@@ -41,8 +42,10 @@ function doPost(e) {
             : null;
 
         if (data.action === 'register') {
-            const masterSheet = getOrCreateSheet_(MASTER_SHEET_NAME);
-            upsertRegistration_(masterSheet, data);
+            if (SYNC_MASTER_SHEET) {
+                const masterSheet = getOrCreateSheet_(MASTER_SHEET_NAME);
+                upsertRegistration_(masterSheet, data);
+            }
 
             if (eventSheetName) {
                 const eventSheet = getOrCreateEventSheet_(eventSheetName, data);
@@ -52,6 +55,8 @@ function doPost(e) {
             updateStatusAllSheets_(data.registrationId, 'отменена', data.cancelledAt);
         } else if (data.action === 'bulk_sync') {
             bulkSyncAll_(data.registrations);
+        } else if (data.action === 'sync_event') {
+            syncEventOnly_(data.registrations, data.eventName);
         }
 
         return ok_();
@@ -199,21 +204,48 @@ function updateStatusAllSheets_(id, statusText, cancelledAt) {
     });
 }
 
-// Полная синхронизация: общий лист + отдельный лист на каждое мероприятие
+// Полная синхронизация: отдельный лист на каждое мероприятие
 function bulkSyncAll_(registrations) {
     if (!registrations || !registrations.length) return;
 
-    // 1. Пишем всё в общий сводный лист
-    const masterSheet = getOrCreateSheet_(MASTER_SHEET_NAME);
-    const lastRow = masterSheet.getLastRow();
-    if (lastRow > 1) {
-        masterSheet.getRange(2, 1, lastRow - 1, masterSheet.getLastColumn()).clearContent();
+    if (SYNC_MASTER_SHEET) {
+        const masterSheet = getOrCreateSheet_(MASTER_SHEET_NAME);
+        const lastRow = masterSheet.getLastRow();
+        if (lastRow > 1) {
+            masterSheet.getRange(2, 1, lastRow - 1, masterSheet.getLastColumn()).clearContent();
+        }
+        const masterRows = registrations.map(r => buildRow_(r));
+        masterSheet.getRange(2, 1, masterRows.length, HEADERS.length).setValues(masterRows);
+        registrations.forEach((r, i) => colorStatus_(masterSheet, i + 2, r.status));
     }
-    const masterRows = registrations.map(r => buildRow_(r));
-    masterSheet.getRange(2, 1, masterRows.length, HEADERS.length).setValues(masterRows);
-    registrations.forEach((r, i) => colorStatus_(masterSheet, i + 2, r.status));
 
-    // 2. Группируем по мероприятию и пишем на отдельные листы
+    writeEventSheets_(registrations);
+}
+
+// Синхронизация одного мероприятия в свой лист
+function syncEventOnly_(registrations, eventName) {
+    if (!registrations || !registrations.length) return;
+    const sheetName = sanitizeSheetName_(eventName || registrations[0].eventName || registrations[0].eventTitle || '');
+    if (!sheetName) return;
+
+    const allQuestions = collectAllQuestions_(registrations);
+    const fullHeaders = ['ID регистрации', 'Дата регистрации', 'Статус', 'Email', 'Телефон']
+        .concat(allQuestions);
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const existing = ss.getSheetByName(sheetName);
+    if (existing) ss.deleteSheet(existing);
+    const eventSheet = ss.insertSheet(sheetName);
+    applyHeader_(eventSheet, fullHeaders);
+
+    const rows = registrations.map(r => buildEventRow_(fullHeaders, r));
+    if (rows.length > 0) {
+        eventSheet.getRange(2, 1, rows.length, fullHeaders.length).setValues(rows);
+        registrations.forEach((r, i) => colorStatus_(eventSheet, i + 2, r.status));
+    }
+}
+
+function writeEventSheets_(registrations) {
     const byEvent = {};
     registrations.forEach(r => {
         const name = sanitizeSheetName_(r.eventName || r.eventTitle || '');

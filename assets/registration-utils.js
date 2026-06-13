@@ -15,6 +15,10 @@ function escapeHtmlText(value) {
         .replace(/"/g, '&quot;');
 }
 
+function escapeHtmlAttr(value) {
+    return escapeHtmlText(value).replace(/'/g, '&#39;');
+}
+
 function buildQuestionTextMap(questions) {
     const map = {
         name: 'Имя',
