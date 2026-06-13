@@ -392,8 +392,9 @@ function createApp({ admin, db, log = console }) {
         const eventTitleById = {};
         evSnap.forEach(doc => { eventTitleById[doc.id] = doc.data().title || doc.id; });
 
-        const registrations = regSnap.docs.map(doc =>
-            buildSheetsBulkRow(doc.id, doc.data(), eventTitleById));
+        const registrations = regSnap.docs
+            .map(doc => buildSheetsBulkRow(doc.id, doc.data(), eventTitleById))
+            .sort((a, b) => (Number(a.createdAtMs) || 0) - (Number(b.createdAtMs) || 0));
 
         const response = await fetch(url, {
             method: 'POST',

@@ -123,6 +123,7 @@ function buildSheetsRegisterPayload(registration) {
         action:         'register',
         id:             registration.registrationId || '',
         registeredAt:   registration.createdAt || new Date().toISOString(),
+        createdAtMs:    Number(registration.createdAtMs) || Date.now(),
         eventName:      registration.eventTitle || '',
         name:           common.name,
         email:          registration.contactEmail || '',
@@ -141,6 +142,7 @@ function buildSheetsBulkRow(id, registration, eventTitleById) {
     return {
         id,
         registeredAt:   registration.createdAt || '',
+        createdAtMs:    Number(registration.createdAtMs) || 0,
         eventName:      registration.eventTitle || eventTitleById[registration.eventId] || registration.eventId || '',
         name:           common.name,
         email:          registration.contactEmail || '',

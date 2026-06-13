@@ -177,7 +177,7 @@ function buildEventRow_(headers, data) {
     const answers = normalizeAnswers_(data.answersLabeled);
     return headers.map(h => {
         if (h === 'ID регистрации')   return data.id || data.registrationId || '';
-        if (h === 'Дата регистрации') return data.registeredAt ? fmtDate_(data.registeredAt) : '';
+        if (h === 'Дата регистрации') return registrationDateValue_(data);
         if (h === 'Статус')           return statusLabel_(data.status);
         if (h === 'Email')            return data.email || data.contactEmail || '';
         if (h === 'Телефон')          return data.phone || data.contactPhone || '';
@@ -214,7 +214,7 @@ function bulkSyncAll_(registrations) {
         if (lastRow > 1) {
             masterSheet.getRange(2, 1, lastRow - 1, masterSheet.getLastColumn()).clearContent();
         }
-        const masterRows = registrations.map(r => buildRow_(r));
+        const masterRows = sortByRegistrationTime_(registrations).map(r => buildRow_(r));
         masterSheet.getRange(2, 1, masterRows.length, HEADERS.length).setValues(masterRows);
         registrations.forEach((r, i) => colorStatus_(masterSheet, i + 2, r.status));
     }
@@ -222,13 +222,14 @@ function bulkSyncAll_(registrations) {
     writeEventSheets_(registrations);
 }
 
-// Синхронизация одного мероприятия в свой лист
+// Синхронизация одного мероприятия в свой лист (сверху — кто раньше зарегистрировался)
 function syncEventOnly_(registrations, eventName) {
     if (!registrations || !registrations.length) return;
     const sheetName = sanitizeSheetName_(eventName || registrations[0].eventName || registrations[0].eventTitle || '');
     if (!sheetName) return;
 
-    const allQuestions = collectAllQuestions_(registrations);
+    const sorted = sortByRegistrationTime_(registrations);
+    const allQuestions = collectAllQuestions_(sorted);
     const fullHeaders = ['ID регистрации', 'Дата регистрации', 'Статус', 'Email', 'Телефон']
         .concat(allQuestions);
 
@@ -238,10 +239,11 @@ function syncEventOnly_(registrations, eventName) {
     const eventSheet = ss.insertSheet(sheetName);
     applyHeader_(eventSheet, fullHeaders);
 
-    const rows = registrations.map(r => buildEventRow_(fullHeaders, r));
+    const rows = sorted.map(r => buildEventRow_(fullHeaders, r));
     if (rows.length > 0) {
         eventSheet.getRange(2, 1, rows.length, fullHeaders.length).setValues(rows);
-        registrations.forEach((r, i) => colorStatus_(eventSheet, i + 2, r.status));
+        formatDateColumn_(eventSheet, 2, rows.length);
+        sorted.forEach((r, i) => colorStatus_(eventSheet, i + 2, r.status));
     }
 }
 
@@ -255,23 +257,22 @@ function writeEventSheets_(registrations) {
     });
 
     Object.entries(byEvent).forEach(([sheetName, regs]) => {
-        // Собираем ВСЕ уникальные вопросы по всем записям мероприятия
-        const allQuestions = collectAllQuestions_(regs);
+        const sorted = sortByRegistrationTime_(regs);
+        const allQuestions = collectAllQuestions_(sorted);
         const fullHeaders = ['ID регистрации', 'Дата регистрации', 'Статус', 'Email', 'Телефон']
             .concat(allQuestions);
 
-        // Пересоздаём лист с полной шапкой (удаляем старый если есть)
         const ss = SpreadsheetApp.getActiveSpreadsheet();
         const existing = ss.getSheetByName(sheetName);
         if (existing) ss.deleteSheet(existing);
         const eventSheet = ss.insertSheet(sheetName);
         applyHeader_(eventSheet, fullHeaders);
 
-        // Пишем все строки
-        const rows = regs.map(r => buildEventRow_(fullHeaders, r));
+        const rows = sorted.map(r => buildEventRow_(fullHeaders, r));
         if (rows.length > 0) {
             eventSheet.getRange(2, 1, rows.length, fullHeaders.length).setValues(rows);
-            regs.forEach((r, i) => colorStatus_(eventSheet, i + 2, r.status));
+            formatDateColumn_(eventSheet, 2, rows.length);
+            sorted.forEach((r, i) => colorStatus_(eventSheet, i + 2, r.status));
         }
     });
 }
@@ -296,7 +297,7 @@ function collectAllQuestions_(registrations) {
 function buildRow_(d) {
     return [
         d.id || d.registrationId || '',
-        d.registeredAt ? fmtDate_(d.registeredAt) : '',
+        registrationDateValue_(d),
         d.eventName || d.eventTitle || '',
         d.name || '',
         d.email || d.contactEmail || '',
@@ -357,6 +358,37 @@ function fmtDate_(iso) {
     } catch (_) {
         return iso || '';
     }
+}
+
+/** Дата для ячейки: объект Date (для сортировки в Sheets) или пустая строка. */
+function registrationDateValue_(data) {
+    const raw = data.registeredAt || data.createdAt || '';
+    if (!raw) return '';
+    const ms = Number(data.createdAtMs);
+    const d = !isNaN(ms) && ms > 0 ? new Date(ms) : new Date(raw);
+    return isNaN(d.getTime()) ? String(raw) : d;
+}
+
+/** Сортировка: кто раньше зарегистрировался — выше в таблице. */
+function sortByRegistrationTime_(registrations) {
+    return registrations.slice().sort((a, b) => {
+        const ams = registrationTimeMs_(a);
+        const bms = registrationTimeMs_(b);
+        return ams - bms;
+    });
+}
+
+function registrationTimeMs_(data) {
+    const ms = Number(data.createdAtMs);
+    if (!isNaN(ms) && ms > 0) return ms;
+    const raw = data.registeredAt || data.createdAt || '';
+    const parsed = Date.parse(raw);
+    return isNaN(parsed) ? 0 : parsed;
+}
+
+function formatDateColumn_(sheet, colIndex, rowCount) {
+    if (rowCount < 1) return;
+    sheet.getRange(2, colIndex, rowCount, 1).setNumberFormat('dd.mm.yyyy hh:mm');
 }
 
 // Убирает символы, недопустимые в именах листов Google Sheets

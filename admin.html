@@ -1835,6 +1835,7 @@
             return {
                 id:             docId,
                 registeredAt:   data.createdAt || '',
+                createdAtMs:    Number(data.createdAtMs) || 0,
                 eventName:      data.eventTitle || eventTitle || data.eventId || '',
                 name:           common.name,
                 email:          data.contactEmail || '',
@@ -1846,6 +1847,14 @@
                 answers:        formatAnswersList(data.answersLabeled),
                 answersLabeled: data.answersLabeled || []
             };
+        }
+
+        function sortRegistrationsByTime(list) {
+            return [...list].sort((a, b) => {
+                const ams = Number(a.createdAtMs) || Date.parse(a.createdAt || a.registeredAt || '') || 0;
+                const bms = Number(b.createdAtMs) || Date.parse(b.createdAt || b.registeredAt || '') || 0;
+                return ams - bms;
+            });
         }
 
         async function syncCurrentEventToSheets() {
@@ -1861,7 +1870,7 @@
 
             const event = eventsData[currentParticipantsEventId];
             const eventTitle = event?.title || currentParticipantsData[0]?.eventTitle || 'Мероприятие';
-            const registrations = currentParticipantsData.map(r =>
+            const registrations = sortRegistrationsByTime(currentParticipantsData).map(r =>
                 buildSheetsRegistrationRow(r.registrationId, r, eventTitle)
             );
 
@@ -2136,11 +2145,12 @@
                 const evMap = {};
                 evSnap.forEach(doc => { evMap[doc.id] = doc.data().title || doc.id; });
 
-                const registrations = [];
-                regSnap.forEach(doc => {
-                    const d = doc.data();
-                    registrations.push(buildSheetsRegistrationRow(doc.id, d, evMap[d.eventId]));
-                });
+                const registrations = sortRegistrationsByTime(
+                    regSnap.docs.map(doc => {
+                        const d = doc.data();
+                        return buildSheetsRegistrationRow(doc.id, d, evMap[d.eventId]);
+                    })
+                );
 
                 btn.textContent = '⏳ Отправляю…';
                 setSheetsStatus(true, '⏳ Отправляю ' + registrations.length + ' записей…');

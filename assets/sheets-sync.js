@@ -87,6 +87,7 @@ function syncRegistration(data) {
         action:        'register',
         id:            data.registrationId || '',
         registeredAt:  data.createdAt || new Date().toISOString(),
+        createdAtMs:   Number(data.createdAtMs) || Date.now(),
         eventName:     data.eventName || '',
         name:          common.name,
         email:         data.contactEmail || '',

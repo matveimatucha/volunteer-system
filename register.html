@@ -1052,6 +1052,7 @@
 
                 const eventRef = db.collection('events').doc(eventId);
                 const registrationRef = db.collection('registrations').doc();
+                const registeredAtMs = Date.now();
                 let latestEvent = null;
 
                 await db.runTransaction(async (transaction) => {
@@ -1084,8 +1085,8 @@
                         status: savingAsWaitlist ? REGISTRATION_STATUS.WAITLIST : REGISTRATION_STATUS.CONFIRMED,
                         contactEmail: contactEmail || '',
                         contactPhone: contactPhone || '',
-                        createdAt: new Date().toISOString(),
-                        createdAtMs: Date.now(),
+                        createdAt: new Date(registeredAtMs).toISOString(),
+                        createdAtMs: registeredAtMs,
                         timestamp: new Date().toLocaleString('ru-RU'),
                         answers: answers,
                         answersLabeled: answersLabeled
@@ -1150,7 +1151,8 @@
                     status:         isWaitlist ? REGISTRATION_STATUS.WAITLIST : REGISTRATION_STATUS.CONFIRMED,
                     contactEmail:   contactEmail || '',
                     contactPhone:   contactPhone || '',
-                    createdAt:      new Date().toISOString(),
+                    createdAt:      new Date(registeredAtMs).toISOString(),
+                    createdAtMs:    registeredAtMs,
                     answersLabeled: answersLabeled
                 });
 
