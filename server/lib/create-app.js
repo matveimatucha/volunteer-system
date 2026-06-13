@@ -12,7 +12,13 @@ const {
     buildSheetsBulkRow
 } = require('./registration-helpers');
 const { getSheetsUrl, postToSheets, scheduleSheetsSync } = require('./sheets-sync');
-const { scheduleRegistrationTelegram, getBotToken, getRecipientChatIds } = require('./telegram-notify');
+const {
+    scheduleRegistrationTelegram,
+    getBotToken,
+    getWebhookSecret,
+    getRecipientChatIds,
+    handleTelegramUpdate
+} = require('./telegram-notify');
 
 class ApiError extends Error {
     constructor(httpStatus, code) {
@@ -206,6 +212,20 @@ function createApp({ admin, db, log = console }) {
             enabled: data.telegramEnabled !== false,
             recipientCount: chatIds.length
         });
+    }));
+
+    router.post('/telegram/webhook', asyncHandler(async (req, res) => {
+        const secret = getWebhookSecret();
+        if (secret && req.headers['x-telegram-bot-api-secret-token'] !== secret) {
+            throw new ApiError(403, 'FORBIDDEN');
+        }
+        const update = req.body;
+        if (update) {
+            handleTelegramUpdate(update, log).catch((err) => {
+                log.error('[telegram] webhook handler error', err.message);
+            });
+        }
+        res.json({ ok: true });
     }));
 
     router.get('/registrations/:id', asyncHandler(async (req, res) => {

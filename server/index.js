@@ -12,6 +12,7 @@ const express = require('express');
 const { initFirebase } = require('./lib/firebase');
 const { createApp } = require('./lib/create-app');
 const { startWatchers } = require('./lib/registration-watcher');
+const { ensureTelegramWebhook } = require('./lib/telegram-notify');
 
 const PORT = Number(process.env.PORT) || 3000;
 const STATIC_ROOT = path.resolve(
@@ -86,4 +87,9 @@ rootApp.listen(PORT, () => {
         console.warn('WARN: GOOGLE_APPLICATION_CREDENTIALS не задан — Firestore/Auth могут не работать');
     }
     startWatchers(db, console);
+    if (process.env.STAGING !== 'true') {
+        ensureTelegramWebhook(console).catch((err) => {
+            console.error('[telegram] webhook setup failed', err.message);
+        });
+    }
 });

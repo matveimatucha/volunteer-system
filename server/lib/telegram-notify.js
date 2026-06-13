@@ -134,6 +134,69 @@ function scheduleRegistrationTelegram(db, regId, registration, log = console) {
     });
 }
 
+function getWebhookSecret() {
+    return (process.env.TELEGRAM_WEBHOOK_SECRET || '').trim();
+}
+
+function getPublicSiteUrl() {
+    return (process.env.PUBLIC_SITE_URL || 'https://volonter-msu.ru').replace(/\/$/, '');
+}
+
+async function handleTelegramUpdate(update, log = console) {
+    const token = getBotToken();
+    if (!token || !update) return;
+
+    const message = update.message || update.edited_message;
+    if (!message || !message.chat) return;
+
+    const text = String(message.text || '').trim().toLowerCase();
+    const chatId = message.chat.id;
+    if (!text.startsWith('/start') && text !== '/id') return;
+
+    const reply = [
+        '✅ Бот подключён к системе регистрации Профкома МГУ.',
+        '',
+        `Ваш chat_id: ${chatId}`,
+        '',
+        'Скопируйте это число и добавьте в админке:',
+        'volonter-msu.ru/admin.html → раздел «Telegram» → + Добавить',
+        '',
+        'После этого вы будете получать уведомления о новых заявках.'
+    ].join('\n');
+
+    await sendTelegramMessage(token, chatId, reply);
+    log.info('[telegram] ответ на /start', { chatId });
+}
+
+async function ensureTelegramWebhook(log = console) {
+    const token = getBotToken();
+    if (!token) return;
+
+    const webhookUrl = `${getPublicSiteUrl()}/api/telegram/webhook`;
+    const secret = getWebhookSecret();
+    const payload = { url: webhookUrl, allowed_updates: ['message'] };
+    if (secret) payload.secret_token = secret;
+
+    const response = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+        const body = await response.text().catch(() => '');
+        log.error('[telegram] не удалось зарегистрировать webhook', body.slice(0, 200));
+        return;
+    }
+
+    const json = await response.json();
+    if (json.ok) {
+        log.info('[telegram] webhook зарегистрирован', { url: webhookUrl });
+    } else {
+        log.error('[telegram] setWebhook error', json.description || json);
+    }
+}
+
 function startRegistrationWatcher(db, log = console) {
     const token = getBotToken();
     if (!token) {
@@ -163,9 +226,13 @@ function startRegistrationWatcher(db, log = console) {
 
 module.exports = {
     getBotToken,
+    getWebhookSecret,
     getRecipientChatIds,
     formatRegistrationMessage,
+    sendTelegramMessage,
     sendRegistrationNotification,
     scheduleRegistrationTelegram,
+    handleTelegramUpdate,
+    ensureTelegramWebhook,
     startRegistrationWatcher
 };
