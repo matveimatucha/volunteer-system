@@ -1,0 +1,19 @@
+{
+  "name": "volunteer-system-server",
+  "description": "Автономный API-сервер для VPS (без Firebase Cloud Functions / Blaze)",
+  "private": true,
+  "main": "index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "set-admin": "node scripts/set-admin.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "firebase-admin": "^12.7.0"
+  }
+}

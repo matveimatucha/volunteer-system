@@ -1,0 +1,19 @@
+{
+  "name": "volunteer-system-functions",
+  "description": "Cloud Functions API для системы регистрации волонтёров",
+  "private": true,
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "serve": "firebase emulators:start --only functions,firestore,hosting,auth",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.3.2"
+  }
+}

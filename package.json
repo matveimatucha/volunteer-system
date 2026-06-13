@@ -9,7 +9,12 @@
     "test:e2e": "playwright test",
     "deploy": "firebase deploy",
     "deploy:hosting": "firebase deploy --only hosting",
-    "deploy:rules": "firebase deploy --only firestore:rules"
+    "deploy:rules": "firebase deploy --only firestore:rules",
+    "deploy:functions": "firebase deploy --only functions",
+    "emulators": "set \"JAVA_HOME=C:\\Program Files\\Eclipse Adoptium\\jre-21.0.11.10-hotspot\"&& firebase emulators:start",
+    "server:install": "cd server && npm install",
+    "server:start": "cd server && npm start",
+    "server:dev": "cd server && npm run dev"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",

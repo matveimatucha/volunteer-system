@@ -76,25 +76,13 @@
         <p>Загрузка заявки...</p>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+    <script src="assets/api-config.js"></script>
     <script src="assets/registration-utils.js"></script>
-    <script src="assets/sheets-sync.js"></script>
     <script>
-        const firebaseConfig = {
-            apiKey:            "AIzaSyCh17f9EFqQ-fAEGXTGpuzja-vY1RpePsc",
-            authDomain:        "volunteer-system-6ce7f.firebaseapp.com",
-            projectId:         "volunteer-system-6ce7f",
-            storageBucket:     "volunteer-system-6ce7f.firebasestorage.app",
-            messagingSenderId: "273894796704",
-            appId:             "1:273894796704:web:41a8f945d72bb58201c8c5"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-
         const params = new URLSearchParams(window.location.search);
         const registrationId = params.get('reg');
         const eventId = params.get('event');
+        const cancelToken = params.get('token') || '';
         const card = document.getElementById('card');
 
         function render(html) { card.innerHTML = html; }
@@ -104,29 +92,30 @@
         }
 
         async function init() {
-            if (!registrationId || !eventId) {
+            if (!registrationId) {
                 render(`<h1>Ссылка недействительна</h1><p>Не удалось определить заявку.</p>${backHome()}`);
                 return;
             }
 
             try {
-                const regSnap = await db.collection('registrations').doc(registrationId).get();
-                if (!regSnap.exists) {
+                const res = await fetch(apiUrl(`/api/registrations/${encodeURIComponent(registrationId)}?token=${encodeURIComponent(cancelToken)}`));
+                if (res.status === 404) {
                     render(`<h1>Заявка не найдена</h1><p>Возможно, она уже была удалена.</p>${backHome()}`);
                     return;
                 }
+                if (res.status === 403) {
+                    render(`<h1>Ссылка недействительна</h1><p>Похоже, ссылка отмены повреждена или устарела. Свяжитесь с организаторами.</p>${backHome()}`);
+                    return;
+                }
+                if (!res.ok) throw new Error('HTTP ' + res.status);
 
-                const reg = regSnap.data();
+                const reg = await res.json();
                 if (reg.status === 'cancelled') {
                     render(`<h1 class="ok">Запись уже отменена</h1><p>Эта заявка больше не активна.</p>${backHome()}`);
                     return;
                 }
 
-                let eventTitle = reg.eventTitle || '';
-                try {
-                    const evSnap = await db.collection('events').doc(eventId).get();
-                    if (evSnap.exists) eventTitle = evSnap.data().title || eventTitle;
-                } catch {}
+                const eventTitle = reg.eventTitle || '';
 
                 render(`
                     <h1>Отменить запись?</h1>
@@ -151,39 +140,19 @@
             if (actions) actions.querySelectorAll('button, a').forEach(el => el.setAttribute('disabled', 'true'));
             if (msg) msg.innerHTML = '<div class="spinner"></div>';
 
-            const eventRef = db.collection('events').doc(eventId);
-            const regRef = db.collection('registrations').doc(registrationId);
-
             try {
-                await db.runTransaction(async (transaction) => {
-                    // Firestore требует выполнить все чтения до записей.
-                    const regSnap = await transaction.get(regRef);
-                    if (!regSnap.exists) throw new Error('NOT_FOUND');
-                    const reg = regSnap.data();
-                    if (reg.status === 'cancelled') return;
-
-                    const wasConfirmed = isConfirmedRegistration(reg);
-                    const evSnap = wasConfirmed ? await transaction.get(eventRef) : null;
-
-                    transaction.update(regRef, {
-                        status: 'cancelled',
-                        cancelledAt: new Date().toISOString()
-                    });
-
-                    if (wasConfirmed && evSnap && evSnap.exists) {
-                        const current = Number(evSnap.data().currentVolunteers) || 0;
-                        transaction.update(eventRef, {
-                            currentVolunteers: Math.max(current - 1, 0)
-                        });
-                    }
+                // Отмена выполняется на сервере: статус 'cancelled' + возврат места,
+                // синхронизация с Google Таблицей происходит автоматически.
+                const res = await fetch(apiUrl(`/api/registrations/${encodeURIComponent(registrationId)}/cancel`), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: cancelToken })
                 });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
 
                 localStorage.removeItem('volunteer_events');
                 localStorage.removeItem('volunteer_events_v2');
-                localStorage.removeItem(`volunteer_event_${eventId}`);
-
-                // Фоновая синхронизация статуса в Google Таблицу
-                syncCancellation(registrationId, new Date().toISOString());
+                if (eventId) localStorage.removeItem(`volunteer_event_${eventId}`);
 
                 render(`<h1 class="ok">✓ Запись отменена</h1><p>Спасибо, что предупредили! Место освободилось для других.</p>${backHome()}`);
             } catch (err) {

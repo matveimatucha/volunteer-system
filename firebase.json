@@ -6,6 +6,8 @@
       ".firebaserc",
       ".gitignore",
       "node_modules/**",
+      "functions/**",
+      "server/**",
       "tests/**",
       "package.json",
       "package-lock.json",
@@ -14,6 +16,15 @@
       "firestore.rules",
       "test-results/**",
       "playwright-report/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/api/**",
+        "function": {
+          "functionId": "api",
+          "region": "us-central1"
+        }
+      }
     ],
     "headers": [
       {
@@ -30,7 +41,25 @@
       }
     ]
   },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "*.log"
+      ]
+    }
+  ],
   "firestore": {
     "rules": "firestore.rules"
+  },
+  "emulators": {
+    "functions": { "port": 5001 },
+    "firestore": { "port": 8080 },
+    "hosting": { "port": 5000 },
+    "auth": { "port": 9099 },
+    "ui": { "enabled": true }
   }
 }

@@ -6,6 +6,10 @@ const ROOT = path.resolve(process.cwd());
 const indexUrl = pathToFileURL(path.join(ROOT, 'index.html')).href;
 const registerUrl = pathToFileURL(path.join(ROOT, 'register.html')).href;
 
+/**
+ * Страницы ходят на серверный API (/api/...), поэтому в тестах
+ * подменяем window.fetch мок-сервером с той же логикой ответов.
+ */
 async function installBrowserMocks(page, events) {
   await page.route('**/*', async (route) => {
     const url = route.request().url();
@@ -30,134 +34,95 @@ async function installBrowserMocks(page, events) {
     const deepClone = (value) => JSON.parse(JSON.stringify(value));
     const eventsStore = {};
     const registrationsStore = [];
-    let transactionCalls = 0;
+    let registerApiCalls = 0;
 
     for (const evt of seedEvents) {
       eventsStore[evt.id] = deepClone(evt);
     }
 
-    function createDocSnapshot(doc) {
-      return {
-        exists: !!doc,
-        data: () => deepClone(doc)
-      };
-    }
+    const isHidden = (ev) =>
+      (ev.status || 'open') === 'draft' || ev.isTemplate === true;
+    const isClosedForRegistration = (ev) =>
+      (ev.status || 'open') === 'closed'
+      || (ev.status || 'open') === 'draft'
+      || ev.isTemplate === true
+      || ev.isArchived === true;
 
-    function makeDocRef(collectionName, docId) {
-      return {
-        _collectionName: collectionName,
-        _docId: docId,
-        async get() {
-          const source = collectionName === 'events' ? eventsStore : null;
-          return createDocSnapshot(source ? source[docId] : null);
-        },
-        async set(data) {
-          if (collectionName === 'events') {
-            eventsStore[docId] = deepClone(data);
-          }
-          if (collectionName === 'registrations') {
-            registrationsStore.push(deepClone(data));
-          }
-        },
-        async update(patch) {
-          if (collectionName !== 'events' || !eventsStore[docId]) return;
-          for (const [key, value] of Object.entries(patch)) {
-            if (value && typeof value === 'object' && '__increment' in value) {
-              eventsStore[docId][key] = (Number(eventsStore[docId][key]) || 0) + value.__increment;
-            } else {
-              eventsStore[docId][key] = value;
-            }
-          }
-        },
-        async delete() {
-          if (collectionName === 'events') {
-            delete eventsStore[docId];
-          }
-        }
-      };
-    }
+    const jsonResponse = (status, body) =>
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { 'Content-Type': 'application/json' }
+      });
 
-    const firestoreApi = {
-      collection(name) {
-        return {
-          async get() {
-            if (name === 'events') {
-              const docs = Object.values(eventsStore).map((item) => ({
-                data: () => deepClone(item)
-              }));
-              return { empty: docs.length === 0, docs };
-            }
+    const originalFetch = window.fetch ? window.fetch.bind(window) : null;
 
-            return { empty: true, docs: [] };
-          },
-          doc(id) {
-            const actualId = id || `mock-${Date.now()}-${Math.random()}`;
-            return makeDocRef(name, actualId);
-          },
-          async add(data) {
-            if (name === 'registrations') {
-              registrationsStore.push(deepClone(data));
-            }
-          },
-          where(field, op, value) {
-            const filters = [{ field, op, value }];
-            const query = {
-              where(nextField, nextOp, nextValue) {
-                filters.push({ field: nextField, op: nextOp, value: nextValue });
-                return query;
-              },
-              limit(count) {
-                query._limit = count;
-                return query;
-              },
-              async get() {
-                if (name !== 'registrations') return { empty: true, docs: [] };
-                let items = registrationsStore.filter((item) =>
-                  filters.every((f) => f.op === '==' && item[f.field] === f.value)
-                );
-                if (query._limit != null) {
-                  items = items.slice(0, query._limit);
-                }
-                const docs = items.map((item) => ({ data: () => deepClone(item) }));
-                return { empty: docs.length === 0, docs };
-              }
-            };
-            return query;
-          }
-        };
-      },
-      async runTransaction(worker) {
-        transactionCalls += 1;
-        const transaction = {
-          async get(ref) {
-            return ref.get();
-          },
-          set(ref, data) {
-            return ref.set(data);
-          },
-          update(ref, patch) {
-            return ref.update(patch);
-          }
-        };
-        await worker(transaction);
+    window.fetch = async (input, init = {}) => {
+      const url = typeof input === 'string' ? input : input.url;
+      const method = ((init && init.method) || 'GET').toUpperCase();
+
+      if (!url.includes('/api/')) {
+        return originalFetch ? originalFetch(input, init) : jsonResponse(404, {});
       }
+
+      // GET /api/events
+      if (method === 'GET' && /\/api\/events(\?.*)?$/.test(url)) {
+        const list = Object.values(eventsStore).filter((ev) => !isHidden(ev));
+        return jsonResponse(200, { events: deepClone(list) });
+      }
+
+      // GET /api/events/:id
+      const eventMatch = url.match(/\/api\/events\/([^/?]+)(\?.*)?$/);
+      if (method === 'GET' && eventMatch) {
+        const ev = eventsStore[decodeURIComponent(eventMatch[1])];
+        if (!ev || isHidden(ev)) return jsonResponse(404, { error: 'EVENT_NOT_FOUND' });
+        return jsonResponse(200, { event: deepClone(ev) });
+      }
+
+      // POST /api/registrations
+      if (method === 'POST' && /\/api\/registrations(\?.*)?$/.test(url)) {
+        registerApiCalls += 1;
+        const payload = JSON.parse(init.body || '{}');
+        const ev = eventsStore[payload.eventId];
+        if (!ev) return jsonResponse(404, { error: 'EVENT_NOT_FOUND' });
+        if (isClosedForRegistration(ev)) {
+          return jsonResponse(409, { error: 'REGISTRATION_CLOSED' });
+        }
+
+        const max = Number(ev.maxVolunteers) ? Number(ev.maxVolunteers) : 999999;
+        const current = Number(ev.currentVolunteers) || 0;
+        const asWaitlist = payload.waitlist === true || current >= max;
+        const registrationId = `mock-reg-${registrationsStore.length + 1}`;
+
+        registrationsStore.push({
+          registrationId,
+          eventId: payload.eventId,
+          status: asWaitlist ? 'waitlist' : 'confirmed',
+          answers: payload.answers || {},
+          answersLabeled: payload.answersLabeled || []
+        });
+        if (!asWaitlist) {
+          ev.currentVolunteers = current + 1;
+        }
+
+        return jsonResponse(201, {
+          registrationId,
+          status: asWaitlist ? 'waitlist' : 'confirmed',
+          cancelToken: 'mock-token',
+          event: deepClone({ ...ev, id: payload.eventId })
+        });
+      }
+
+      return jsonResponse(404, { error: 'NOT_FOUND' });
     };
 
-    window.firebase = {
-      initializeApp: () => {},
-      firestore: () => firestoreApi
-    };
-    window.firebase.firestore.FieldValue = {
-      increment: (count) => ({ __increment: count })
-    };
     window.emailjs = {
       init: () => {},
       send: () => Promise.resolve()
     };
 
     window.__mockDebug = {
-      get transactionCalls() {
-        return transactionCalls;
+      get registerApiCalls() {
+        return registerApiCalls;
       },
       get registrations() {
         return deepClone(registrationsStore);
@@ -190,7 +155,7 @@ test('index hides registration for closed event', async ({ page }) => {
   await expect(button).toBeDisabled();
 });
 
-test('registration flow uses transaction and stores submission', async ({ page }) => {
+test('registration flow posts to API and updates counters', async ({ page }) => {
   await installBrowserMocks(page, [
     {
       id: 'open-1',
@@ -216,7 +181,8 @@ test('registration flow uses transaction and stores submission', async ({ page }
   await expect(page.locator('.success-screen')).toContainText('Заявка принята');
 
   const debug = await page.evaluate(() => window.__mockDebug);
-  expect(debug.transactionCalls).toBeGreaterThan(0);
+  expect(debug.registerApiCalls).toBe(1);
   expect(debug.registrations.length).toBe(1);
+  expect(debug.registrations[0].status).toBe('confirmed');
   expect(debug.events['open-1'].currentVolunteers).toBe(1);
 });

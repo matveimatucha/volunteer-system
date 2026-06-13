@@ -8,8 +8,7 @@
     <link rel="shortcut icon" href="assets/favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="dns-prefetch" href="https://firestore.googleapis.com">
-    <link rel="preconnect" href="https://firestore.googleapis.com">
+    <link rel="dns-prefetch" href="https://identitytoolkit.googleapis.com">
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
     <link rel="stylesheet" href="assets/opk-theme.css">
@@ -871,19 +870,23 @@
             </div>
         </header>
 
-        <!-- Вход по паролю -->
+        <!-- Вход через Firebase Authentication -->
         <div id="authSection" class="auth-section">
             <h2>Вход для администратора</h2>
             <div id="authMessage" class="message"></div>
             <form id="authForm">
                 <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="adminEmail" required placeholder="admin@example.com" autocomplete="username">
+                </div>
+                <div class="form-group">
                     <label>Пароль</label>
-                    <input type="password" id="adminPassword" required placeholder="Введите пароль администратора" autocomplete="current-password">
+                    <input type="password" id="adminPassword" required placeholder="Введите пароль" autocomplete="current-password">
                 </div>
                 <button type="submit" class="btn btn-primary">Войти</button>
             </form>
             <p style="margin-top:1rem;font-size:0.85rem;opacity:0.75;text-align:center;">
-                Пароль задаётся в файле admin.html (константа ADMIN_PASSWORD)
+                Аккаунты администраторов создаются в консоли Firebase (Authentication)
             </p>
         </div>
 
@@ -898,18 +901,15 @@
                     <span id="sheetsStatusBadge" class="sheets-status"></span>
                 </div>
                 <div class="sheets-url-row">
-                    <input type="url" id="sheetsUrlInput"
-                           placeholder="Вставьте URL вашего Google Apps Script…"
-                           oninput="onSheetsUrlChange(this.value)">
                     <button class="btn btn-small" onclick="testSheetsConnection()" title="Проверить соединение">🔗 Тест</button>
                     <button class="btn btn-primary btn-small" id="sheetsSyncBtn" onclick="bulkSyncToSheets()">⬆ Синхронизировать всё</button>
                 </div>
                 <p class="sheets-hint">
-                    📋 <strong>Как настроить:</strong>
-                    откройте <a href="assets/google-apps-script.js" target="_blank">assets/google-apps-script.js</a>,
-                    скопируйте код в <strong>Расширения → Apps Script</strong> вашей таблицы,
-                    затем <em>Развернуть → Новое развёртывание → Веб-приложение → Все</em>, вставьте URL выше.
-                    После этого каждая новая регистрация будет автоматически попадать в таблицу.
+                    📋 Регистрации и отмены попадают в таблицу автоматически — синхронизацию выполняет сервер.
+                    <strong>Как настроить:</strong> скопируйте <a href="assets/google-apps-script.js" target="_blank">assets/google-apps-script.js</a>
+                    в <strong>Расширения → Apps Script</strong> вашей таблицы, разверните как веб-приложение,
+                    а URL укажите в <code>server/.env</code> как <code>SHEETS_WEBHOOK_URL</code>
+                    (или в секрет Cloud Functions, если используете Blaze).
                 </p>
             </div>
 
@@ -1104,15 +1104,13 @@
         </div>
     </div>
 
+    <script src="assets/api-config.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth-compat.js"></script>
     <script src="assets/registration-utils.js"></script>
-    <script src="assets/sheets-sync.js"></script>
     <script>
-        // ================================
-        // ВАЖНО! ВСТАВЬТЕ ВАШ FIREBASE КОНФИГ
-        // Берётся в консоли Firebase: Project settings → Your apps → Web app
-        // ================================
+        // Firebase используется только для аутентификации администратора.
+        // Все данные читаются и пишутся через серверный API (/api/admin/...).
         const firebaseConfig = {
             apiKey:            "AIzaSyCh17f9EFqQ-fAEGXTGpuzja-vY1RpePsc",
             authDomain:        "volunteer-system-6ce7f.firebaseapp.com",
@@ -1122,10 +1120,28 @@
             appId:             "1:273894796704:web:41a8f945d72bb58201c8c5"
         };
         firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+        const auth = firebase.auth();
 
-        /** Измените пароль перед публикацией сайта */
-        const ADMIN_PASSWORD = 'Vlnt2026!msu#adm';
+        /**
+         * Запрос к серверному API с токеном администратора.
+         * Бросает Error с кодом ошибки сервера (например NO_SPOTS, FORBIDDEN).
+         */
+        async function apiFetch(path, options = {}) {
+            const user = auth.currentUser;
+            if (!user) throw new Error('UNAUTHORIZED');
+            const idToken = await user.getIdToken();
+            const res = await fetch(apiUrl(path), {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + idToken,
+                    ...(options.headers || {})
+                }
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+            return data;
+        }
 
         let isAuthenticated = false;
         let currentQuestions = [];
@@ -1165,30 +1181,57 @@
         }
 
         function logoutAdmin() {
+            auth.signOut().catch(() => {});
             hideAdminPanel();
         }
 
-        document.getElementById('authForm').addEventListener('submit', (e) => {
+        document.getElementById('authForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const email = document.getElementById('adminEmail').value.trim();
             const password = document.getElementById('adminPassword').value;
-            if (password === ADMIN_PASSWORD) {
-                showAdminPanel();
-            } else {
-                showAuthMessage('error', 'Неверный пароль!');
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+                // Панель откроет onAuthStateChanged после проверки прав
+            } catch (err) {
+                console.error(err);
+                showAuthMessage('error', 'Неверный email или пароль!');
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Открываем панель только пользователям с правами администратора (custom claim admin)
+        auth.onAuthStateChanged(async (user) => {
+            if (!user) {
+                hideAdminPanel();
+                return;
+            }
+            try {
+                const tokenResult = await user.getIdTokenResult();
+                if (tokenResult.claims.admin === true) {
+                    showAdminPanel();
+                } else {
+                    showAuthMessage('error', 'У этого аккаунта нет прав администратора');
+                    auth.signOut().catch(() => {});
+                }
+            } catch (err) {
+                console.error(err);
+                showAuthMessage('error', 'Не удалось проверить права доступа');
             }
         });
 
         // Загрузка мероприятий
         async function loadEvents() {
             try {
-                const snap = await db.collection('events').get();
+                const { events } = await apiFetch('/api/admin/events');
                 const container = document.getElementById('eventsList');
 
-                if (!snap.empty) {
+                if (events.length) {
                     container.innerHTML = '';
                     eventsData = {};
-                    snap.docs.forEach(docSnap => {
-                        const event = docSnap.data();
+                    events.forEach(event => {
                         eventsData[event.id] = event;
                         container.appendChild(createEventItem(event));
                     });
@@ -1497,7 +1540,10 @@
             };
 
             try {
-                await db.collection('events').doc(eventData.id).set(eventData);
+                await apiFetch(`/api/admin/events/${encodeURIComponent(eventData.id)}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(eventData)
+                });
 
                 // Сбрасываем кэш на главной странице
                 localStorage.removeItem('volunteer_events');
@@ -1524,7 +1570,7 @@
             }
 
             try {
-                await db.collection('events').doc(eventId).delete();
+                await apiFetch(`/api/admin/events/${encodeURIComponent(eventId)}`, { method: 'DELETE' });
 
                 // Сбрасываем кэш
                 localStorage.removeItem('volunteer_events');
@@ -1680,9 +1726,7 @@
         async function syncVolunteerCount(eventId) {
             if (!eventId) return;
             try {
-                const snap = await db.collection('registrations').where('eventId', '==', eventId).get();
-                const count = snap.docs.filter(d => isConfirmedRegistration(d.data())).length;
-                await db.collection('events').doc(eventId).update({ currentVolunteers: count });
+                const { count } = await apiFetch(`/api/admin/events/${encodeURIComponent(eventId)}/recount`, { method: 'POST' });
                 localStorage.removeItem('volunteer_events');
                 localStorage.removeItem('volunteer_events_v2');
                 localStorage.removeItem(`volunteer_event_${eventId}`);
@@ -1771,16 +1815,13 @@
             document.getElementById('participantsModal').classList.add('active');
 
             try {
-                const snap = await db.collection('registrations').where('eventId', '==', eventId).get();
-                currentParticipantsData = snap.docs.map(d => {
-                    const data = d.data();
-                    return {
-                        registrationId: data.registrationId || d.id,
-                        createdAt: data.createdAt || '',
-                        createdAtMs: Number(data.createdAtMs) || 0,
-                        ...data
-                    };
-                });
+                const { registrations } = await apiFetch(`/api/admin/registrations?eventId=${encodeURIComponent(eventId)}`);
+                currentParticipantsData = registrations.map(data => ({
+                    ...data,
+                    registrationId: data.registrationId || '',
+                    createdAt: data.createdAt || '',
+                    createdAtMs: Number(data.createdAtMs) || 0
+                }));
                 currentParticipantsData.sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
                 renderParticipantsTable();
             } catch (error) {
@@ -1795,19 +1836,8 @@
             if (!confirm('Удалить эту заявку безвозвратно?')) return;
 
             try {
-                const regRef = db.collection('registrations').doc(registrationId);
-                const regSnap = await regRef.get();
-                if (!regSnap.exists) return;
-
-                const data = regSnap.data();
-                const wasConfirmed = isConfirmedRegistration(data);
-                await regRef.delete();
-
-                if (wasConfirmed) {
-                    await db.collection('events').doc(currentParticipantsEventId).update({
-                        currentVolunteers: firebase.firestore.FieldValue.increment(-1)
-                    });
-                }
+                // Сервер сам уменьшит счётчик мест, если заявка была подтверждённой
+                await apiFetch(`/api/admin/registrations/${encodeURIComponent(registrationId)}`, { method: 'DELETE' });
 
                 localStorage.removeItem('volunteer_events');
                 localStorage.removeItem('volunteer_events_v2');
@@ -1824,25 +1854,9 @@
         async function promoteFromWaitlist(registrationId) {
             if (!registrationId || !currentParticipantsEventId) return;
             const eventId = currentParticipantsEventId;
-            const eventRef = db.collection('events').doc(eventId);
-            const regRef = db.collection('registrations').doc(registrationId);
 
             try {
-                await db.runTransaction(async (transaction) => {
-                    const eventSnap = await transaction.get(eventRef);
-                    const regSnap = await transaction.get(regRef);
-                    if (!eventSnap.exists || !regSnap.exists) throw new Error('NOT_FOUND');
-
-                    const event = eventSnap.data();
-                    const max = Number(event.maxVolunteers) ? Number(event.maxVolunteers) : 999999;
-                    const current = Number(event.currentVolunteers) || 0;
-                    if (current >= max) throw new Error('NO_SPOTS');
-
-                    transaction.update(regRef, { status: REGISTRATION_STATUS.CONFIRMED });
-                    transaction.update(eventRef, {
-                        currentVolunteers: firebase.firestore.FieldValue.increment(1)
-                    });
-                });
+                await apiFetch(`/api/admin/registrations/${encodeURIComponent(registrationId)}/promote`, { method: 'POST' });
 
                 localStorage.removeItem('volunteer_events');
                 localStorage.removeItem('volunteer_events_v2');
@@ -1991,14 +2005,7 @@
         // ================================================================
 
         function initSheetsPanel() {
-            const input = document.getElementById('sheetsUrlInput');
-            if (input) input.value = getSheetsUrl();
-        }
-
-        function onSheetsUrlChange(val) {
-            setSheetsUrl(val);
-            const badge = document.getElementById('sheetsStatusBadge');
-            if (badge) { badge.textContent = ''; badge.className = 'sheets-status'; }
+            testSheetsConnection();
         }
 
         function setSheetsStatus(ok, msg) {
@@ -2009,76 +2016,33 @@
         }
 
         async function testSheetsConnection() {
-            const url = getSheetsUrl();
-            if (!url) { setSheetsStatus(false, '⚠ Введите URL'); return; }
             setSheetsStatus(true, '⏳ Проверяю…');
             try {
-                const res = await fetch(url + '?ping=1', { mode: 'cors' });
-                const json = await res.json();
-                if (json.ok) setSheetsStatus(true, '✓ Подключено — лист «' + (json.sheet || '?') + '»');
-                else setSheetsStatus(false, '✗ Скрипт ответил неожиданно');
-            } catch (e) {
-                // Apps Script не всегда допускает CORS для GET — пробуем no-cors
-                try {
-                    await fetch(url + '?ping=1', { mode: 'no-cors' });
-                    setSheetsStatus(true, '✓ URL принят (CORS ограничен — это нормально)');
-                } catch (e2) {
-                    setSheetsStatus(false, '✗ Не удалось подключиться: ' + e2.message);
+                const status = await apiFetch('/api/admin/sheets/status');
+                if (!status.configured) {
+                    setSheetsStatus(false, '⚠ Webhook не настроен на сервере (секрет SHEETS_WEBHOOK_URL)');
+                } else if (status.ok) {
+                    setSheetsStatus(true, '✓ Подключено — лист «' + (status.sheet || '?') + '»');
+                } else {
+                    setSheetsStatus(false, '✗ Webhook настроен, но не отвечает');
                 }
+            } catch (err) {
+                console.error(err);
+                setSheetsStatus(false, '✗ Не удалось проверить: ' + err.message);
             }
         }
 
         async function bulkSyncToSheets() {
-            const url = getSheetsUrl();
-            if (!url) { setSheetsStatus(false, '⚠ Сначала введите URL'); return; }
-
             const btn = document.getElementById('sheetsSyncBtn');
             btn.disabled = true;
-            btn.textContent = '⏳ Загрузка…';
-            setSheetsStatus(true, '⏳ Получаю данные…');
+            btn.textContent = '⏳ Синхронизация…';
+            setSheetsStatus(true, '⏳ Сервер отправляет данные…');
 
             try {
-                const [evSnap, regSnap] = await Promise.all([
-                    db.collection('events').get(),
-                    db.collection('registrations').get()
-                ]);
+                const result = await apiFetch('/api/admin/sheets/bulk-sync', { method: 'POST' });
 
-                // Карта eventId → название
-                const evMap = {};
-                evSnap.forEach(doc => { evMap[doc.id] = doc.data().title || doc.id; });
-
-                const registrations = [];
-                regSnap.forEach(doc => {
-                    const d = doc.data();
-                    const common = extractCommonFields(d.answersLabeled);
-                    registrations.push({
-                        id:             doc.id,
-                        registeredAt:   d.createdAt || '',
-                        eventName:      d.eventTitle || evMap[d.eventId] || d.eventId || '',
-                        name:           common.name,
-                        email:          d.contactEmail || '',
-                        phone:          d.contactPhone || '',
-                        faculty:        common.faculty,
-                        year:           common.year,
-                        status:         d.status || 'pending',
-                        cancelledAt:    d.cancelledAt || '',
-                        answers:        formatAnswersList(d.answersLabeled),
-                        answersLabeled: d.answersLabeled || []
-                    });
-                });
-
-                btn.textContent = '⏳ Отправляю…';
-                setSheetsStatus(true, '⏳ Отправляю ' + registrations.length + ' записей…');
-
-                await fetch(url, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify({ action: 'bulk_sync', registrations })
-                });
-
-                setSheetsStatus(true, '✓ Синхронизировано ' + registrations.length + ' записей');
-                btn.textContent = '✓ Готово (' + registrations.length + ')';
+                setSheetsStatus(true, '✓ Синхронизировано ' + result.count + ' записей');
+                btn.textContent = '✓ Готово (' + result.count + ')';
                 setTimeout(() => {
                     btn.disabled = false;
                     btn.textContent = '⬆ Синхронизировать всё';
@@ -2086,7 +2050,9 @@
 
             } catch (err) {
                 console.error(err);
-                setSheetsStatus(false, '✗ Ошибка: ' + err.message);
+                setSheetsStatus(false, err.message === 'SHEETS_NOT_CONFIGURED'
+                    ? '⚠ Webhook не настроен на сервере (секрет SHEETS_WEBHOOK_URL)'
+                    : '✗ Ошибка: ' + err.message);
                 btn.disabled = false;
                 btn.textContent = '⬆ Синхронизировать всё';
             }
@@ -2096,12 +2062,10 @@
             const container = document.getElementById('dashboardStats');
             if (!container) return;
             try {
-                const [evSnap, regSnap] = await Promise.all([
-                    db.collection('events').get(),
-                    db.collection('registrations').get()
+                const [{ events }, { registrations: regs }] = await Promise.all([
+                    apiFetch('/api/admin/events'),
+                    apiFetch('/api/admin/registrations')
                 ]);
-                const events = evSnap.docs.map(d => ({ ...d.data(), id: d.data().id || d.id }));
-                const regs = regSnap.docs.map(d => ({ ...d.data(), registrationId: d.data().registrationId || d.id }));
                 window._allRegistrations = regs;
 
                 const today = new Date();
@@ -2164,8 +2128,7 @@
 
         async function exportAllCSV() {
             try {
-                const snap = await db.collection('registrations').get();
-                const regs = snap.docs.map(d => ({ ...d.data(), registrationId: d.data().registrationId || d.id }));
+                const { registrations: regs } = await apiFetch('/api/admin/registrations');
                 if (!regs.length) {
                     alert('Заявок пока нет');
                     return;

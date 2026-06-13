@@ -8,8 +8,6 @@
     <link rel="shortcut icon" href="assets/favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="dns-prefetch" href="https://firestore.googleapis.com">
-    <link rel="preconnect" href="https://firestore.googleapis.com">
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
     <link rel="stylesheet" href="assets/opk-theme.css">
@@ -857,27 +855,10 @@
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+    <script src="assets/api-config.js"></script>
     <script src="assets/event-images.js"></script>
     <script src="assets/registration-utils.js"></script>
     <script>
-        // ================================
-        // ВАЖНО! ВСТАВЬТЕ ВАШ FIREBASE КОНФИГ
-        // Берётся в консоли Firebase: Project settings → Your apps → Web app
-        // ================================
-        const firebaseConfig = {
-            apiKey:            "AIzaSyCh17f9EFqQ-fAEGXTGpuzja-vY1RpePsc",
-            authDomain:        "volunteer-system-6ce7f.firebaseapp.com",
-            projectId:         "volunteer-system-6ce7f",
-            storageBucket:     "volunteer-system-6ce7f.firebasestorage.app",
-            messagingSenderId: "273894796704",
-            appId:             "1:273894796704:web:41a8f945d72bb58201c8c5"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-
-
 
         function handleEventLogoError(img) {
             if (!img.dataset.fallback) {
@@ -1195,11 +1176,9 @@
 
         async function loadEvents(silent = false) {
             try {
-                const snap = await db.collection('events').get();
-                const events = snap.docs.map(d => ({
-                    ...d.data(),
-                    id: d.data().id || d.id
-                }));
+                const res = await fetch(apiUrl('/api/events'));
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const { events } = await res.json();
                 setCachedEvents(events);
                 displayEvents(events);
             } catch (error) {
@@ -1208,7 +1187,7 @@
                     document.getElementById('eventsContainer').innerHTML = `
                         <div class="empty-state">
                             <h2>Ошибка загрузки</h2>
-                            <p>Не удалось загрузить мероприятия. Проверьте конфиг Firebase.</p>
+                            <p>Не удалось загрузить мероприятия. Попробуйте обновить страницу.</p>
                         </div>
                     `;
                 }

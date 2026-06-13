@@ -4,3 +4,8 @@ playwright-report/
 .firebase/
 firebase-debug.log
 firebase-debug.*.log
+firestore-debug.log
+server/.env
+server/service-account.json
+server/service-account*.json
+*.pem

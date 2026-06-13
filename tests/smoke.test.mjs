@@ -20,14 +20,56 @@ test('index.html blocks signup for closed events', async () => {
   assert.match(indexHtml, /volunteer_events_v2/);
 });
 
-test('register.html uses transaction to prevent oversubscription', async () => {
+test('register.html submits registrations through the server API', async () => {
   const registerHtml = await readProjectFile('register.html');
 
-  assert.match(registerHtml, /await db\.runTransaction\(async \(transaction\) => \{/);
-  assert.match(registerHtml, /const savingAsWaitlist = isWaitlist \|\| latestCurrent >= latestMax;/);
-  assert.match(registerHtml, /if \(!savingAsWaitlist\) \{/);
-  assert.match(registerHtml, /throw new Error\('REGISTRATION_CLOSED'\);/);
-  assert.match(registerHtml, /transaction\.update\(eventRef, \{\s*currentVolunteers: firebase\.firestore\.FieldValue\.increment\(1\)/m);
+  assert.match(registerHtml, /apiUrl\('\/api\/registrations'/);
+  assert.match(registerHtml, /method: 'POST'/);
+  assert.match(registerHtml, /result\.cancelToken/);
+  assert.doesNotMatch(registerHtml, /db\.runTransaction/);
+  assert.doesNotMatch(registerHtml, /firebase-firestore-compat/);
+  assert.match(registerHtml, /assets\/api-config\.js/);
+});
+
+test('server API prevents oversubscription inside a transaction', async () => {
+  const functionsIndex = await readProjectFile('functions/index.js');
+
+  assert.match(functionsIndex, /db\.runTransaction\(async \(transaction\) => \{/);
+  assert.match(functionsIndex, /const savingAsWaitlist = wantsWaitlist \|\| current >= max;/);
+  assert.match(functionsIndex, /REGISTRATION_CLOSED/);
+  assert.match(functionsIndex, /DUPLICATE_EMAIL/);
+  assert.match(functionsIndex, /DUPLICATE_PHONE/);
+  assert.match(functionsIndex, /currentVolunteers: admin\.firestore\.FieldValue\.increment\(1\)/);
+  assert.match(functionsIndex, /cancelToken/);
+  assert.match(functionsIndex, /pickFirstWaitlistDoc/);
+  assert.match(functionsIndex, /REGISTRATION_STATUS\.WAITLIST/);
+});
+
+test('standalone VPS server exposes the same API routes', async () => {
+  const serverApp = await readProjectFile('server/lib/create-app.js');
+
+  assert.match(serverApp, /router\.get\('\/events'/);
+  assert.match(serverApp, /router\.post\('\/registrations'/);
+  assert.match(serverApp, /scheduleSheetsSync/);
+  assert.match(serverApp, /pickFirstWaitlistDoc/);
+});
+
+test('server entry serves static files and health check', async () => {
+  const serverIndex = await readProjectFile('server/index.js');
+
+  assert.match(serverIndex, /express\.static/);
+  assert.match(serverIndex, /\/health/);
+  assert.match(serverIndex, /GOOGLE_APPLICATION_CREDENTIALS/);
+});
+
+test('firestore rules deny client writes', async () => {
+  const rules = await readProjectFile('firestore.rules');
+
+  assert.match(rules, /match \/events\/\{eventId\} \{/);
+  assert.match(rules, /allow write: if false;/);
+  assert.match(rules, /match \/registrations\/\{registrationId\} \{/);
+  assert.match(rules, /allow read, write: if false;/);
+  assert.doesNotMatch(rules, /allow read, write: if true;/);
 });
 
 test('register.html resolves reply_to from real email answers', async () => {
@@ -56,12 +98,15 @@ test('admin.html template count message is consistent', async () => {
   assert.match(adminHtml, /dateRaw:/);
 });
 
-test('admin.html uses password-based login', async () => {
+test('admin.html uses Firebase Auth and the admin API', async () => {
   const adminHtml = await readProjectFile('admin.html');
 
-  assert.match(adminHtml, /const ADMIN_PASSWORD = '/);
-  assert.doesNotMatch(adminHtml, /firebase-auth-compat/);
-  assert.doesNotMatch(adminHtml, /signInWithEmailAndPassword/);
+  assert.match(adminHtml, /firebase-auth-compat/);
+  assert.match(adminHtml, /signInWithEmailAndPassword/);
+  assert.match(adminHtml, /tokenResult\.claims\.admin === true/);
+  assert.match(adminHtml, /apiFetch\('\/api\/admin\/events'\)/);
+  assert.doesNotMatch(adminHtml, /const ADMIN_PASSWORD = '/);
+  assert.doesNotMatch(adminHtml, /firebase-firestore-compat/);
 });
 
 test('admin.html has dashboard and export-all', async () => {
@@ -82,17 +127,24 @@ test('index.html has search and filters', async () => {
 test('register.html offers calendar and self-cancel links', async () => {
   const registerHtml = await readProjectFile('register.html');
 
-  assert.match(registerHtml, /buildCalendarLinks/);
   assert.match(registerHtml, /function downloadIcs\(\)/);
   assert.match(registerHtml, /buildCancelUrl/);
+});
+
+test('registration-utils still provides calendar links helper', async () => {
+  const utils = await readProjectFile('assets/registration-utils.js');
+
+  assert.match(utils, /buildCalendarLinks/);
 });
 
 test('cancel.html allows participants to cancel their registration', async () => {
   const cancelHtml = await readProjectFile('cancel.html');
 
   assert.match(cancelHtml, /async function doCancel\(\)/);
-  assert.match(cancelHtml, /status: 'cancelled'/);
-  assert.match(cancelHtml, /isConfirmedRegistration/);
+  assert.match(cancelHtml, /apiUrl\(`\/api\/registrations\/\$\{encodeURIComponent\(registrationId\)\}\/cancel`\)/);
+  assert.match(cancelHtml, /token: cancelToken/);
+  assert.doesNotMatch(cancelHtml, /db\.runTransaction/);
+  assert.match(cancelHtml, /assets\/api-config\.js/);
 });
 
 test('registration-utils exposes calendar helpers and cancelled status', async () => {
