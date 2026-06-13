@@ -96,7 +96,8 @@ function syncRegistration(data) {
         year:          common.year,
         status:        data.status || 'confirmed',
         answers:       formatAnswersList(data.answersLabeled),
-        answersLabeled: data.answersLabeled || []
+        answersLabeled: data.answersLabeled || [],
+        chatIds:       Array.isArray(data.chatIds) ? data.chatIds.map(String) : []
     });
 }
 

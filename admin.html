@@ -932,10 +932,11 @@
                 <ul id="telegramChatIdsList" style="list-style:none;padding:0;margin:0.75rem 0 0;display:flex;flex-direction:column;gap:0.4rem;"></ul>
                 <p class="sheets-hint">
                     <strong>Как настроить:</strong>
-                    1) создайте бота через <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a> и добавьте токен в <code>TELEGRAM_BOT_TOKEN</code> на сервере;
-                    2) каждый получатель пишет боту <code>/start</code> — бот пришлёт chat_id;
-                    3) узнайте chat_id через <a href="https://t.me/userinfobot" target="_blank" rel="noopener">@userinfobot</a> и добавьте выше.
-                    Можно добавить несколько получателей — вас и коллег.
+                    1) создайте бота через <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a>;
+                    2) в <a href="assets/google-apps-script.js" target="_blank">Apps Script</a> вставьте токен в <code>TELEGRAM_BOT_TOKEN</code> и переразверните веб-приложение;
+                    3) каждый получатель пишет боту <code>/start</code>;
+                    4) узнайте chat_id через <a href="https://t.me/userinfobot" target="_blank" rel="noopener">@userinfobot</a> и добавьте выше.
+                    Уведомления идут через Google Apps Script (VPS не достучится до Telegram напрямую).
                 </p>
             </div>
 
@@ -2213,13 +2214,28 @@
         // Google Sheets интеграция
         // ================================================================
 
-        function initSheetsPanel() {
+        const INTEGRATIONS_REF = db.collection('settings').doc('integrations');
+
+        async function initSheetsPanel() {
             const input = document.getElementById('sheetsUrlInput');
-            if (input) input.value = getSheetsUrl();
+            let url = getSheetsUrl();
+            try {
+                const snap = await INTEGRATIONS_REF.get();
+                const fromDb = snap.exists ? (snap.data().sheetsWebhookUrl || '') : '';
+                if (fromDb && !url) {
+                    url = fromDb;
+                    setSheetsUrl(url);
+                }
+            } catch (_) {}
+            if (input) input.value = url;
         }
 
         function onSheetsUrlChange(val) {
             setSheetsUrl(val);
+            INTEGRATIONS_REF.set({
+                sheetsWebhookUrl: val.trim(),
+                updatedAt: new Date().toISOString()
+            }, { merge: true }).catch(() => {});
             const badge = document.getElementById('sheetsStatusBadge');
             if (badge) { badge.textContent = ''; badge.className = 'sheets-status'; }
         }

@@ -7,9 +7,32 @@ function getSheetsUrl() {
     return (process.env.SHEETS_WEBHOOK_URL || '').trim();
 }
 
-async function postToSheets(payload) {
-    const url = getSheetsUrl();
-    if (!url) return;
+let cachedSheetsUrl = '';
+let cachedSheetsUrlAt = 0;
+
+async function resolveSheetsUrl(db) {
+    const fromEnv = getSheetsUrl();
+    if (fromEnv) return fromEnv;
+    if (!db) return '';
+
+    if (cachedSheetsUrl && Date.now() - cachedSheetsUrlAt < 60000) {
+        return cachedSheetsUrl;
+    }
+
+    try {
+        const snap = await db.collection('settings').doc('integrations').get();
+        const url = ((snap.data() || {}).sheetsWebhookUrl || '').trim();
+        cachedSheetsUrl = url;
+        cachedSheetsUrlAt = Date.now();
+        return url;
+    } catch (_) {
+        return '';
+    }
+}
+
+async function postToSheets(payload, db) {
+    const url = db ? await resolveSheetsUrl(db) : getSheetsUrl();
+    if (!url) return false;
 
     const response = await fetch(url, {
         method: 'POST',
@@ -19,11 +42,13 @@ async function postToSheets(payload) {
     });
     if (!response.ok) {
         console.error('[sheets] sync failed HTTP', response.status);
+        return false;
     }
+    return true;
 }
 
 /** Зеркало логики Firestore-триггера syncToSheets из Cloud Functions. */
-async function syncRegistrationWritten(before, after, regId) {
+async function syncRegistrationWritten(before, after, regId, db) {
     if (!after) return;
 
     let payload;
@@ -43,17 +68,18 @@ async function syncRegistrationWritten(before, after, regId) {
         return;
     }
 
-    await postToSheets(payload);
+    await postToSheets(payload, db);
 }
 
-function scheduleSheetsSync(before, after, regId) {
-    syncRegistrationWritten(before, after, regId).catch((err) => {
+function scheduleSheetsSync(before, after, regId, db) {
+    syncRegistrationWritten(before, after, regId, db).catch((err) => {
         console.error('[sheets] background sync error', err.message);
     });
 }
 
 module.exports = {
     getSheetsUrl,
+    resolveSheetsUrl,
     postToSheets,
     syncRegistrationWritten,
     scheduleSheetsSync

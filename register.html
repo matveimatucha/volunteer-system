@@ -1143,7 +1143,16 @@
                     registrationId: registrationRef.id
                 });
 
-                // Фоновая синхронизация с Google Таблицами (если настроена)
+                // Фоновая синхронизация с Google Таблицами + Telegram (через Apps Script)
+                let telegramChatIds = [];
+                try {
+                    const tgSnap = await db.collection('settings').doc('notifications').get();
+                    const tgData = tgSnap.exists ? tgSnap.data() : {};
+                    if (tgData.telegramEnabled !== false && Array.isArray(tgData.telegramChatIds)) {
+                        telegramChatIds = tgData.telegramChatIds.map(String);
+                    }
+                } catch (_) {}
+
                 syncRegistration({
                     registrationId: registrationRef.id,
                     eventId:        eventId,
@@ -1153,7 +1162,8 @@
                     contactPhone:   contactPhone || '',
                     createdAt:      new Date(registeredAtMs).toISOString(),
                     createdAtMs:    registeredAtMs,
-                    answersLabeled: answersLabeled
+                    answersLabeled: answersLabeled,
+                    chatIds:        telegramChatIds
                 });
 
             } catch (error) {

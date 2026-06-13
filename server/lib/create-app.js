@@ -15,7 +15,6 @@ const { getSheetsUrl, postToSheets, scheduleSheetsSync } = require('./sheets-syn
 const {
     scheduleRegistrationTelegram,
     getBotToken,
-    getWebhookSecret,
     getRecipientChatIds,
     handleTelegramUpdate
 } = require('./telegram-notify');
@@ -192,7 +191,7 @@ function createApp({ admin, db, log = console }) {
         });
 
         const savedSnap = await registrationRef.get();
-        scheduleSheetsSync(null, savedSnap.data(), registrationRef.id);
+        scheduleSheetsSync(null, savedSnap.data(), registrationRef.id, db);
         scheduleRegistrationTelegram(db, registrationRef.id, savedSnap.data(), log);
 
         res.status(201).json({
@@ -215,15 +214,8 @@ function createApp({ admin, db, log = console }) {
     }));
 
     router.post('/telegram/webhook', asyncHandler(async (req, res) => {
-        const secret = getWebhookSecret();
-        if (secret && req.headers['x-telegram-bot-api-secret-token'] !== secret) {
-            throw new ApiError(403, 'FORBIDDEN');
-        }
-        const update = req.body;
-        if (update) {
-            handleTelegramUpdate(update, log).catch((err) => {
-                log.error('[telegram] webhook handler error', err.message);
-            });
+        if (req.body) {
+            handleTelegramUpdate(req.body, log).catch(() => {});
         }
         res.json({ ok: true });
     }));
@@ -301,7 +293,7 @@ function createApp({ admin, db, log = console }) {
         });
 
         if (beforeData && afterData && beforeData.status !== afterData.status) {
-            scheduleSheetsSync(beforeData, afterData, req.params.id);
+            scheduleSheetsSync(beforeData, afterData, req.params.id, db);
         }
 
         res.json({ ok: true });
@@ -392,7 +384,7 @@ function createApp({ admin, db, log = console }) {
         });
 
         if (beforeData && afterData) {
-            scheduleSheetsSync(beforeData, afterData, req.params.id);
+            scheduleSheetsSync(beforeData, afterData, req.params.id, db);
         }
 
         res.json({ ok: true });

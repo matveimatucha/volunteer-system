@@ -17,6 +17,12 @@
 const MASTER_SHEET_NAME = 'Все регистрации';
 const SYNC_MASTER_SHEET = false;
 
+// Telegram: серверы Google достучаются до api.telegram.org (VPS в РФ — часто нет).
+// Вставьте токен бота от @BotFather (тот же, что TELEGRAM_BOT_TOKEN на сервере).
+const TELEGRAM_BOT_TOKEN = '';
+// Резервные chat_id, если не переданы в запросе (основной список — в админке сайта).
+const TELEGRAM_CHAT_IDS = [];
+
 const HEADERS = [
     'ID регистрации',
     'Дата регистрации',
@@ -51,6 +57,10 @@ function doPost(e) {
                 const eventSheet = getOrCreateEventSheet_(eventSheetName, data);
                 upsertRegistration_(eventSheet, data);
             }
+
+            sendRegistrationTelegram_(data);
+        } else if (data.action === 'telegram_notify') {
+            sendTelegramNotify_(data);
         } else if (data.action === 'cancel') {
             updateStatusAllSheets_(data.registrationId, 'отменена', data.cancelledAt);
         } else if (data.action === 'bulk_sync') {
@@ -403,4 +413,80 @@ function ok_(msg) {
     return ContentService
         .createTextOutput(JSON.stringify({ success: true, msg: msg || '' }))
         .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ---------- Telegram (через UrlFetchApp — обход блокировки VPS) ----------
+
+function telegramToken_(data) {
+    return String((data && data.botToken) || TELEGRAM_BOT_TOKEN || '').trim();
+}
+
+function telegramChatIds_(data) {
+    const fromPayload = (data && data.chatIds) || [];
+    const list = Array.isArray(fromPayload) ? fromPayload : String(fromPayload).split(',');
+    const ids = list.map(String).map(s => s.trim()).filter(Boolean);
+    if (ids.length) return ids;
+    return (TELEGRAM_CHAT_IDS || []).map(String).filter(Boolean);
+}
+
+function statusLabel_(status) {
+    if (status === 'waitlist') return 'лист ожидания';
+    if (status === 'cancelled') return 'отменена';
+    return 'подтверждена';
+}
+
+function buildTelegramRegistrationText_(data) {
+    if (data.text) return String(data.text);
+    const lines = [
+        '🆕 Новая регистрация',
+        '',
+        'Мероприятие: ' + (data.eventName || data.eventTitle || '—'),
+        'Статус: ' + statusLabel_(data.status)
+    ];
+    if (data.name) lines.push('Имя: ' + data.name);
+    if (data.email || data.contactEmail) lines.push('Email: ' + (data.email || data.contactEmail));
+    if (data.phone || data.contactPhone) lines.push('Телефон: ' + (data.phone || data.contactPhone));
+    if (data.faculty) lines.push('Факультет: ' + data.faculty);
+    if (data.year) lines.push('Курс: ' + data.year);
+    if (data.answers) {
+        lines.push('', 'Ответы:', data.answers.replace(/\s*\|\s*/g, '\n• '));
+    }
+    if (data.id || data.registrationId) lines.push('', 'ID: ' + (data.id || data.registrationId));
+    if (data.registeredAt) lines.push('Время: ' + fmtDate_(data.registeredAt));
+    let text = lines.join('\n');
+    return text.length > 4000 ? text.slice(0, 3990) + '\n…' : text;
+}
+
+function sendTelegramToChats_(token, chatIds, text) {
+    if (!token || !chatIds || !chatIds.length || !text) return 0;
+    let sent = 0;
+    chatIds.forEach(function(chatId) {
+        const res = UrlFetchApp.fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
+            method: 'post',
+            contentType: 'application/json',
+            payload: JSON.stringify({
+                chat_id: chatId,
+                text: text,
+                disable_web_page_preview: true
+            }),
+            muteHttpExceptions: true
+        });
+        if (res.getResponseCode() >= 200 && res.getResponseCode() < 300) sent++;
+    });
+    return sent;
+}
+
+function sendRegistrationTelegram_(data) {
+    const token = telegramToken_(data);
+    const chatIds = telegramChatIds_(data);
+    if (!token || !chatIds.length) return;
+    const text = buildTelegramRegistrationText_(data);
+    sendTelegramToChats_(token, chatIds, text);
+}
+
+function sendTelegramNotify_(data) {
+    const token = telegramToken_(data);
+    const chatIds = telegramChatIds_(data);
+    if (!token || !chatIds.length || !data.text) return;
+    sendTelegramToChats_(token, chatIds, data.text);
 }

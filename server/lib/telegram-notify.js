@@ -78,7 +78,9 @@ function formatRegistrationMessage(registration, regId) {
     return text;
 }
 
-async function sendTelegramMessage(token, chatId, text) {
+const { resolveSheetsUrl, postToSheets } = require('./sheets-sync');
+
+async function sendTelegramDirect(token, chatId, text) {
     const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -96,34 +98,66 @@ async function sendTelegramMessage(token, chatId, text) {
     return true;
 }
 
-async function sendRegistrationNotification(db, registration, regId, log = console) {
+async function sendViaAppsScript(db, registration, regId, log) {
     const token = getBotToken();
-    if (!token) return false;
-
-    if (registration.telegramNotifiedAt) return false;
-
     const chatIds = await getRecipientChatIds(db);
-    if (!chatIds.length) {
-        log.warn('[telegram] нет получателей — задайте TELEGRAM_CHAT_IDS или chat ID в админке');
+    if (!token || !chatIds.length) return false;
+
+    const url = await resolveSheetsUrl(db);
+    if (!url) {
+        log.warn('[telegram] нет SHEETS_WEBHOOK_URL — задайте URL таблицы в админке');
         return false;
     }
 
     const text = formatRegistrationMessage(registration, regId);
-    const results = await Promise.allSettled(
-        chatIds.map(chatId => sendTelegramMessage(token, chatId, text))
-    );
+    const ok = await postToSheets({
+        action: 'telegram_notify',
+        botToken: token,
+        chatIds,
+        text,
+        regId
+    }, db);
 
-    const delivered = results.filter(r => r.status === 'fulfilled').length;
-    if (!delivered) {
-        const firstErr = results.find(r => r.status === 'rejected');
-        throw firstErr ? firstErr.reason : new Error('delivery failed');
+    if (ok) {
+        log.info('[telegram] отправлено через Apps Script', { regId, recipients: chatIds.length });
     }
+    return ok;
+}
+
+async function sendRegistrationNotification(db, registration, regId, log = console) {
+    if (registration.telegramNotifiedAt) return false;
+
+    const chatIds = await getRecipientChatIds(db);
+    if (!chatIds.length) {
+        log.warn('[telegram] нет получателей — добавьте chat ID в админке');
+        return false;
+    }
+
+    if (!getBotToken()) {
+        log.warn('[telegram] TELEGRAM_BOT_TOKEN не задан на сервере');
+        return false;
+    }
+
+    // Основной путь: Google Apps Script (VPS в РФ не достучится до Telegram напрямую)
+    let sent = await sendViaAppsScript(db, registration, regId, log);
+
+    // Запасной путь: прямой API (если когда-нибудь заработает)
+    if (!sent) {
+        const text = formatRegistrationMessage(registration, regId);
+        const token = getBotToken();
+        const results = await Promise.allSettled(
+            chatIds.map(chatId => sendTelegramDirect(token, chatId, text))
+        );
+        sent = results.some(r => r.status === 'fulfilled');
+        if (sent) log.info('[telegram] отправлено напрямую', { regId });
+    }
+
+    if (!sent) return false;
 
     await db.collection('registrations').doc(regId).update({
         telegramNotifiedAt: Date.now()
     }).catch(() => {});
 
-    log.info(`[telegram] отправлено ${delivered}/${chatIds.length} получателям`, { regId });
     return true;
 }
 
@@ -134,67 +168,13 @@ function scheduleRegistrationTelegram(db, regId, registration, log = console) {
     });
 }
 
-function getWebhookSecret() {
-    return (process.env.TELEGRAM_WEBHOOK_SECRET || '').trim();
-}
-
-function getPublicSiteUrl() {
-    return (process.env.PUBLIC_SITE_URL || 'https://volonter-msu.ru').replace(/\/$/, '');
-}
-
 async function handleTelegramUpdate(update, log = console) {
-    const token = getBotToken();
-    if (!token || !update) return;
-
-    const message = update.message || update.edited_message;
-    if (!message || !message.chat) return;
-
-    const text = String(message.text || '').trim().toLowerCase();
-    const chatId = message.chat.id;
-    if (!text.startsWith('/start') && text !== '/id') return;
-
-    const reply = [
-        '✅ Бот подключён к системе регистрации Профкома МГУ.',
-        '',
-        `Ваш chat_id: ${chatId}`,
-        '',
-        'Скопируйте это число и добавьте в админке:',
-        'volonter-msu.ru/admin.html → раздел «Telegram» → + Добавить',
-        '',
-        'После этого вы будете получать уведомления о новых заявках.'
-    ].join('\n');
-
-    await sendTelegramMessage(token, chatId, reply);
-    log.info('[telegram] ответ на /start', { chatId });
+    // Webhook с VPS не работает — ответ на /start тоже через Apps Script при необходимости
+    log.info('[telegram] webhook update ignored (use @userinfobot for chat_id)');
 }
 
 async function ensureTelegramWebhook(log = console) {
-    const token = getBotToken();
-    if (!token) return;
-
-    const webhookUrl = `${getPublicSiteUrl()}/api/telegram/webhook`;
-    const secret = getWebhookSecret();
-    const payload = { url: webhookUrl, allowed_updates: ['message'] };
-    if (secret) payload.secret_token = secret;
-
-    const response = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-        const body = await response.text().catch(() => '');
-        log.error('[telegram] не удалось зарегистрировать webhook', body.slice(0, 200));
-        return;
-    }
-
-    const json = await response.json();
-    if (json.ok) {
-        log.info('[telegram] webhook зарегистрирован', { url: webhookUrl });
-    } else {
-        log.error('[telegram] setWebhook error', json.description || json);
-    }
+    log.info('[telegram] webhook отключён — используется Apps Script relay');
 }
 
 function startRegistrationWatcher(db, log = console) {
@@ -226,10 +206,8 @@ function startRegistrationWatcher(db, log = console) {
 
 module.exports = {
     getBotToken,
-    getWebhookSecret,
     getRecipientChatIds,
     formatRegistrationMessage,
-    sendTelegramMessage,
     sendRegistrationNotification,
     scheduleRegistrationTelegram,
     handleTelegramUpdate,
