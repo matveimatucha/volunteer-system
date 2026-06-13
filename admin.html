@@ -913,6 +913,32 @@
                 </p>
             </div>
 
+            <!-- Telegram уведомления -->
+            <div class="sheets-panel" id="telegramPanel">
+                <div class="sheets-panel-header">
+                    <h2>📱 Telegram</h2>
+                    <span id="telegramStatusBadge" class="sheets-status"></span>
+                </div>
+                <label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;cursor:pointer;">
+                    <input type="checkbox" id="telegramEnabled" checked onchange="saveTelegramSettings()">
+                    Уведомления о новых регистрациях
+                </label>
+                <div class="sheets-url-row">
+                    <input type="text" id="telegramChatIdInput"
+                           placeholder="Chat ID получателя (123456789 или -100… для группы)"
+                           inputmode="numeric">
+                    <button class="btn btn-small" onclick="addTelegramChatId()">+ Добавить</button>
+                </div>
+                <ul id="telegramChatIdsList" style="list-style:none;padding:0;margin:0.75rem 0 0;display:flex;flex-direction:column;gap:0.4rem;"></ul>
+                <p class="sheets-hint">
+                    <strong>Как настроить:</strong>
+                    1) создайте бота через <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a> и добавьте токен в <code>TELEGRAM_BOT_TOKEN</code> на сервере;
+                    2) каждый получатель пишет боту <code>/start</code>;
+                    3) узнайте chat_id через <a href="https://t.me/userinfobot" target="_blank" rel="noopener">@userinfobot</a> и добавьте выше.
+                    Можно добавить несколько получателей — вас и коллег.
+                </p>
+            </div>
+
             <div class="dashboard">
                 <div class="dashboard-header">
                     <h2>📊 Сводка</h2>
@@ -1108,6 +1134,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
     <script src="assets/registration-utils.js?v=2"></script>
+    <script src="assets/api-config.js"></script>
     <script src="assets/sheets-sync.js?v=2"></script>
     <script>
         // ================================
@@ -1156,6 +1183,7 @@
             loadEvents();
             loadDashboard();
             initSheetsPanel();
+            initTelegramPanel();
         }
 
         function hideAdminPanel() {
@@ -2082,6 +2110,103 @@
                 document.body.removeChild(ta);
             }
             showMessage('success', `✓ Скопировано адресов: ${emails.length}. Вставьте в поле «Скрытая копия» письма-напоминания.`);
+        }
+
+        // ================================================================
+        // Telegram уведомления
+        // ================================================================
+
+        const TELEGRAM_SETTINGS_REF = db.collection('settings').doc('notifications');
+        let telegramChatIds = [];
+
+        function setTelegramStatus(ok, msg) {
+            const badge = document.getElementById('telegramStatusBadge');
+            if (!badge) return;
+            badge.textContent = msg;
+            badge.className = 'sheets-status ' + (ok ? 'ok' : 'err');
+        }
+
+        function renderTelegramChatIds() {
+            const list = document.getElementById('telegramChatIdsList');
+            if (!list) return;
+            if (!telegramChatIds.length) {
+                list.innerHTML = '<li style="opacity:0.6;font-size:0.9rem;">Получатели не добавлены</li>';
+                return;
+            }
+            list.innerHTML = telegramChatIds.map(id => `
+                <li style="display:flex;align-items:center;gap:0.5rem;background:#f4f6ff;padding:0.45rem 0.65rem;border-radius:8px;">
+                    <code style="flex:1;">${escapeHtmlText(id)}</code>
+                    <button class="btn btn-small" onclick="removeTelegramChatId('${escapeHtmlAttr(id)}')">✕</button>
+                </li>
+            `).join('');
+        }
+
+        async function initTelegramPanel() {
+            const enabledInput = document.getElementById('telegramEnabled');
+            try {
+                const snap = await TELEGRAM_SETTINGS_REF.get();
+                const data = snap.exists ? snap.data() : {};
+                telegramChatIds = Array.isArray(data.telegramChatIds)
+                    ? data.telegramChatIds.map(String)
+                    : [];
+                if (enabledInput) enabledInput.checked = data.telegramEnabled !== false;
+                renderTelegramChatIds();
+
+                const res = await fetch(apiUrl('/api/telegram/status'));
+                if (res.ok) {
+                    const status = await res.json();
+                    if (!status.botConfigured) {
+                        setTelegramStatus(false, '⚠ Токен бота не задан на сервере');
+                    } else if (!status.enabled) {
+                        setTelegramStatus(false, '⚠ Уведомления выключены');
+                    } else if (!status.recipientCount) {
+                        setTelegramStatus(false, '⚠ Нет получателей');
+                    } else {
+                        setTelegramStatus(true, `✓ Готово — ${status.recipientCount} получ.`);
+                    }
+                } else {
+                    setTelegramStatus(false, '⚠ Не удалось проверить сервер');
+                }
+            } catch (e) {
+                console.error('Telegram panel init:', e);
+                setTelegramStatus(false, '⚠ Ошибка загрузки настроек');
+            }
+        }
+
+        async function saveTelegramSettings() {
+            const enabledInput = document.getElementById('telegramEnabled');
+            try {
+                await TELEGRAM_SETTINGS_REF.set({
+                    telegramEnabled: enabledInput ? enabledInput.checked : true,
+                    telegramChatIds,
+                    updatedAt: new Date().toISOString()
+                }, { merge: true });
+                await initTelegramPanel();
+            } catch (e) {
+                console.error('Telegram save:', e);
+                showMessage('error', 'Не удалось сохранить настройки Telegram');
+            }
+        }
+
+        async function addTelegramChatId() {
+            const input = document.getElementById('telegramChatIdInput');
+            const raw = (input?.value || '').trim();
+            if (!raw) return;
+            if (!/^-?\d+$/.test(raw)) {
+                showMessage('error', 'Chat ID должен быть числом (например 123456789)');
+                return;
+            }
+            if (!telegramChatIds.includes(raw)) {
+                telegramChatIds.push(raw);
+            }
+            if (input) input.value = '';
+            await saveTelegramSettings();
+            showMessage('success', '✓ Получатель Telegram добавлен');
+        }
+
+        async function removeTelegramChatId(chatId) {
+            telegramChatIds = telegramChatIds.filter(id => id !== chatId);
+            await saveTelegramSettings();
         }
 
         // ================================================================

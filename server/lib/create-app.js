@@ -12,6 +12,7 @@ const {
     buildSheetsBulkRow
 } = require('./registration-helpers');
 const { getSheetsUrl, postToSheets, scheduleSheetsSync } = require('./sheets-sync');
+const { scheduleRegistrationTelegram, getBotToken, getRecipientChatIds } = require('./telegram-notify');
 
 class ApiError extends Error {
     constructor(httpStatus, code) {
@@ -186,12 +187,24 @@ function createApp({ admin, db, log = console }) {
 
         const savedSnap = await registrationRef.get();
         scheduleSheetsSync(null, savedSnap.data(), registrationRef.id);
+        scheduleRegistrationTelegram(db, registrationRef.id, savedSnap.data(), log);
 
         res.status(201).json({
             registrationId: registrationRef.id,
             status: savedStatus,
             cancelToken,
             event: { ...latestEvent, id: eventId }
+        });
+    }));
+
+    router.get('/telegram/status', asyncHandler(async (req, res) => {
+        const snap = await db.collection('settings').doc('notifications').get();
+        const data = snap.data() || {};
+        const chatIds = await getRecipientChatIds(db);
+        res.json({
+            botConfigured: !!getBotToken(),
+            enabled: data.telegramEnabled !== false,
+            recipientCount: chatIds.length
         });
     }));
 

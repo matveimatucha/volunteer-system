@@ -167,6 +167,7 @@ module.exports = {
     isEventClosedForRegistration,
     isEventHidden,
     extractCommonFields,
+    normalizeAnswers,
     formatAnswersList,
     buildSheetsRegisterPayload,
     buildSheetsBulkRow

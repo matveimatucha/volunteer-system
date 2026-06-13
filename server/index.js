@@ -11,6 +11,7 @@ const path = require('path');
 const express = require('express');
 const { initFirebase } = require('./lib/firebase');
 const { createApp } = require('./lib/create-app');
+const { startWatchers } = require('./lib/registration-watcher');
 
 const PORT = Number(process.env.PORT) || 3000;
 const STATIC_ROOT = path.resolve(
@@ -84,4 +85,5 @@ rootApp.listen(PORT, () => {
     if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
         console.warn('WARN: GOOGLE_APPLICATION_CREDENTIALS не задан — Firestore/Auth могут не работать');
     }
+    startWatchers(db, console);
 });

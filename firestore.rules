@@ -19,5 +19,9 @@ service cloud.firestore {
       allow update: if true;
       allow delete: if true;
     }
+
+    match /settings/{docId} {
+      allow read, write: if true;
+    }
   }
 }
