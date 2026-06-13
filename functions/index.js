@@ -34,6 +34,10 @@ admin.initializeApp();
 const db = admin.firestore();
 
 const SHEETS_WEBHOOK_URL = defineSecret('SHEETS_WEBHOOK_URL');
+const TELEGRAM_BOT_TOKEN = defineSecret('TELEGRAM_BOT_TOKEN');
+const TELEGRAM_CHAT_IDS = defineSecret('TELEGRAM_CHAT_IDS');
+
+const { sendRegistrationNotification } = require('./lib/telegram-notify');
 
 /* ================================================================
    Вспомогательные функции
@@ -494,5 +498,34 @@ exports.syncToSheets = onDocumentWritten(
             throw new Error(`Sheets sync failed: HTTP ${response.status}`);
         }
         logger.info('Sheets sync ok', { action: payload.action, regId: event.params.regId });
+    }
+);
+
+/* ================================================================
+   Триггер: Telegram-уведомления (обход блокировки VPS → Telegram)
+   ================================================================ */
+
+exports.notifyTelegram = onDocumentWritten(
+    {
+        document: 'registrations/{regId}',
+        secrets: [TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_IDS],
+        retry: true
+    },
+    async (event) => {
+        const token = (TELEGRAM_BOT_TOKEN.value() || '').trim();
+        if (!token) return;
+
+        const before = event.data.before.exists ? event.data.before.data() : null;
+        const after = event.data.after.exists ? event.data.after.data() : null;
+        if (!after || before) return;
+
+        await sendRegistrationNotification(
+            db,
+            token,
+            TELEGRAM_CHAT_IDS.value() || '',
+            after,
+            event.params.regId,
+            logger
+        );
     }
 );
