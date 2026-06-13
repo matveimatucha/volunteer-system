@@ -46,7 +46,10 @@ if (allowedOrigins.length) {
 }
 
 rootApp.get('/health', (req, res) => {
-    res.json({ ok: true, mode: 'standalone-server' });
+    res.json({
+        ok: true,
+        mode: process.env.STAGING === 'true' ? 'staging-server' : 'standalone-server'
+    });
 });
 
 // Только /api/** — иначе catch-all API отдаёт JSON 404 на admin.html и другие страницы

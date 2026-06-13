@@ -14,7 +14,9 @@
     "emulators": "set \"JAVA_HOME=C:\\Program Files\\Eclipse Adoptium\\jre-21.0.11.10-hotspot\"&& firebase emulators:start",
     "server:install": "cd server && npm install",
     "server:start": "cd server && npm start",
-    "server:dev": "cd server && npm run dev"
+    "server:dev": "cd server && npm run dev",
+    "deploy:staging": "python deploy/update-staging-remote.py",
+    "deploy:production": "python deploy/update-production-remote.py"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
