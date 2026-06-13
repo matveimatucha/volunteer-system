@@ -19,6 +19,14 @@ function escapeHtmlAttr(value) {
     return escapeHtmlText(value).replace(/'/g, '&#39;');
 }
 
+/** Значение ячейки таблицы: массивы (multiselect), объекты → строка. */
+function formatDisplayValue(value) {
+    if (value == null || value === '') return '';
+    if (Array.isArray(value)) return value.map(formatDisplayValue).filter(Boolean).join(', ');
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+}
+
 function buildQuestionTextMap(questions) {
     const map = {
         name: 'Имя',

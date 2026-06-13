@@ -1107,8 +1107,8 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
-    <script src="assets/registration-utils.js"></script>
-    <script src="assets/sheets-sync.js"></script>
+    <script src="assets/registration-utils.js?v=2"></script>
+    <script src="assets/sheets-sync.js?v=2"></script>
     <script>
         // ================================
         // ВАЖНО! ВСТАВЬТЕ ВАШ FIREBASE КОНФИГ
@@ -1698,22 +1698,29 @@
             }
         }
 
+        function cellText(value) {
+            if (value == null || value === '') return '';
+            if (Array.isArray(value)) return value.map(cellText).filter(Boolean).join(', ');
+            if (typeof value === 'object') return JSON.stringify(value);
+            return String(value);
+        }
+
         function getParticipantName(record) {
             const common = extractCommonFields(record.answersLabeled);
             return common.name || record.contactEmail || '—';
         }
 
         function getAnswerValue(record, key, questionTextMap) {
-            if (record.answers?.[key] != null && record.answers[key] !== '') {
-                return record.answers[key];
+            if (record.answers && record.answers[key] != null && record.answers[key] !== '') {
+                return cellText(record.answers[key]);
             }
             const label = questionTextMap[key];
             const labeled = record.answersLabeled;
             if (Array.isArray(labeled)) {
                 const item = labeled.find(i => i.question === label);
-                if (item && item.answer != null) return item.answer;
+                if (item && item.answer != null) return cellText(item.answer);
             } else if (labeled && typeof labeled === 'object' && label) {
-                return labeled[label] || '';
+                return cellText(labeled[label]);
             }
             return '';
         }
@@ -1738,7 +1745,9 @@
 
             const answerKeys = new Set();
             currentParticipantsData.forEach(r => {
-                if (r.answers) Object.keys(r.answers).forEach(k => answerKeys.add(k));
+                if (r.answers && typeof r.answers === 'object' && !Array.isArray(r.answers)) {
+                    Object.keys(r.answers).forEach(k => answerKeys.add(k));
+                }
             });
             const keys = Array.from(answerKeys);
             const seenIds = getSeenIds(currentParticipantsEventId);
@@ -1751,7 +1760,7 @@
                     return `<td>${escapeHtmlText(val || '—')}</td>`;
                 }).join('');
                 const isNew = !seenIds.has(r.registrationId);
-                const rid = escapeHtmlAttr(r.registrationId);
+                const rid = (typeof escapeHtmlAttr === 'function' ? escapeHtmlAttr : escapeHtmlText)(r.registrationId);
                 const isWait = getRegistrationStatus(r) === REGISTRATION_STATUS.WAITLIST;
                 const actions = `
                     <button type="button" class="btn btn-danger btn-icon" title="Удалить" onclick="deleteRegistration('${rid}')">×</button>
@@ -1799,10 +1808,10 @@
                 currentParticipantsData = snap.docs.map(d => {
                     const data = d.data();
                     return {
+                        ...data,
                         registrationId: data.registrationId || d.id,
                         createdAt: data.createdAt || '',
-                        createdAtMs: Number(data.createdAtMs) || 0,
-                        ...data
+                        createdAtMs: Number(data.createdAtMs) || 0
                     };
                 });
                 currentParticipantsData.sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
@@ -1811,7 +1820,8 @@
                 } catch (renderError) {
                     console.error('Ошибка отображения участников:', renderError);
                     document.getElementById('participantsContent').innerHTML =
-                        '<p class="empty-participants" style="color: var(--danger);">Ошибка отображения списка</p>';
+                        '<p class="empty-participants" style="color: var(--danger);">Ошибка отображения: ' +
+                        escapeHtmlText(renderError.message || renderError) + '</p>';
                 }
             } catch (error) {
                 console.error('Ошибка загрузки участников:', error);
