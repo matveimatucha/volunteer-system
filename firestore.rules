@@ -2,17 +2,22 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Вся запись идёт через серверный API (Cloud Functions, Admin SDK обходит правила).
-    // Клиентам оставлено только чтение опубликованных мероприятий — как запасной канал.
-    match /events/{eventId} {
-      allow read: if resource.data.status != 'draft'
-                  && resource.data.isTemplate != true;
-      allow write: if false;
+    // Самостоятельная отмена: пользователь по ссылке может
+    // перевести свою заявку только в статус "cancelled".
+    function isSelfCancel() {
+      return request.resource.data.diff(resource.data)
+          .affectedKeys().hasOnly(['status', 'cancelledAt'])
+        && request.resource.data.status == 'cancelled';
     }
 
-    // Заявки содержат персональные данные — доступ только через API.
+    match /events/{eventId} {
+      allow read, write: if true;
+    }
+
     match /registrations/{registrationId} {
-      allow read, write: if false;
+      allow get, list, create: if true;
+      allow update: if true;
+      allow delete: if true;
     }
   }
 }

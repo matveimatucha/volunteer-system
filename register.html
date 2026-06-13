@@ -8,6 +8,8 @@
     <link rel="shortcut icon" href="assets/favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="dns-prefetch" href="https://firestore.googleapis.com">
+    <link rel="preconnect" href="https://firestore.googleapis.com">
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
     <link rel="stylesheet" href="assets/opk-theme.css">
@@ -452,11 +454,28 @@
         </div>
     </div>
 
-    <script src="assets/api-config.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
     <script src="assets/event-images.js"></script>
     <script src="assets/registration-utils.js"></script>
+    <script src="assets/sheets-sync.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script>
+        // ================================
+        // ВАЖНО! ВСТАВЬТЕ ВАШ FIREBASE КОНФИГ
+        // Берётся в консоли Firebase: Project settings → Your apps → Web app
+        // ================================
+        const firebaseConfig = {
+            apiKey:            "AIzaSyCh17f9EFqQ-fAEGXTGpuzja-vY1RpePsc",
+            authDomain:        "volunteer-system-6ce7f.firebaseapp.com",
+            projectId:         "volunteer-system-6ce7f",
+            storageBucket:     "volunteer-system-6ce7f.firebasestorage.app",
+            messagingSenderId: "273894796704",
+            appId:             "1:273894796704:web:41a8f945d72bb58201c8c5"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
         // ================================
         // EMAILJS — уведомления на email
         // Зарегистрируйтесь на emailjs.com и вставьте свои ключи
@@ -471,10 +490,9 @@
         const ADMIN_EMAIL         = 'matvei.sukmanov@chemistry.msu.ru';
         emailjs.init(EMAILJS_PUBLIC_KEY);
 
-        function buildCancelUrl(registrationId, eventId, cancelToken) {
+        function buildCancelUrl(registrationId, eventId) {
             const base = window.location.href.split('?')[0].replace(/register\.html$/, 'cancel.html');
-            const tokenPart = cancelToken ? `&token=${encodeURIComponent(cancelToken)}` : '';
-            return `${base}?reg=${encodeURIComponent(registrationId)}&event=${encodeURIComponent(eventId)}${tokenPart}`;
+            return `${base}?reg=${encodeURIComponent(registrationId)}&event=${encodeURIComponent(eventId)}`;
         }
 
         // Получаем ID мероприятия из URL
@@ -522,17 +540,15 @@
 
         async function fetchEvent(silent = false) {
             try {
-                const res = await fetch(apiUrl(`/api/events/${encodeURIComponent(eventId)}`));
+                const docSnap = await db.collection('events').doc(eventId).get();
 
-                if (res.ok) {
-                    const { event } = await res.json();
+                if (docSnap.exists) {
+                    const event = docSnap.data();
                     setCachedEvent(event);
                     currentEvent = event;
                     displayEvent(event);
-                } else if (res.status === 404) {
-                    if (!silent) displayError('Мероприятие не найдено');
-                } else {
-                    throw new Error('HTTP ' + res.status);
+                } else if (!silent) {
+                    displayError('Мероприятие не найдено');
                 }
             } catch (error) {
                 console.error('Ошибка:', error);
@@ -658,7 +674,6 @@
         function showSuccessScreen(event, options = {}) {
             const isWaitlist = options.waitlist === true;
             const registrationId = options.registrationId || '';
-            const cancelToken = options.cancelToken || '';
             const message = isWaitlist
                 ? 'Вы в листе ожидания. Если освободится место, мы свяжемся с вами по указанным контактам.'
                 : (event?.successMessage?.trim()
@@ -670,7 +685,7 @@
 
             const cancelHtml = registrationId ? `
                 <p style="margin-top:1.5rem;font-size:0.9rem;opacity:0.8;">
-                    Передумали? <a href="${escapeHtmlAttr(buildCancelUrl(registrationId, eventId, cancelToken))}">Отменить запись</a>
+                    Передумали? <a href="${escapeHtmlAttr(buildCancelUrl(registrationId, eventId))}">Отменить запись</a>
                 </p>
             ` : '';
 
@@ -1011,28 +1026,77 @@
             let registrationSaved = false;
 
             try {
-                // Вся проверка (дубли, лимит мест, статус мероприятия)
-                // выполняется на сервере в одной транзакции.
-                const res = await fetch(apiUrl('/api/registrations'), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        eventId,
-                        waitlist: isWaitlist,
-                        answers,
-                        answersLabeled
-                    })
-                });
-
-                const result = await res.json().catch(() => ({}));
-                if (!res.ok) {
-                    throw new Error(result.error || 'REQUEST_FAILED');
+                // Проверка дублей не должна блокировать регистрацию, если чтение
+                // registrations недоступно (правила безопасности/отсутствие индекса).
+                async function findDuplicate(field, value) {
+                    if (!value) return false;
+                    try {
+                        const snap = await db.collection('registrations')
+                            .where('eventId', '==', eventId)
+                            .where(field, '==', value)
+                            .limit(1)
+                            .get();
+                        return !snap.empty;
+                    } catch (dupErr) {
+                        console.warn('Проверка дублей пропущена:', dupErr);
+                        return false;
+                    }
                 }
 
-                const registrationId = result.registrationId;
-                const cancelToken = result.cancelToken || '';
-                const savedAsWaitlist = result.status === REGISTRATION_STATUS.WAITLIST;
-                const latestEvent = result.event || currentEvent;
+                if (await findDuplicate('contactEmail', contactEmail)) {
+                    throw new Error('DUPLICATE_EMAIL');
+                }
+                if (await findDuplicate('contactPhone', contactPhone)) {
+                    throw new Error('DUPLICATE_PHONE');
+                }
+
+                const eventRef = db.collection('events').doc(eventId);
+                const registrationRef = db.collection('registrations').doc();
+                let latestEvent = null;
+
+                await db.runTransaction(async (transaction) => {
+                    const eventSnap = await transaction.get(eventRef);
+                    if (!eventSnap.exists) {
+                        throw new Error('EVENT_NOT_FOUND');
+                    }
+
+                    latestEvent = eventSnap.data();
+                    const latestMax = Number(latestEvent.maxVolunteers) ? Number(latestEvent.maxVolunteers) : 999999;
+                    const latestCurrent = Number(latestEvent.currentVolunteers) || 0;
+                    const isClosed = (latestEvent.status || 'open') === 'closed'
+                        || (latestEvent.status || 'open') === 'draft'
+                        || latestEvent.isTemplate === true
+                        || latestEvent.isArchived === true;
+
+                    if (isClosed) {
+                        throw new Error('REGISTRATION_CLOSED');
+                    }
+
+                    const savingAsWaitlist = isWaitlist || latestCurrent >= latestMax;
+                    if (!savingAsWaitlist && latestCurrent >= latestMax) {
+                        throw new Error('REGISTRATION_CLOSED');
+                    }
+
+                    transaction.set(registrationRef, {
+                        registrationId: registrationRef.id,
+                        eventId: eventId,
+                        eventTitle: latestEvent.title,
+                        status: savingAsWaitlist ? REGISTRATION_STATUS.WAITLIST : REGISTRATION_STATUS.CONFIRMED,
+                        contactEmail: contactEmail || '',
+                        contactPhone: contactPhone || '',
+                        createdAt: new Date().toISOString(),
+                        createdAtMs: Date.now(),
+                        timestamp: new Date().toLocaleString('ru-RU'),
+                        answers: answers,
+                        answersLabeled: answersLabeled
+                    });
+
+                    if (!savingAsWaitlist) {
+                        transaction.update(eventRef, {
+                            currentVolunteers: firebase.firestore.FieldValue.increment(1)
+                        });
+                    }
+                });
 
                 registrationSaved = true;
 
@@ -1042,7 +1106,7 @@
 
                 if (EMAILJS_PUBLIC_KEY !== 'ВСТАВЬТЕ_PUBLIC_KEY') {
                     const summary = formatAnswersForEmail(answersLabeled);
-                    const statusNote = savedAsWaitlist ? '\n[Лист ожидания]' : '';
+                    const statusNote = isWaitlist ? '\n[Лист ожидания]' : '';
                     const eventTitle = latestEvent?.title || currentEvent?.title || '';
                     const eventDate = latestEvent?.date || currentEvent?.date || '';
 
@@ -1061,25 +1125,34 @@
                             to_email:    contactEmail,
                             event_name:  eventTitle,
                             event_date:  eventDate,
-                            status_text: savedAsWaitlist
+                            status_text: isWaitlist
                                 ? 'Вы добавлены в лист ожидания. Мы свяжемся с вами, если освободится место.'
                                 : 'Ваша заявка принята. Скоро с вами свяжутся.',
-                            cancel_url:  buildCancelUrl(registrationId, eventId, cancelToken)
+                            cancel_url:  buildCancelUrl(registrationRef.id, eventId)
                         }).catch(err => console.warn('EmailJS (участник):', err));
                     }
                 }
 
                 statusMessage.className = 'message success';
-                statusMessage.textContent = savedAsWaitlist
+                statusMessage.textContent = isWaitlist
                     ? '✓ Вы добавлены в лист ожидания.'
                     : '✓ Вы успешно зарегистрированы! Скоро с вами свяжутся.';
                 showSuccessScreen(latestEvent || currentEvent, {
-                    waitlist: savedAsWaitlist,
-                    registrationId,
-                    cancelToken
+                    waitlist: isWaitlist,
+                    registrationId: registrationRef.id
                 });
 
-                // Синхронизацию с Google Таблицами выполняет сервер (Cloud Functions)
+                // Фоновая синхронизация с Google Таблицами (если настроена)
+                syncRegistration({
+                    registrationId: registrationRef.id,
+                    eventId:        eventId,
+                    eventName:      latestEvent?.title || currentEvent?.title || '',
+                    status:         isWaitlist ? REGISTRATION_STATUS.WAITLIST : REGISTRATION_STATUS.CONFIRMED,
+                    contactEmail:   contactEmail || '',
+                    contactPhone:   contactPhone || '',
+                    createdAt:      new Date().toISOString(),
+                    answersLabeled: answersLabeled
+                });
 
             } catch (error) {
                 console.error('Ошибка:', error);
