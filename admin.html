@@ -691,6 +691,42 @@
             font-size: 0.95rem;
         }
 
+        .deleted-events-panel {
+            margin-bottom: 1.25rem;
+            padding: 1rem 1.1rem;
+            border-radius: 14px;
+            background: rgba(214, 48, 49, 0.05);
+            border: 1px solid rgba(214, 48, 49, 0.18);
+        }
+
+        .deleted-events-panel h3 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.45rem;
+            letter-spacing: 1px;
+            color: var(--danger);
+            margin-bottom: 0.75rem;
+        }
+
+        .deleted-events-table td,
+        .deleted-events-table th {
+            font-size: 0.86rem;
+        }
+
+        .deleted-events-actions {
+            display: flex;
+            gap: 0.35rem;
+            flex-wrap: wrap;
+        }
+
+        .registry-active-filter {
+            margin-bottom: 0.75rem;
+            padding: 0.55rem 0.85rem;
+            border-radius: 10px;
+            background: rgba(27, 36, 128, 0.07);
+            font-size: 0.9rem;
+            display: none;
+        }
+
         /* ===== ПЛАНШЕТ ===== */
         @media (max-width: 768px) {
             body { padding: 1.25rem; }
@@ -945,6 +981,14 @@
                     </div>
                 </div>
                 <div id="registryMeta" style="margin-bottom:1rem;opacity:0.8;font-size:0.92rem;"></div>
+                <div id="deletedEventsPanel" class="deleted-events-panel" style="display:none;">
+                    <h3>Удалённые мероприятия</h3>
+                    <div id="deletedEventsMeta" style="margin-bottom:0.75rem;opacity:0.85;font-size:0.9rem;"></div>
+                    <div id="deletedEventsContent">
+                        <p style="opacity:0.65;font-size:0.9rem;">Нет заявок от удалённых мероприятий</p>
+                    </div>
+                </div>
+                <div id="registryActiveFilter" class="registry-active-filter"></div>
                 <div class="participants-toolbar" style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1rem;align-items:center;">
                     <input type="search" id="registrySearch" placeholder="Поиск по имени, email, телефону, мероприятию…" style="flex:1;min-width:220px;padding:0.65rem 1rem;" oninput="onRegistrySearch()">
                     <select id="registryEventFilter" style="width:auto;min-width:180px;padding:0.65rem 1rem;" onchange="onRegistryFilterChange()">
@@ -1284,6 +1328,7 @@
         let participantsSearchQuery = '';
         let globalRegistrationsData = [];
         let globalRegistrySearchQuery = '';
+        let registryDeletedEventKey = null;
         let editingRegistrationData = null;
 
         // Обновление предпросмотра цвета
@@ -1318,6 +1363,7 @@
             isAuthenticated = false;
             isSuperAdmin = false;
             globalRegistrationsData = [];
+            registryDeletedEventKey = null;
             editingRegistrationData = null;
             document.getElementById('authSection').style.display = '';
             document.getElementById('adminPanel').classList.remove('active');
@@ -2658,6 +2704,279 @@
             return !eventsData[eventId];
         }
 
+        function getDeletedEventKey(record) {
+            return record?.eventId || '__none__';
+        }
+
+        function getDeletedEventGroups() {
+            const groups = {};
+            globalRegistrationsData.filter(isOrphanRegistration).forEach(r => {
+                const key = getDeletedEventKey(r);
+                if (!groups[key]) {
+                    groups[key] = {
+                        key,
+                        eventId: r.eventId || '',
+                        title: r.eventTitle || r.eventId || 'Без названия',
+                        registrations: [],
+                        lastAtMs: 0
+                    };
+                }
+                const group = groups[key];
+                group.registrations.push(r);
+                group.lastAtMs = Math.max(group.lastAtMs, Number(r.createdAtMs) || 0);
+                if (r.eventTitle) group.title = r.eventTitle;
+            });
+            return Object.values(groups).sort((a, b) => b.lastAtMs - a.lastAtMs);
+        }
+
+        function getDeletedEventGroup(key) {
+            return getDeletedEventGroups().find(g => g.key === key) || null;
+        }
+
+        function inferQuestionsFromRegistrations(regs) {
+            const seen = new Set();
+            const questions = [];
+            regs.forEach(r => {
+                normalizeAnswers(r.answersLabeled).forEach(item => {
+                    const text = String(item.question || '').trim();
+                    if (!text || seen.has(text)) return;
+                    seen.add(text);
+                    questions.push({
+                        id: Date.now() + questions.length,
+                        text,
+                        type: 'text',
+                        required: false,
+                        options: []
+                    });
+                });
+            });
+            return questions;
+        }
+
+        function renderDeletedEventsPanel() {
+            const panel = document.getElementById('deletedEventsPanel');
+            const container = document.getElementById('deletedEventsContent');
+            const meta = document.getElementById('deletedEventsMeta');
+            if (!panel || !container || !isSuperAdmin) return;
+
+            const groups = getDeletedEventGroups();
+            panel.style.display = groups.length ? '' : 'none';
+            if (!groups.length) return;
+
+            const totalRegs = groups.reduce((sum, g) => sum + g.registrations.length, 0);
+            if (meta) {
+                meta.textContent = `${groups.length} удалённых мероприятий · ${totalRegs} заявок без карточки события`;
+            }
+
+            const rows = groups.map(g => {
+                const confirmed = g.registrations.filter(isConfirmedRegistration).length;
+                const waitlist = g.registrations.filter(r => getRegistrationStatus(r) === REGISTRATION_STATUS.WAITLIST).length;
+                const cancelled = g.registrations.filter(isCancelledRegistration).length;
+                const lastDate = g.lastAtMs
+                    ? new Date(g.lastAtMs).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })
+                    : '—';
+                const key = escapeHtmlAttr(g.key);
+                const canRestore = !!g.eventId;
+                return `<tr>
+                    <td>${escapeHtmlText(g.title)}</td>
+                    <td style="font-size:0.8rem;opacity:0.75;">${escapeHtmlText(g.eventId || '—')}</td>
+                    <td>${g.registrations.length}</td>
+                    <td>${confirmed}</td>
+                    <td>${waitlist || '—'}</td>
+                    <td>${cancelled || '—'}</td>
+                    <td>${escapeHtmlText(lastDate)}</td>
+                    <td>
+                        <div class="deleted-events-actions">
+                            <button type="button" class="btn btn-small" onclick="showDeletedEventRegistrations('${key}')">Заявки</button>
+                            <button type="button" class="btn btn-small" style="background:#16a085;" onclick="exportDeletedEventCsv('${key}')">CSV</button>
+                            ${canRestore ? `<button type="button" class="btn btn-small" style="background:#8e44ad;" onclick="restoreDeletedEvent('${key}')">В архив</button>` : ''}
+                            <button type="button" class="btn btn-danger btn-small" onclick="deleteDeletedEventRegistrations('${key}')">Удалить</button>
+                        </div>
+                    </td>
+                </tr>`;
+            }).join('');
+
+            container.innerHTML = `
+                <div class="participants-table-wrap">
+                    <table class="participants-table deleted-events-table">
+                        <thead>
+                            <tr>
+                                <th>Название</th>
+                                <th>ID</th>
+                                <th>Заявок</th>
+                                <th>Записано</th>
+                                <th>Ожидание</th>
+                                <th>Отмен</th>
+                                <th>Последняя</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function updateRegistryActiveFilterBanner() {
+            const banner = document.getElementById('registryActiveFilter');
+            if (!banner) return;
+            if (!registryDeletedEventKey) {
+                banner.style.display = 'none';
+                banner.innerHTML = '';
+                return;
+            }
+            const group = getDeletedEventGroup(registryDeletedEventKey);
+            if (!group) {
+                registryDeletedEventKey = null;
+                banner.style.display = 'none';
+                return;
+            }
+            banner.style.display = '';
+            banner.innerHTML = `Фильтр: <strong>${escapeHtmlText(group.title)}</strong> `
+                + `(${group.registrations.length} заявок) `
+                + `<button type="button" class="btn btn-small" style="margin-left:0.5rem;" onclick="clearDeletedEventRegistryFilter()">Сбросить</button>`;
+        }
+
+        function showDeletedEventRegistrations(key) {
+            registryDeletedEventKey = key;
+            const orphanCheckbox = document.getElementById('registryOrphanOnly');
+            if (orphanCheckbox) orphanCheckbox.checked = true;
+            const eventFilter = document.getElementById('registryEventFilter');
+            if (eventFilter) eventFilter.value = 'all';
+            renderGlobalRegistry();
+            document.getElementById('registryContent')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function clearDeletedEventRegistryFilter() {
+            registryDeletedEventKey = null;
+            renderGlobalRegistry();
+        }
+
+        function downloadRegistrationsCsv(regs, filenamePrefix) {
+            if (!regs.length) {
+                showMessage('error', 'Нет заявок для экспорта');
+                return;
+            }
+            const keys = getOrderedAnswerKeys([], regs);
+            const headerKeys = keys.map(k => k);
+            const header = ['registrationId', 'status', 'createdAt', 'createdAtMs', 'timestamp', 'eventId', 'eventTitle', 'contactEmail', 'contactPhone', ...headerKeys]
+                .map(escapeCsv).join(',');
+            const rows = regs.map(r => {
+                const fixedColumns = [
+                    r.registrationId || '',
+                    getRegistrationStatus(r),
+                    r.createdAt || '',
+                    r.createdAtMs || '',
+                    r.timestamp || '',
+                    r.eventId || '',
+                    r.eventTitle || '',
+                    r.contactEmail || '',
+                    r.contactPhone || ''
+                ];
+                const answers = keys.map(k => r.answers?.[k] || '');
+                return [...fixedColumns, ...answers].map(escapeCsv).join(',');
+            });
+            const csv = '\uFEFF' + [header, ...rows].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${filenamePrefix}_${Date.now()}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function exportDeletedEventCsv(key) {
+            if (!isSuperAdmin) return;
+            const group = getDeletedEventGroup(key);
+            if (!group) return;
+            const safeName = String(group.title || 'deleted_event').replace(/[^\w\-]+/g, '_').slice(0, 40);
+            downloadRegistrationsCsv(group.registrations, `deleted_${safeName}`);
+            showMessage('success', `✓ CSV: ${group.registrations.length} заявок`);
+        }
+
+        async function deleteRegistrationsBatch(regs) {
+            let batch = db.batch();
+            let ops = 0;
+            for (const reg of regs) {
+                batch.delete(db.collection('registrations').doc(reg.registrationId));
+                ops++;
+                if (ops >= 400) {
+                    await batch.commit();
+                    batch = db.batch();
+                    ops = 0;
+                }
+            }
+            if (ops > 0) await batch.commit();
+        }
+
+        async function deleteDeletedEventRegistrations(key) {
+            if (!isSuperAdmin) return;
+            const group = getDeletedEventGroup(key);
+            if (!group) return;
+            if (!confirm(`Удалить все ${group.registrations.length} заявок мероприятия «${group.title}»? Это необратимо.`)) return;
+
+            try {
+                await deleteRegistrationsBatch(group.registrations);
+                if (registryDeletedEventKey === key) registryDeletedEventKey = null;
+                showMessage('success', `✓ Удалено ${group.registrations.length} заявок`);
+                await loadGlobalRegistry();
+                loadDashboard();
+            } catch (error) {
+                console.error(error);
+                showMessage('error', 'Не удалось удалить заявки');
+            }
+        }
+
+        async function restoreDeletedEvent(key) {
+            if (!isSuperAdmin) return;
+            const group = getDeletedEventGroup(key);
+            if (!group || !group.eventId) {
+                showMessage('error', 'Нельзя восстановить: у заявок нет ID мероприятия');
+                return;
+            }
+            if (eventsData[group.eventId]) {
+                showMessage('error', 'Мероприятие уже существует в базе');
+                return;
+            }
+            if (!confirm(`Восстановить «${group.title}» в архив?\n\nБудет создана карточка мероприятия (закрыта, в архиве). Заявки останутся привязаны.`)) return;
+
+            try {
+                const confirmed = group.registrations.filter(isConfirmedRegistration).length;
+                const eventData = {
+                    id: group.eventId,
+                    title: group.title,
+                    dateRaw: '',
+                    date: '—',
+                    location: '—',
+                    description: 'Восстановлено из сохранённых заявок. Отредактируйте описание при необходимости.',
+                    maxVolunteers: 0,
+                    currentVolunteers: confirmed,
+                    status: 'closed',
+                    isArchived: true,
+                    color: '#1B2480',
+                    questions: inferQuestionsFromRegistrations(group.registrations)
+                };
+
+                await db.collection('events').doc(group.eventId).set(eventData);
+                eventsData[group.eventId] = eventData;
+
+                localStorage.removeItem('volunteer_events');
+                localStorage.removeItem('volunteer_events_v2');
+                localStorage.removeItem(`volunteer_event_${group.eventId}`);
+
+                if (registryDeletedEventKey === key) registryDeletedEventKey = null;
+
+                showMessage('success', `✓ «${group.title}» восстановлено в архив`);
+                await loadEvents();
+                await loadGlobalRegistry();
+                loadDashboard();
+            } catch (error) {
+                console.error(error);
+                showMessage('error', 'Не удалось восстановить мероприятие');
+            }
+        }
+
         function getRegistryFilterState() {
             return {
                 eventId: document.getElementById('registryEventFilter')?.value || 'all',
@@ -2685,7 +3004,9 @@
             const state = getRegistryFilterState();
             let list = [...globalRegistrationsData];
 
-            if (state.orphanOnly) {
+            if (registryDeletedEventKey) {
+                list = list.filter(r => getDeletedEventKey(r) === registryDeletedEventKey);
+            } else if (state.orphanOnly) {
                 list = list.filter(isOrphanRegistration);
             } else if (state.eventId !== 'all') {
                 list = list.filter(r => r.eventId === state.eventId);
@@ -2718,15 +3039,19 @@
             if (!meta) return;
             const filtered = getFilteredGlobalRegistrations();
             const orphans = globalRegistrationsData.filter(isOrphanRegistration).length;
+            const deletedGroups = getDeletedEventGroups().length;
             meta.innerHTML = `Всего в базе: <strong>${globalRegistrationsData.length}</strong> · `
                 + `Показано: <strong>${filtered.length}</strong> · `
-                + `Без мероприятия: <strong>${orphans}</strong>`;
+                + `Без мероприятия: <strong>${orphans}</strong> · `
+                + `Удалённых событий: <strong>${deletedGroups}</strong>`;
         }
 
         function renderGlobalRegistry() {
             const container = document.getElementById('registryContent');
             if (!container) return;
 
+            renderDeletedEventsPanel();
+            updateRegistryActiveFilterBanner();
             updateRegistryMeta();
 
             const records = getFilteredGlobalRegistrations();
@@ -2814,6 +3139,9 @@
         }
 
         function onRegistryFilterChange() {
+            if (document.getElementById('registryOrphanOnly')?.checked === false && registryDeletedEventKey) {
+                registryDeletedEventKey = null;
+            }
             renderGlobalRegistry();
         }
 
@@ -2824,23 +3152,12 @@
                 showMessage('success', 'Осиротевших заявок нет');
                 return;
             }
-            if (!confirm(`Удалить ${orphans.length} заявок без привязки к мероприятию? Это необратимо.`)) return;
+            if (!confirm(`Удалить ${orphans.length} заявок всех удалённых мероприятий? Это необратимо.`)) return;
 
             try {
-                let batch = db.batch();
-                let ops = 0;
-                for (const reg of orphans) {
-                    batch.delete(db.collection('registrations').doc(reg.registrationId));
-                    ops++;
-                    if (ops >= 400) {
-                        await batch.commit();
-                        batch = db.batch();
-                        ops = 0;
-                    }
-                }
-                if (ops > 0) await batch.commit();
-
-                showMessage('success', `✓ Удалено ${orphans.length} осиротевших заявок`);
+                await deleteRegistrationsBatch(orphans);
+                registryDeletedEventKey = null;
+                showMessage('success', `✓ Удалено ${orphans.length} заявок`);
                 await loadGlobalRegistry();
                 loadDashboard();
             } catch (error) {
