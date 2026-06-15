@@ -1139,7 +1139,7 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
-    <script src="assets/registration-utils.js?v=3"></script>
+    <script src="assets/registration-utils.js?v=4"></script>
     <script src="assets/api-config.js"></script>
     <script src="assets/sheets-sync.js?v=3"></script>
     <script>
@@ -1778,13 +1778,7 @@
                 return;
             }
 
-            const answerKeys = new Set();
-            currentParticipantsData.forEach(r => {
-                if (r.answers && typeof r.answers === 'object' && !Array.isArray(r.answers)) {
-                    Object.keys(r.answers).forEach(k => answerKeys.add(k));
-                }
-            });
-            const keys = Array.from(answerKeys);
+            const keys = getOrderedAnswerKeys(event?.questions || [], currentParticipantsData);
             const seenIds = getSeenIds(currentParticipantsEventId);
             const questionTextMap = buildQuestionTextMap(event?.questions || []);
 
@@ -1802,12 +1796,12 @@
                     ${isWait ? `<button type="button" class="btn btn-success btn-small" onclick="promoteFromWaitlist('${rid}')">Принять</button>` : ''}
                 `;
                 return `<tr>
+                    <td style="white-space:nowrap;">${actions}</td>
                     <td>${escapeHtmlText(r.createdAt || r.timestamp || '—')}${isNew ? ' <span style="color:#2ecc71;font-weight:700;">· NEW</span>' : ''}</td>
                     <td>${escapeHtmlText(getStatusLabel(r))}</td>
                     <td>${escapeHtmlText(getParticipantName(r))}</td>
                     <td>${escapeHtmlText(r.contactEmail || '—')}</td>
                     <td>${escapeHtmlText(r.contactPhone || '—')}</td>
-                    <td style="white-space:nowrap;">${actions}</td>
                     ${cells}
                 </tr>`;
             }).join('');
@@ -1815,7 +1809,7 @@
             container.innerHTML = `
                 <div class="participants-table-wrap">
                     <table class="participants-table">
-                        <thead><tr><th>Дата</th><th>Статус</th><th>Имя</th><th>Email</th><th>Телефон</th><th></th>${thead}</tr></thead>
+                        <thead><tr><th></th><th>Дата</th><th>Статус</th><th>Имя</th><th>Email</th><th>Телефон</th>${thead}</tr></thead>
                         <tbody>${tbody}</tbody>
                     </table>
                 </div>
@@ -2049,13 +2043,8 @@
                 return;
             }
 
-            const answerKeys = new Set();
-            records.forEach(r => {
-                if (r.answers) Object.keys(r.answers).forEach(k => answerKeys.add(k));
-            });
-            const keys = Array.from(answerKeys);
-
             const event = eventsData[currentParticipantsEventId];
+            const keys = getOrderedAnswerKeys(event?.questions || [], records);
             const questionTextMap = buildQuestionTextMap(event?.questions || []);
 
             const headerKeys = keys.map(k => questionTextMap[k] || k);

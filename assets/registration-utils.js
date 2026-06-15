@@ -41,6 +41,27 @@ function buildQuestionTextMap(questions) {
     return map;
 }
 
+/** Ключи ответов в порядке вопросов формы; неизвестные ключи — в конце. */
+function getOrderedAnswerKeys(questions, records) {
+    const keys = [];
+    const seen = new Set();
+    (questions || []).forEach((q) => {
+        if (q && q.id != null) {
+            const key = `question_${q.id}`;
+            keys.push(key);
+            seen.add(key);
+        }
+    });
+    const extras = new Set();
+    (records || []).forEach((r) => {
+        if (!r.answers || typeof r.answers !== 'object' || Array.isArray(r.answers)) return;
+        Object.keys(r.answers).forEach((k) => {
+            if (!seen.has(k)) extras.add(k);
+        });
+    });
+    return keys.concat(Array.from(extras).sort());
+}
+
 function normalizeEmail(value) {
     if (typeof value !== 'string') return '';
     const trimmed = value.trim().toLowerCase();
