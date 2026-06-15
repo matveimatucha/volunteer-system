@@ -11,6 +11,8 @@
 //    • Кто имеет доступ: Все
 // 6. Нажмите «Развернуть», скопируйте URL
 // 7. Вставьте URL в поле «Google Sheets» в админ-панели сайта
+// 8. TELEGRAM: один раз запустите функцию authorizeTelegram_ (▶ в редакторе) и
+//    разрешите доступ к внешним запросам. Затем переразверните веб-приложение.
 // ================================================================
 
 // Лист «Все регистрации» — общий сводный лист (можно отключить)
@@ -458,8 +460,12 @@ function buildTelegramRegistrationText_(data) {
 }
 
 function sendTelegramToChats_(token, chatIds, text) {
-    if (!token || !chatIds || !chatIds.length || !text) return 0;
+    if (!token) throw new Error('TELEGRAM_BOT_TOKEN не задан в Apps Script');
+    if (!chatIds || !chatIds.length) throw new Error('Нет chat_id получателей');
+    if (!text) throw new Error('Пустой текст уведомления');
+
     let sent = 0;
+    let lastError = '';
     chatIds.forEach(function(chatId) {
         const res = UrlFetchApp.fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
             method: 'post',
@@ -471,9 +477,31 @@ function sendTelegramToChats_(token, chatIds, text) {
             }),
             muteHttpExceptions: true
         });
-        if (res.getResponseCode() >= 200 && res.getResponseCode() < 300) sent++;
+        const code = res.getResponseCode();
+        const body = res.getContentText();
+        if (code >= 200 && code < 300) {
+            sent++;
+        } else {
+            lastError = 'chat ' + chatId + ': HTTP ' + code + ' ' + body.slice(0, 300);
+        }
     });
+    if (!sent) throw new Error(lastError || 'Не удалось отправить в Telegram');
     return sent;
+}
+
+/**
+ * ЗАПУСТИТЕ ВРУЧНУЮ 1 РАЗ (▶ в редакторе Apps Script).
+ * Google попросит разрешение на «внешние запросы» — подтвердите.
+ * После этого переразверните веб-приложение.
+ */
+function authorizeTelegram_() {
+    const token = String(TELEGRAM_BOT_TOKEN || '').trim();
+    if (!token) throw new Error('Сначала заполните TELEGRAM_BOT_TOKEN в начале файла');
+    const chatIds = telegramChatIds_({ chatIds: TELEGRAM_CHAT_IDS });
+    const testId = chatIds.length ? chatIds[0] : '1007089617';
+    const sent = sendTelegramToChats_(token, [testId],
+        '✅ Telegram подключён к системе регистрации Профкома МГУ.\nТестовое сообщение — всё работает!');
+    Logger.log('authorizeTelegram_ ok, sent=' + sent);
 }
 
 function sendRegistrationTelegram_(data) {

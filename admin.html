@@ -891,8 +891,30 @@
         <div id="adminPanel" class="admin-panel">
             <div id="globalMessage" class="message" style="margin-bottom: 1rem;"></div>
 
+            <div class="dashboard">
+                <div class="dashboard-header">
+                    <h2>📊 Сводка</h2>
+                    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                        <button class="btn btn-small" onclick="loadDashboard()">🔄 Обновить</button>
+                        <button class="btn btn-primary btn-small" onclick="exportAllCSV()">⬇ Экспорт всех заявок</button>
+                    </div>
+                </div>
+                <div id="dashboardStats" class="dashboard-stats">
+                    <p style="opacity:0.6;padding:1rem;">Загрузка статистики...</p>
+                </div>
+            </div>
+
+            <div class="panel-header">
+                <h2>Управление мероприятиями</h2>
+                <button class="btn btn-success" onclick="openCreateModal()">+ Создать мероприятие</button>
+            </div>
+
+            <div id="eventsList" class="events-list">
+                <p style="text-align: center; padding: 2rem;">Загрузка...</p>
+            </div>
+
             <!-- Google Sheets интеграция -->
-            <div class="sheets-panel" id="sheetsPanel">
+            <div class="sheets-panel" id="sheetsPanel" style="margin-top: 2rem;">
                 <div class="sheets-panel-header">
                     <h2>🟢 Google Таблицы</h2>
                     <span id="sheetsStatusBadge" class="sheets-status"></span>
@@ -914,7 +936,7 @@
             </div>
 
             <!-- Telegram уведомления -->
-            <div class="sheets-panel" id="telegramPanel">
+            <div class="sheets-panel" id="telegramPanel" style="margin-top: 2rem;">
                 <div class="sheets-panel-header">
                     <h2>📱 Telegram</h2>
                     <span id="telegramStatusBadge" class="sheets-status"></span>
@@ -938,28 +960,6 @@
                     4) узнайте chat_id через <a href="https://t.me/userinfobot" target="_blank" rel="noopener">@userinfobot</a> и добавьте выше.
                     Уведомления идут через Google Apps Script (VPS не достучится до Telegram напрямую).
                 </p>
-            </div>
-
-            <div class="dashboard">
-                <div class="dashboard-header">
-                    <h2>📊 Сводка</h2>
-                    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-                        <button class="btn btn-small" onclick="loadDashboard()">🔄 Обновить</button>
-                        <button class="btn btn-primary btn-small" onclick="exportAllCSV()">⬇ Экспорт всех заявок</button>
-                    </div>
-                </div>
-                <div id="dashboardStats" class="dashboard-stats">
-                    <p style="opacity:0.6;padding:1rem;">Загрузка статистики...</p>
-                </div>
-            </div>
-
-            <div class="panel-header">
-                <h2>Управление мероприятиями</h2>
-                <button class="btn btn-success" onclick="openCreateModal()">+ Создать мероприятие</button>
-            </div>
-
-            <div id="eventsList" class="events-list">
-                <p style="text-align: center; padding: 2rem;">Загрузка...</p>
             </div>
         </div>
     </div>
@@ -996,7 +996,6 @@
             <div class="participants-modal-header">
                 <h2 id="participantsTitle">Участники</h2>
                 <div style="display: flex; gap: 0.8rem; flex-wrap: wrap;">
-                    <button class="btn btn-small" style="background: #27ae60;" onclick="syncCurrentEventToSheets()" title="Отправить участников этого мероприятия в отдельный лист Google Таблицы">📊 В таблицу</button>
                     <button class="btn btn-success btn-small" onclick="exportCSV('new')">⬇ Скачать новые CSV</button>
                     <button class="btn btn-small" style="background: var(--secondary);" onclick="exportCSV('all')">⬇ Скачать все CSV</button>
                     <button class="btn btn-small" style="background: #16a085;" onclick="copyConfirmedEmails()" title="Скопировать e-mail записанных для рассылки-напоминания">📧 Копировать e-mail</button>
@@ -1250,6 +1249,7 @@
                     </div>
                     <div class="event-item-actions" style="flex-wrap: wrap;">
                         <button class="btn btn-success btn-small" onclick="showParticipants('${event.id}')">👥 Участники</button>
+                        <button class="btn btn-small" style="background: #27ae60;" onclick="syncEventToSheets('${event.id}')" title="Отправить участников в отдельный лист Google Таблицы">📊 В таблицу</button>
                         <button class="btn btn-small" style="background: #16a085;" onclick="copyRegLink('${event.id}', this)" title="Скопировать ссылку на форму регистрации">🔗 Ссылка на форму</button>
                         <button class="btn btn-small" onclick="syncVolunteerCount('${event.id}')" title="Пересчитать по заявкам в базе">🔄 Счётчик</button>
                         ${event.isTemplate ? `<button class="btn btn-small" style="background: #4facfe;" onclick="createFromTemplate('${event.id}')">⚡ Создать из шаблона</button>` : ''}
@@ -1886,24 +1886,38 @@
             });
         }
 
-        async function syncCurrentEventToSheets() {
+        async function syncEventToSheets(eventId) {
             const url = getSheetsUrl();
             if (!url) {
                 showMessage('error', 'Сначала укажите URL Google Apps Script в блоке «Google Таблицы»');
                 return;
             }
-            if (!currentParticipantsEventId || !currentParticipantsData.length) {
-                showMessage('error', 'Нет участников для синхронизации');
-                return;
-            }
+            if (!eventId) return;
 
-            const event = eventsData[currentParticipantsEventId];
-            const eventTitle = event?.title || currentParticipantsData[0]?.eventTitle || 'Мероприятие';
-            const registrations = sortRegistrationsByTime(currentParticipantsData).map(r =>
-                buildSheetsRegistrationRow(r.registrationId, r, eventTitle)
-            );
+            const event = eventsData[eventId];
+            const eventTitle = event?.title || 'Мероприятие';
 
             try {
+                const snap = await db.collection('registrations').where('eventId', '==', eventId).get();
+                if (snap.empty) {
+                    showMessage('error', 'Нет участников для синхронизации');
+                    return;
+                }
+
+                const participantsData = snap.docs.map(d => {
+                    const data = d.data();
+                    return {
+                        ...data,
+                        registrationId: data.registrationId || d.id,
+                        createdAt: data.createdAt || '',
+                        createdAtMs: Number(data.createdAtMs) || 0
+                    };
+                });
+
+                const registrations = sortRegistrationsByTime(participantsData).map(r =>
+                    buildSheetsRegistrationRow(r.registrationId, r, eventTitle)
+                );
+
                 await fetch(url, {
                     method: 'POST',
                     mode: 'no-cors',
