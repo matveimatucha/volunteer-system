@@ -920,6 +920,12 @@
                     <span id="sheetsStatusBadge" class="sheets-status"></span>
                 </div>
                 <div class="sheets-url-row">
+                    <input type="url" id="sheetsDocUrlInput"
+                           placeholder="Ссылка на Google Таблицу (docs.google.com/spreadsheets/…)"
+                           oninput="onSheetsDocUrlChange(this.value)">
+                    <button type="button" class="btn btn-small" id="sheetsDocOpenBtn" onclick="openSheetsDoc()" title="Открыть таблицу в новой вкладке" disabled>📊 Открыть таблицу</button>
+                </div>
+                <div class="sheets-url-row">
                     <input type="url" id="sheetsUrlInput"
                            placeholder="Вставьте URL вашего Google Apps Script…"
                            oninput="onSheetsUrlChange(this.value)">
@@ -1133,9 +1139,9 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
-    <script src="assets/registration-utils.js?v=2"></script>
+    <script src="assets/registration-utils.js?v=3"></script>
     <script src="assets/api-config.js"></script>
-    <script src="assets/sheets-sync.js?v=2"></script>
+    <script src="assets/sheets-sync.js?v=3"></script>
     <script>
         // ================================
         // ВАЖНО! ВСТАВЬТЕ ВАШ FIREBASE КОНФИГ
@@ -2232,16 +2238,64 @@
 
         async function initSheetsPanel() {
             const input = document.getElementById('sheetsUrlInput');
+            const docInput = document.getElementById('sheetsDocUrlInput');
             let url = getSheetsUrl();
+            let docUrl = getSheetsDocUrl();
             try {
                 const snap = await INTEGRATIONS_REF.get();
-                const fromDb = snap.exists ? (snap.data().sheetsWebhookUrl || '') : '';
-                if (fromDb && !url) {
-                    url = fromDb;
-                    setSheetsUrl(url);
+                if (snap.exists) {
+                    const data = snap.data();
+                    const fromDb = data.sheetsWebhookUrl || '';
+                    const fromDbDoc = data.sheetsSpreadsheetUrl || '';
+                    if (fromDb && !url) {
+                        url = fromDb;
+                        setSheetsUrl(url);
+                    }
+                    if (fromDbDoc && !docUrl) {
+                        docUrl = fromDbDoc;
+                        setSheetsDocUrl(docUrl);
+                    }
                 }
             } catch (_) {}
             if (input) input.value = url;
+            if (docInput) docInput.value = docUrl;
+            updateSheetsDocOpenButton(docUrl);
+        }
+
+        function isValidSheetsDocUrl(url) {
+            if (!url || typeof url !== 'string') return false;
+            try {
+                const u = new URL(url.trim());
+                return u.hostname === 'docs.google.com' && u.pathname.includes('/spreadsheets/');
+            } catch {
+                return false;
+            }
+        }
+
+        function updateSheetsDocOpenButton(url) {
+            const btn = document.getElementById('sheetsDocOpenBtn');
+            if (!btn) return;
+            const valid = isValidSheetsDocUrl(url);
+            btn.disabled = !valid;
+        }
+
+        function onSheetsDocUrlChange(val) {
+            const trimmed = val.trim();
+            setSheetsDocUrl(trimmed);
+            updateSheetsDocOpenButton(trimmed);
+            INTEGRATIONS_REF.set({
+                sheetsSpreadsheetUrl: trimmed,
+                updatedAt: new Date().toISOString()
+            }, { merge: true }).catch(() => {});
+        }
+
+        function openSheetsDoc() {
+            const url = getSheetsDocUrl().trim();
+            if (!isValidSheetsDocUrl(url)) {
+                showMessage('error', 'Введите корректную ссылку на Google Таблицу');
+                return;
+            }
+            window.open(url, '_blank', 'noopener,noreferrer');
         }
 
         function onSheetsUrlChange(val) {

@@ -457,7 +457,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
     <script src="assets/event-images.js"></script>
-    <script src="assets/registration-utils.js"></script>
+    <script src="assets/registration-utils.js?v=3"></script>
     <script src="assets/sheets-sync.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script>
@@ -965,15 +965,15 @@
                         `;
 
                     case 'vk':
-                        const vkDescription = qDesc || 'Пример: https://vk.com/your_id';
+                        const vkDescription = qDesc || 'Пример: https://vk.com/your_id или https://vk.ru/your_id';
                         return `
                             <div class="form-group">
                                 <label>${qText} ${requiredMark}</label>
                                 <small style="color: #666; margin-bottom: 0.5rem; display: block;">${vkDescription}</small>
                                 <input type="url" name="${fieldName}" ${requiredAttr} 
                                        placeholder="https://vk.com/your_id"
-                                       pattern="https://vk\\.com/.*">
-                                <div class="field-error">Введите ссылку на ВК (должна начинаться с https://vk.com/)</div>
+                                       data-vk-url="1">
+                                <div class="field-error">Введите ссылку на ВК (https://vk.com/… или https://vk.ru/…)</div>
                             </div>
                         `;
 
@@ -1262,13 +1262,11 @@
                     }
                 }
                 // URL (ВКонтакте)
-                else if (input.type === 'url') {
-                    if (input.pattern && input.pattern.includes('vk')) {
-                        if (!input.value.startsWith('https://vk.com/')) {
-                            isValid = false;
-                            if (errorDiv) errorDiv.classList.add('show');
-                            input.style.borderColor = 'var(--danger)';
-                        }
+                else if (input.type === 'url' && input.dataset.vkUrl) {
+                    if (!isValidVkUrl(input.value)) {
+                        isValid = false;
+                        if (errorDiv) errorDiv.classList.add('show');
+                        input.style.borderColor = 'var(--danger)';
                     }
                 }
                 // Telegram

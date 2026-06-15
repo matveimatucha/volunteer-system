@@ -286,6 +286,19 @@ function buildCalendarLinks(event) {
     return { googleUrl, ics };
 }
 
+function isValidVkUrl(url) {
+    if (!url || typeof url !== 'string') return false;
+    try {
+        const u = new URL(url.trim());
+        if (u.protocol !== 'https:') return false;
+        const host = u.hostname.toLowerCase();
+        return host === 'vk.com' || host === 'www.vk.com' || host === 'm.vk.com'
+            || host === 'vk.ru' || host === 'www.vk.ru' || host === 'm.vk.ru';
+    } catch {
+        return false;
+    }
+}
+
 function getBaseTemplateQuestions() {
     const baseId = Date.now();
     return [
@@ -294,7 +307,7 @@ function getBaseTemplateQuestions() {
         { id: baseId + 2, text: 'Отчество', type: 'text', required: false, description: 'Если есть', options: [] },
         { id: baseId + 3, text: 'Факультет', type: 'faculty', required: true, description: 'Выберите ваш факультет из списка', options: [] },
         { id: baseId + 4, text: 'Курс обучения', type: 'course', required: true, description: 'Укажите на каком курсе вы учитесь', options: [] },
-        { id: baseId + 5, text: 'ВКонтакте', type: 'vk', required: true, description: 'Пример: https://vk.com/your_id', options: [] },
+        { id: baseId + 5, text: 'ВКонтакте', type: 'vk', required: true, description: 'Пример: https://vk.com/your_id или https://vk.ru/your_id', options: [] },
         { id: baseId + 6, text: 'Telegram', type: 'telegram', required: true, description: 'Начинается с @, например: @username', options: [] },
         { id: baseId + 7, text: 'Номер телефона', type: 'tel', required: true, description: 'Для срочной связи', options: [] },
         { id: baseId + 8, text: 'Размер футболки', type: 'select', required: true, description: 'Нужно для заказа формы', options: ['XS', 'S', 'M', 'L', 'XL', 'XXL'] },

@@ -4,6 +4,7 @@
    ================================================================ */
 
 const SHEETS_URL_KEY = 'opk_sheets_webhook_url';
+const SHEETS_DOC_URL_KEY = 'opk_sheets_doc_url';
 
 function getSheetsUrl() {
     return localStorage.getItem(SHEETS_URL_KEY) || '';
@@ -11,6 +12,14 @@ function getSheetsUrl() {
 
 function setSheetsUrl(url) {
     localStorage.setItem(SHEETS_URL_KEY, url.trim());
+}
+
+function getSheetsDocUrl() {
+    return localStorage.getItem(SHEETS_DOC_URL_KEY) || '';
+}
+
+function setSheetsDocUrl(url) {
+    localStorage.setItem(SHEETS_DOC_URL_KEY, url.trim());
 }
 
 /**
