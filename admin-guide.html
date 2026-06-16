@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Инструкция — админ-панель</title>
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/opk-theme.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Source Sans 3', sans-serif;
+            background-color: #F7F3C4;
+            color: #3a3f6b;
+            padding: 2rem 1.25rem 4rem;
+            line-height: 1.65;
+        }
+
+        .container { max-width: 900px; margin: 0 auto; }
+
+        /* opk-theme.css красит header в тёмно-синий — отключаем, как в admin.html */
+        header {
+            background: transparent !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            animation: none !important;
+            margin-bottom: 2.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 1rem;
+            padding: 0 !important;
+        }
+
+        h1 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 3rem;
+            letter-spacing: 2px;
+            color: #1B2480 !important;
+        }
+
+        .back-link {
+            background: rgba(27, 36, 128, 0.09);
+            color: #1B2480;
+            padding: 0.8rem 1.5rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 2px solid rgba(27, 36, 128, 0.20);
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .back-link:hover {
+            background: rgba(27, 36, 128, 0.16);
+            transform: translateY(-2px);
+        }
+
+        .guide-intro {
+            background: rgba(255, 255, 255, 0.88);
+            border-radius: 16px;
+            padding: 1.5rem 1.75rem;
+            border: 1px solid rgba(27, 36, 128, 0.12);
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 28px rgba(27, 36, 128, 0.08);
+        }
+
+        .guide-intro p { margin-bottom: 0.75rem; }
+        .guide-intro p:last-child { margin-bottom: 0; }
+
+        .toc {
+            background: rgba(27, 36, 128, 0.06);
+            border-radius: 14px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 2.5rem;
+            border-left: 4px solid #1B2480;
+        }
+
+        .toc h2 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.5rem;
+            letter-spacing: 1px;
+            color: #1B2480;
+            margin-bottom: 0.75rem;
+        }
+
+        .toc ol {
+            padding-left: 1.25rem;
+            columns: 2;
+            column-gap: 2rem;
+        }
+
+        .toc li { margin-bottom: 0.35rem; }
+        .toc a { color: #1B2480; font-weight: 600; text-decoration: none; }
+        .toc a:hover { text-decoration: underline; }
+
+        section {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 16px;
+            padding: 1.75rem 2rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(27, 36, 128, 0.1);
+            scroll-margin-top: 1.5rem;
+        }
+
+        section h2 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2rem;
+            letter-spacing: 1.5px;
+            color: #1B2480;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid rgba(27, 36, 128, 0.1);
+        }
+
+        section h3 {
+            font-size: 1.05rem;
+            color: #1a2060;
+            margin: 1.25rem 0 0.5rem;
+            font-weight: 700;
+        }
+
+        section p { margin-bottom: 0.85rem; }
+        section ul, section ol { margin: 0.5rem 0 1rem 1.25rem; }
+        section li { margin-bottom: 0.4rem; }
+
+        .tip {
+            background: rgba(30, 140, 90, 0.08);
+            border-left: 4px solid #1e8c5a;
+            padding: 0.85rem 1rem;
+            border-radius: 0 10px 10px 0;
+            margin: 1rem 0;
+            font-size: 0.95rem;
+        }
+
+        .warn {
+            background: rgba(214, 48, 49, 0.07);
+            border-left: 4px solid #d63031;
+            padding: 0.85rem 1rem;
+            border-radius: 0 10px 10px 0;
+            margin: 1rem 0;
+            font-size: 0.95rem;
+        }
+
+        code, .kbd {
+            background: rgba(27, 36, 128, 0.08);
+            padding: 0.1rem 0.45rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: #1B2480;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.92rem;
+            margin: 1rem 0;
+        }
+
+        th, td {
+            padding: 0.65rem 0.85rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(27, 36, 128, 0.1);
+            vertical-align: top;
+        }
+
+        th {
+            background: rgba(27, 36, 128, 0.07);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: rgba(27, 36, 128, 0.75);
+        }
+
+        @media (max-width: 640px) {
+            body { padding: 1.25rem 1rem 3rem; }
+            h1 { font-size: 2.2rem; }
+            section { padding: 1.25rem 1.1rem; }
+            .toc ol { columns: 1; }
+        }
+    </style>
+</head>
+<body class="admin-theme">
+    <div class="container">
+        <header>
+            <h1>📖 Инструкция по админ-панели</h1>
+            <a href="admin.html" class="back-link">← В админ-панель</a>
+        </header>
+
+        <div class="guide-intro">
+            <p>Это краткое руководство по работе с сайтом регистрации волонтёров ОПК МГУ. Здесь описаны все основные действия: от создания мероприятия до выгрузки заявок и настройки уведомлений.</p>
+            <p>Админ-панель открывается по адресу <strong>admin.html</strong> на вашем сайте (например, <code>volonter-msu.ru/admin.html</code>).</p>
+        </div>
+
+        <nav class="toc" aria-label="Содержание">
+            <h2>Содержание</h2>
+            <ol>
+                <li><a href="#login">Вход и обзор</a></li>
+                <li><a href="#dashboard">Сводка</a></li>
+                <li><a href="#events">Мероприятия</a></li>
+                <li><a href="#statuses">Статусы и архив</a></li>
+                <li><a href="#questions">Вопросы анкеты</a></li>
+                <li><a href="#participants">Участники</a></li>
+                <li><a href="#waitlist">Лист ожидания</a></li>
+                <li><a href="#sheets">Google Таблицы</a></li>
+                <li><a href="#telegram">Telegram</a></li>
+                <li><a href="#export">Экспорт данных</a></li>
+                <li><a href="#tips">Советы</a></li>
+                <li><a href="#faq">Частые вопросы</a></li>
+            </ol>
+        </nav>
+
+        <section id="login">
+            <h2>1. Вход и обзор</h2>
+            <p>На странице входа введите пароль администратора. После входа откроется панель с несколькими блоками:</p>
+            <ul>
+                <li><strong>Сводка</strong> — общая статистика по мероприятиям и заявкам.</li>
+                <li><strong>Управление мероприятиями</strong> — список всех событий и кнопки действий.</li>
+                <li><strong>Google Таблицы</strong> — синхронизация заявок в таблицу.</li>
+                <li><strong>Telegram</strong> — уведомления о новых регистрациях.</li>
+            </ul>
+            <p>В правом верхнем углу — кнопки <strong>Инструкция</strong>, <strong>Выйти</strong> и ссылка на главную страницу сайта.</p>
+        </section>
+
+        <section id="dashboard">
+            <h2>2. Сводка</h2>
+            <p>Блок «📊 Сводка» показывает:</p>
+            <ul>
+                <li>число активных и архивных мероприятий;</li>
+                <li>сколько заявок подтверждено, в листе ожидания и отменено;</li>
+                <li>таблицу по каждому мероприятию с заполнением мест.</li>
+            </ul>
+            <p>Кнопка <strong>🔄 Обновить</strong> перезагружает данные. Кнопка <strong>⬇ Экспорт всех заявок</strong> скачивает CSV-файл со всеми заявками из базы (краткая сводка: email, телефон, статус, мероприятие).</p>
+        </section>
+
+        <section id="events">
+            <h2>3. Мероприятия</h2>
+
+            <h3>Создать мероприятие</h3>
+            <p>Нажмите <strong>+ Создать мероприятие</strong>. При первом создании система предложит добавить готовый шаблон из 10 базовых вопросов — обычно удобно согласиться.</p>
+            <p>Заполните обязательные поля: название, дата, место, описание. Остальное — по желанию:</p>
+            <ul>
+                <li><strong>Максимум волонтёров</strong> — лимит мест. Если оставить пустым, запись без ограничений.</li>
+                <li><strong>Фото и логотип</strong> — ссылка с Google Диска (доступ «всем, у кого есть ссылка») или прямая ссылка на картинку.</li>
+                <li><strong>Цвет плашки</strong> — оформление карточки на главной и страницы регистрации.</li>
+                <li><strong>Текст после регистрации</strong> — что увидит участник после отправки формы.</li>
+                <li><strong>Ссылка на чат</strong> — кнопка на Telegram-чат мероприятия после успешной записи.</li>
+            </ul>
+
+            <h3>Кнопки у каждого мероприятия</h3>
+            <table>
+                <thead>
+                    <tr><th>Кнопка</th><th>Действие</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>👥 Участники</td><td>Открыть список всех заявок на это мероприятие</td></tr>
+                    <tr><td>📊 В таблицу</td><td>Отправить участников на отдельный лист Google Таблицы</td></tr>
+                    <tr><td>🔗 Ссылка на форму</td><td>Скопировать ссылку для рассылки волонтёрам</td></tr>
+                    <tr><td>🔄 Счётчик</td><td>Пересчитать число записанных по заявкам в базе</td></tr>
+                    <tr><td>⧉ Скопировать</td><td>Создать копию мероприятия (черновик, счётчик обнуляется)</td></tr>
+                    <tr><td>Редактировать</td><td>Изменить поля и вопросы анкеты</td></tr>
+                    <tr><td>Удалить</td><td>Удалить карточку мероприятия <em>(заявки в базе останутся!)</em></td></tr>
+                </tbody>
+            </table>
+
+            <div class="warn">
+                <strong>Важно:</strong> не удаляйте прошедшие мероприятия, если нужна статистика. Вместо удаления используйте <strong>архив</strong> (см. ниже).
+            </div>
+        </section>
+
+        <section id="statuses">
+            <h2>4. Статусы и архив</h2>
+            <p>У каждого мероприятия есть статус:</p>
+            <table>
+                <thead>
+                    <tr><th>Статус</th><th>На сайте</th><th>Регистрация</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><strong>Открыто</strong></td><td>Видно в актуальных</td><td>Принимает заявки</td></tr>
+                    <tr><td><strong>Черновик</strong></td><td>Скрыто</td><td>Недоступна</td></tr>
+                    <tr><td><strong>Закрыто</strong></td><td>Видно, но без записи</td><td>Завершена</td></tr>
+                </tbody>
+            </table>
+
+            <h3>Архив</h3>
+            <p>Мероприятие попадает в блок «Прошедшие» на главной, если:</p>
+            <ul>
+                <li>дата мероприятия уже прошла, <strong>или</strong></li>
+                <li>включена галочка <strong>«Перенести в архив вручную»</strong> при редактировании.</li>
+            </ul>
+            <p>В архиве регистрация закрыта, но заявки и статистика сохраняются. Участников можно смотреть и выгружать как обычно.</p>
+
+            <h3>Шаблоны</h3>
+            <p>Галочка <strong>«Это шаблон-основа»</strong> скрывает мероприятие с главной. Такой шаблон используют для быстрого создания новых событий с тем же набором вопросов (кнопка <strong>⚡ Создать из шаблона</strong>).</p>
+        </section>
+
+        <section id="questions">
+            <h2>5. Вопросы анкеты</h2>
+            <p>В форме редактирования мероприятия — блок <strong>«Вопросы для волонтёров»</strong>:</p>
+            <ul>
+                <li><strong>⚡ Добавить шаблон</strong> — 10 стандартных вопросов (имя, факультет, курс, контакты, согласие на ПДн и т.д.).</li>
+                <li><strong>+ Добавить вопрос</strong> — свой вопрос с выбором типа: текст, email, телефон, список, галочка, факультет МГУ, Telegram и др.</li>
+            </ul>
+            <p>Для вопросов со списком вариантов добавляйте пункты кнопкой <strong>+ Добавить вариант</strong>.</p>
+            <div class="tip">
+                Не меняйте радикально набор вопросов после начала регистрации — у уже отправленных заявок ответы привязаны к старым полям. Для нового набора вопросов лучше создать копию мероприятия.
+            </div>
+        </section>
+
+        <section id="participants">
+            <h2>6. Участники</h2>
+            <p>Кнопка <strong>👥 Участники</strong> открывает таблицу заявок:</p>
+            <ul>
+                <li>поиск по имени, email, телефону;</li>
+                <li>фильтры: все / записанные / лист ожидания;</li>
+                <li>метка <strong>NEW</strong> у заявок, которые вы ещё не просматривали;</li>
+                <li>кнопка <strong>×</strong> — удалить заявку (безвозвратно);</li>
+                <li>кнопка <strong>✓ Отметить как просмотренные</strong> — убрать метки NEW.</li>
+            </ul>
+
+            <h3>Действия в окне участников</h3>
+            <ul>
+                <li><strong>⬇ Скачать новые CSV</strong> — только непросмотренные заявки.</li>
+                <li><strong>⬇ Скачать все CSV</strong> — полная выгрузка с ответами анкеты.</li>
+                <li><strong>📧 Копировать e-mail</strong> — адреса всех записанных через запятую (для рассылки-напоминания в почте).</li>
+            </ul>
+        </section>
+
+        <section id="waitlist">
+            <h2>7. Лист ожидания</h2>
+            <p>Если все места заняты, на странице регистрации появляется кнопка <strong>«Встать в лист ожидания»</strong>. Такие заявки сохраняются со статусом «Лист ожидания».</p>
+            <p>Когда кто-то отменяет запись, первый в очереди автоматически переводится в «Записан». Вручную можно нажать <strong>Принять</strong> у нужной заявки в фильтре «Лист ожидания», если освободилось место.</p>
+            <p>Участник может отменить запись сам — по ссылке на странице успешной регистрации (если настроено письмо) или через <code>cancel.html</code>.</p>
+        </section>
+
+        <section id="sheets">
+            <h2>8. Google Таблицы</h2>
+            <p>Блок <strong>🟢 Google Таблицы</strong> синхронизирует заявки в вашу таблицу:</p>
+            <ol>
+                <li>Создайте Google Таблицу.</li>
+                <li>Откройте <a href="assets/google-apps-script.js" target="_blank">assets/google-apps-script.js</a>, скопируйте код в <strong>Расширения → Apps Script</strong>.</li>
+                <li>Разверните как веб-приложение: <em>Развернуть → Новое развёртывание → Веб-приложение → Доступ: Все</em>.</li>
+                <li>Вставьте URL веб-приложения в поле в админке. Ссылку на саму таблицу — в поле выше (для кнопки «Открыть таблицу»).</li>
+            </ol>
+            <p>Каждое мероприятие попадает на <strong>отдельный лист</strong> (вкладку) с названием мероприятия. Новые заявки добавляются автоматически при регистрации.</p>
+            <ul>
+                <li><strong>⬆ Синхр. все мероприятия</strong> — полная пересинхронизация всех заявок из базы.</li>
+                <li><strong>📊 В таблицу</strong> у конкретного мероприятия — только его участники.</li>
+            </ul>
+            <p>Подробнее: <a href="GOOGLE_APPS_SCRIPT.md" target="_blank">GOOGLE_APPS_SCRIPT.md</a></p>
+        </section>
+
+        <section id="telegram">
+            <h2>9. Telegram</h2>
+            <p>Уведомления о новых заявках приходят в Telegram через Google Apps Script (сервер в РФ не всегда достучится до Telegram напрямую).</p>
+            <ol>
+                <li>Создайте бота через <a href="https://t.me/BotFather" target="_blank">@BotFather</a>.</li>
+                <li>Вставьте токен бота в <code>TELEGRAM_BOT_TOKEN</code> в Apps Script и переразверните веб-приложение.</li>
+                <li>Каждый получатель пишет боту <code>/start</code>.</li>
+                <li>Узнайте chat_id через <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a> и добавьте в админке.</li>
+            </ol>
+            <p>Галочка <strong>«Уведомления о новых регистрациях»</strong> включает или отключает отправку.</p>
+        </section>
+
+        <section id="export">
+            <h2>10. Экспорт данных</h2>
+            <table>
+                <thead>
+                    <tr><th>Где</th><th>Что скачивается</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Сводка → Экспорт всех заявок</td><td>Краткий CSV по всей базе</td></tr>
+                    <tr><td>Участники → Скачать все CSV</td><td>Полный CSV с ответами анкеты по одному мероприятию</td></tr>
+                    <tr><td>Участники → Скачать новые CSV</td><td>Только новые (непросмотренные) заявки</td></tr>
+                    <tr><td>Google Таблицы</td><td>Живая таблица с автообновлением</td></tr>
+                </tbody>
+            </table>
+            <p>CSV открывается в Excel: файл уже с кодировкой UTF-8 (BOM).</p>
+        </section>
+
+        <section id="tips">
+            <h2>11. Советы</h2>
+            <ul>
+                <li><strong>Публикуйте ссылку на форму</strong> (<code>register.html?event=ID</code>), а не на главную — так волонтёр сразу попадёт на нужное мероприятие.</li>
+                <li><strong>Черновик</strong> — удобно готовить мероприятие заранее, не показывая на сайте.</li>
+                <li><strong>Закрыто</strong> — когда места кончились или регистрация завершена, но карточку ещё видно.</li>
+                <li><strong>Архив</strong> — для прошедших событий вместо удаления.</li>
+                <li>Если счётчик мест «съехал», нажмите <strong>🔄 Счётчик</strong> у мероприятия.</li>
+                <li>Напоминание перед событием: скопируйте email участников и отправьте письмо вручную.</li>
+            </ul>
+        </section>
+
+        <section id="faq">
+            <h2>12. Частые вопросы</h2>
+
+            <h3>Участник пишет «ошибка при регистрации»</h3>
+            <p>Возможно, места закончились в момент отправки или мероприятие закрыто. Попросите обновить страницу. Проверьте статус и лимит мест в админке.</p>
+
+            <h3>Дубли по email или телефону</h3>
+            <p>Система не даёт зарегистрироваться дважды на одно мероприятие с тем же email или телефоном.</p>
+
+            <h3>Заявки есть, а в таблице пусто</h3>
+            <p>Проверьте URL Apps Script в админке, нажмите <strong>🔗 Тест</strong>. Убедитесь, что веб-приложение переразвёрнуто после изменений в скрипте.</p>
+
+            <h3>Telegram не приходит</h3>
+            <p>Проверьте токен в Apps Script, chat_id получателя, что бот получил <code>/start</code>. Уведомления идут через Google, не через сервер сайта.</p>
+
+            <h3>Удалил мероприятие — заявки пропали из админки</h3>
+            <p>Заявки остаются в базе, но кнопка «Участники» исчезает вместе с карточкой. Поэтому для прошедших событий используйте архив, а не удаление.</p>
+        </section>
+
+        <p style="text-align:center;margin-top:2rem;opacity:0.7;font-size:0.9rem;">
+            <a href="admin.html" class="back-link">← Вернуться в админ-панель</a>
+        </p>
+    </div>
+</body>
+</html>
