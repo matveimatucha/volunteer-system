@@ -558,6 +558,53 @@
             border-radius: 10px;
         }
 
+        .question-toolbar {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .question-move-btns {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+            flex-shrink: 0;
+        }
+
+        .question-move-btns .btn-icon {
+            width: 34px;
+            height: 30px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            line-height: 1;
+        }
+
+        .question-move-btns .btn-icon:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        .question-item-infotext {
+            border-style: dashed;
+            background: rgba(0, 78, 137, 0.06);
+        }
+
+        .question-type-badge {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #1B2480;
+            opacity: 0.85;
+            padding-top: 0.35rem;
+            flex: 1;
+        }
+
+        .infotext-editor {
+            width: 100%;
+            min-height: 90px;
+            resize: vertical;
+        }
+
         .questions-list::-webkit-scrollbar-thumb {
             background: rgba(27, 36, 128, 0.30);
             border-radius: 10px;
@@ -1276,6 +1323,7 @@
                         <h3>📝 Вопросы для волонтёров</h3>
                         <div style="display: flex; gap: 0.5rem;">
                             <button type="button" class="btn btn-success btn-small" style="background: var(--secondary);" onclick="addTemplateQuestions()">⚡ Добавить шаблон</button>
+                            <button type="button" class="btn btn-small" style="background: #5c6bc0;" onclick="addTextBlock()">¶ Добавить текст</button>
                             <button type="button" class="btn btn-success btn-small" onclick="addQuestion()">+ Добавить вопрос</button>
                         </div>
                     </div>
@@ -1295,7 +1343,7 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
-    <script src="assets/registration-utils.js?v=4"></script>
+    <script src="assets/registration-utils.js?v=5"></script>
     <script src="assets/api-config.js"></script>
     <script src="assets/sheets-sync.js?v=3"></script>
     <script>
@@ -1572,6 +1620,28 @@
             renderQuestions();
         }
 
+        // Добавить текстовый блок между вопросами (без ответа)
+        function addTextBlock() {
+            currentQuestions.push({
+                id: Date.now(),
+                type: 'infotext',
+                text: '',
+                required: false,
+                options: []
+            });
+            renderQuestions();
+        }
+
+        // Переместить вопрос или текстовый блок
+        function moveQuestion(id, delta) {
+            const index = currentQuestions.findIndex(q => q.id === id);
+            const newIndex = index + delta;
+            if (index < 0 || newIndex < 0 || newIndex >= currentQuestions.length) return;
+            const [item] = currentQuestions.splice(index, 1);
+            currentQuestions.splice(newIndex, 0, item);
+            renderQuestions();
+        }
+
         // Удалить вопрос
         function removeQuestion(id) {
             currentQuestions = currentQuestions.filter(q => q.id !== id);
@@ -1597,6 +1667,17 @@
             }
         }
 
+        function renderQuestionMoveButtons(q, index, total) {
+            return `
+                <div class="question-move-btns">
+                    <button type="button" class="btn btn-small btn-icon" title="Переместить выше"
+                            onclick="moveQuestion(${q.id}, -1)" ${index === 0 ? 'disabled' : ''}>↑</button>
+                    <button type="button" class="btn btn-small btn-icon" title="Переместить ниже"
+                            onclick="moveQuestion(${q.id}, 1)" ${index === total - 1 ? 'disabled' : ''}>↓</button>
+                </div>
+            `;
+        }
+
         // Отрисовка вопросов
         function renderQuestions() {
             const container = document.getElementById('questionsList');
@@ -1606,64 +1687,87 @@
                 return;
             }
 
-            container.innerHTML = currentQuestions.map((q, index) => `
-                <div class="question-item">
-                    <div class="question-header-row">
-                        <input type="text" 
-                               value="${q.text}" 
-                               placeholder="Текст вопроса (например: Ваш факультет?)"
-                               onchange="updateQuestion(${q.id}, 'text', this.value)">
-                        <select onchange="updateQuestion(${q.id}, 'type', this.value)">
-                            <option value="text" ${q.type === 'text' ? 'selected' : ''}>Текст</option>
-                            <option value="email" ${q.type === 'email' ? 'selected' : ''}>Email</option>
-                            <option value="tel" ${q.type === 'tel' ? 'selected' : ''}>Телефон</option>
-                            <option value="number" ${q.type === 'number' ? 'selected' : ''}>Число</option>
-                            <option value="textarea" ${q.type === 'textarea' ? 'selected' : ''}>Длинный текст</option>
-                            <option value="select" ${q.type === 'select' ? 'selected' : ''}>Выбор из списка</option>
-                            <option value="radio" ${q.type === 'radio' ? 'selected' : ''}>Один вариант</option>
-                            <option value="multiselect" ${q.type === 'multiselect' ? 'selected' : ''}>Несколько вариантов</option>
-                            <option value="checkbox" ${q.type === 'checkbox' ? 'selected' : ''}>Галочка</option>
-                            <option value="faculty" ${q.type === 'faculty' ? 'selected' : ''}>Факультет МГУ</option>
-                            <option value="course" ${q.type === 'course' ? 'selected' : ''}>Курс обучения</option>
-                            <option value="vk" ${q.type === 'vk' ? 'selected' : ''}>Ссылка ВКонтакте</option>
-                            <option value="telegram" ${q.type === 'telegram' ? 'selected' : ''}>Telegram (@username)</option>
-                        </select>
-                        <button type="button" class="btn btn-danger btn-icon" onclick="removeQuestion(${q.id})">×</button>
-                    </div>
-                    
-                    <div class="form-group" style="margin-top: 1rem;">
-                        <input type="text" 
-                               value="${q.description || ''}" 
-                               placeholder="Описание/подсказка (например: Выберите ваш факультет из списка)"
-                               onchange="updateQuestion(${q.id}, 'description', this.value)"
-                               style="font-size: 0.9rem; opacity: 0.8;">
-                    </div>
-                    
-                    <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; text-transform: none;">
-                        <input type="checkbox" 
-                               ${q.required ? 'checked' : ''} 
-                               onchange="updateQuestion(${q.id}, 'required', this.checked)"
-                               style="width: auto;">
-                        Обязательный вопрос
-                    </label>
+            const total = currentQuestions.length;
+            container.innerHTML = currentQuestions.map((q, index) => {
+                const moveButtons = renderQuestionMoveButtons(q, index, total);
 
-                    ${(q.type === 'select' || q.type === 'radio' || q.type === 'multiselect') ? `
-                        <div class="question-options">
-                            <label style="font-size: 0.85rem; margin-bottom: 0.5rem;">Варианты ответов:</label>
-                            ${(q.options || []).map((opt, i) => `
-                                <div class="option-item">
-                                    <input type="text" 
-                                           value="${opt}" 
-                                           placeholder="Вариант ${i + 1}"
-                                           onchange="updateOption(${q.id}, ${i}, this.value)">
-                                    <button type="button" class="btn btn-danger btn-icon" onclick="removeOption(${q.id}, ${i})">×</button>
-                                </div>
-                            `).join('')}
-                            <button type="button" class="btn btn-success btn-small" onclick="addOption(${q.id})" style="margin-top: 0.5rem;">+ Добавить вариант</button>
+                if (q.type === 'infotext') {
+                    return `
+                        <div class="question-item question-item-infotext">
+                            <div class="question-toolbar">
+                                ${moveButtons}
+                                <span class="question-type-badge">¶ Текстовый блок (без ответа)</span>
+                                <button type="button" class="btn btn-danger btn-icon" onclick="removeQuestion(${q.id})">×</button>
+                            </div>
+                            <textarea class="infotext-editor"
+                                      placeholder="Текст между вопросами — инструкция, пояснение, разделитель..."
+                                      onchange="updateQuestion(${q.id}, 'text', this.value)">${escapeHtmlText(q.text || '')}</textarea>
                         </div>
-                    ` : ''}
-                </div>
-            `).join('');
+                    `;
+                }
+
+                return `
+                    <div class="question-item">
+                        <div class="question-toolbar">
+                            ${moveButtons}
+                            <div class="question-header-row" style="flex: 1; margin-bottom: 0;">
+                                <input type="text"
+                                       value="${escapeHtmlAttr(q.text || '')}"
+                                       placeholder="Текст вопроса (например: Ваш факультет?)"
+                                       onchange="updateQuestion(${q.id}, 'text', this.value)">
+                                <select onchange="updateQuestion(${q.id}, 'type', this.value)">
+                                    <option value="text" ${q.type === 'text' ? 'selected' : ''}>Текст</option>
+                                    <option value="email" ${q.type === 'email' ? 'selected' : ''}>Email</option>
+                                    <option value="tel" ${q.type === 'tel' ? 'selected' : ''}>Телефон</option>
+                                    <option value="number" ${q.type === 'number' ? 'selected' : ''}>Число</option>
+                                    <option value="textarea" ${q.type === 'textarea' ? 'selected' : ''}>Длинный текст</option>
+                                    <option value="select" ${q.type === 'select' ? 'selected' : ''}>Выбор из списка</option>
+                                    <option value="radio" ${q.type === 'radio' ? 'selected' : ''}>Один вариант</option>
+                                    <option value="multiselect" ${q.type === 'multiselect' ? 'selected' : ''}>Несколько вариантов</option>
+                                    <option value="checkbox" ${q.type === 'checkbox' ? 'selected' : ''}>Галочка</option>
+                                    <option value="faculty" ${q.type === 'faculty' ? 'selected' : ''}>Факультет МГУ</option>
+                                    <option value="course" ${q.type === 'course' ? 'selected' : ''}>Курс обучения</option>
+                                    <option value="vk" ${q.type === 'vk' ? 'selected' : ''}>Ссылка ВКонтакте</option>
+                                    <option value="telegram" ${q.type === 'telegram' ? 'selected' : ''}>Telegram (@username)</option>
+                                </select>
+                                <button type="button" class="btn btn-danger btn-icon" onclick="removeQuestion(${q.id})">×</button>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <input type="text"
+                                   value="${escapeHtmlAttr(q.description || '')}"
+                                   placeholder="Описание/подсказка (например: Выберите ваш факультет из списка)"
+                                   onchange="updateQuestion(${q.id}, 'description', this.value)"
+                                   style="font-size: 0.9rem; opacity: 0.8;">
+                        </div>
+                        
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; text-transform: none;">
+                            <input type="checkbox"
+                                   ${q.required ? 'checked' : ''}
+                                   onchange="updateQuestion(${q.id}, 'required', this.checked)"
+                                   style="width: auto;">
+                            Обязательный вопрос
+                        </label>
+
+                        ${(q.type === 'select' || q.type === 'radio' || q.type === 'multiselect') ? `
+                            <div class="question-options">
+                                <label style="font-size: 0.85rem; margin-bottom: 0.5rem;">Варианты ответов:</label>
+                                ${(q.options || []).map((opt, i) => `
+                                    <div class="option-item">
+                                        <input type="text"
+                                               value="${escapeHtmlAttr(opt)}"
+                                               placeholder="Вариант ${i + 1}"
+                                               onchange="updateOption(${q.id}, ${i}, this.value)">
+                                        <button type="button" class="btn btn-danger btn-icon" onclick="removeOption(${q.id}, ${i})">×</button>
+                                    </div>
+                                `).join('')}
+                                <button type="button" class="btn btn-success btn-small" onclick="addOption(${q.id})" style="margin-top: 0.5rem;">+ Добавить вариант</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
         }
 
         // Обновить вопрос

@@ -197,6 +197,17 @@
             color: var(--primary);
         }
 
+        .form-info-text {
+            margin: 0.25rem 0 1.5rem;
+            padding: 1rem 1.15rem;
+            background: rgba(27, 36, 128, 0.06);
+            border-left: 4px solid var(--primary);
+            border-radius: 8px;
+            color: #333;
+            line-height: 1.55;
+            white-space: pre-wrap;
+        }
+
         input,
         textarea,
         select {
@@ -457,7 +468,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
     <script src="assets/event-images.js"></script>
-    <script src="assets/registration-utils.js?v=4"></script>
+    <script src="assets/registration-utils.js?v=5"></script>
     <script src="assets/sheets-sync.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script>
@@ -803,6 +814,11 @@
                 const fieldName = `question_${q.id}`;
                 const qText = escapeHtmlText(q.text || '');
                 const qDesc = q.description ? escapeHtmlText(q.description) : '';
+
+                if (q.type === 'infotext') {
+                    if (!q.text || !String(q.text).trim()) return '';
+                    return `<div class="form-info-text">${qText}</div>`;
+                }
 
                 switch (q.type) {
                     case 'text':

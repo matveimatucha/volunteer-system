@@ -27,6 +27,10 @@ function formatDisplayValue(value) {
     return String(value);
 }
 
+function isAnswerableQuestion(q) {
+    return q && q.id != null && q.type !== 'infotext';
+}
+
 function buildQuestionTextMap(questions) {
     const map = {
         name: 'Имя',
@@ -34,7 +38,7 @@ function buildQuestionTextMap(questions) {
         phone: 'Телефон'
     };
     (questions || []).forEach((q) => {
-        if (q && q.id != null) {
+        if (isAnswerableQuestion(q)) {
             map[`question_${q.id}`] = q.text || `Вопрос ${q.id}`;
         }
     });
@@ -46,7 +50,7 @@ function getOrderedAnswerKeys(questions, records) {
     const keys = [];
     const seen = new Set();
     (questions || []).forEach((q) => {
-        if (q && q.id != null) {
+        if (isAnswerableQuestion(q)) {
             const key = `question_${q.id}`;
             keys.push(key);
             seen.add(key);
@@ -151,7 +155,7 @@ function collectAnswersFromForm(form, questions) {
     const answersLabeled = [];
 
     const orderedKeys = (questions && questions.length > 0)
-        ? questions.map(q => `question_${q.id}`)
+        ? questions.filter(isAnswerableQuestion).map(q => `question_${q.id}`)
         : Object.keys(answers);
 
     for (const key of orderedKeys) {
