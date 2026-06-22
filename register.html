@@ -465,29 +465,12 @@
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
     <script src="assets/event-images.js"></script>
     <script src="assets/registration-utils.js?v=5"></script>
+    <script src="assets/api-config.js"></script>
     <script src="assets/sheets-sync.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script>
-        // ================================
-        // ВАЖНО! ВСТАВЬТЕ ВАШ FIREBASE КОНФИГ
-        // Берётся в консоли Firebase: Project settings → Your apps → Web app
-        // ================================
-        const firebaseConfig = {
-            apiKey:            "AIzaSyCh17f9EFqQ-fAEGXTGpuzja-vY1RpePsc",
-            authDomain:        "volunteer-system-6ce7f.firebaseapp.com",
-            projectId:         "volunteer-system-6ce7f",
-            storageBucket:     "volunteer-system-6ce7f.firebasestorage.app",
-            messagingSenderId: "273894796704",
-            appId:             "1:273894796704:web:41a8f945d72bb58201c8c5"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-
-        // ================================
         // EMAILJS — уведомления на email
         // Зарегистрируйтесь на emailjs.com и вставьте свои ключи
         // ================================
@@ -501,9 +484,11 @@
         const ADMIN_EMAIL         = 'matvei.sukmanov@chemistry.msu.ru';
         emailjs.init(EMAILJS_PUBLIC_KEY);
 
-        function buildCancelUrl(registrationId, eventId) {
+        function buildCancelUrl(registrationId, eventId, cancelToken) {
             const base = window.location.href.split('?')[0].replace(/register\.html$/, 'cancel.html');
-            return `${base}?reg=${encodeURIComponent(registrationId)}&event=${encodeURIComponent(eventId)}`;
+            let url = `${base}?reg=${encodeURIComponent(registrationId)}&event=${encodeURIComponent(eventId)}`;
+            if (cancelToken) url += `&token=${encodeURIComponent(cancelToken)}`;
+            return url;
         }
 
         // Получаем ID мероприятия из URL
@@ -551,16 +536,16 @@
 
         async function fetchEvent(silent = false) {
             try {
-                const docSnap = await db.collection('events').doc(eventId).get();
-
-                if (docSnap.exists) {
-                    const event = docSnap.data();
-                    setCachedEvent(event);
-                    currentEvent = event;
-                    displayEvent(event);
-                } else if (!silent) {
-                    displayError('Мероприятие не найдено');
+                const res = await fetch(apiUrl(`/api/events/${encodeURIComponent(eventId)}`));
+                if (!res.ok) {
+                    if (!silent) displayError('Мероприятие не найдено');
+                    return;
                 }
+                const data = await res.json();
+                const event = { ...data.event, id: data.event?.id || eventId };
+                setCachedEvent(event);
+                currentEvent = event;
+                displayEvent(event);
             } catch (error) {
                 console.error('Ошибка:', error);
                 if (!silent) displayError('Ошибка загрузки мероприятия');
@@ -685,6 +670,7 @@
         function showSuccessScreen(event, options = {}) {
             const isWaitlist = options.waitlist === true;
             const registrationId = options.registrationId || '';
+            const cancelToken = options.cancelToken || '';
             const message = isWaitlist
                 ? 'Вы в листе ожидания. Если освободится место, мы свяжемся с вами по указанным контактам.'
                 : (event?.successMessage?.trim()
@@ -696,7 +682,7 @@
 
             const cancelHtml = registrationId ? `
                 <p style="margin-top:1.5rem;font-size:0.9rem;opacity:0.8;">
-                    Передумали? <a href="${escapeHtmlAttr(buildCancelUrl(registrationId, eventId))}">Отменить запись</a>
+                    Передумали? <a href="${escapeHtmlAttr(buildCancelUrl(registrationId, eventId, cancelToken))}">Отменить запись</a>
                 </p>
             ` : '';
 
@@ -1042,80 +1028,27 @@
             let registrationSaved = false;
 
             try {
-                // Проверка дублей не должна блокировать регистрацию, если чтение
-                // registrations недоступно (правила безопасности/отсутствие индекса).
-                async function findDuplicate(field, value) {
-                    if (!value) return false;
-                    try {
-                        const snap = await db.collection('registrations')
-                            .where('eventId', '==', eventId)
-                            .where(field, '==', value)
-                            .limit(1)
-                            .get();
-                        return !snap.empty;
-                    } catch (dupErr) {
-                        console.warn('Проверка дублей пропущена:', dupErr);
-                        return false;
-                    }
-                }
-
-                if (await findDuplicate('contactEmail', contactEmail)) {
-                    throw new Error('DUPLICATE_EMAIL');
-                }
-                if (await findDuplicate('contactPhone', contactPhone)) {
-                    throw new Error('DUPLICATE_PHONE');
-                }
-
-                const eventRef = db.collection('events').doc(eventId);
-                const registrationRef = db.collection('registrations').doc();
-                const registeredAtMs = Date.now();
-                let latestEvent = null;
-
-                await db.runTransaction(async (transaction) => {
-                    const eventSnap = await transaction.get(eventRef);
-                    if (!eventSnap.exists) {
-                        throw new Error('EVENT_NOT_FOUND');
-                    }
-
-                    latestEvent = eventSnap.data();
-                    const latestMax = Number(latestEvent.maxVolunteers) ? Number(latestEvent.maxVolunteers) : 999999;
-                    const latestCurrent = Number(latestEvent.currentVolunteers) || 0;
-                    const isClosed = (latestEvent.status || 'open') === 'closed'
-                        || (latestEvent.status || 'open') === 'draft'
-                        || latestEvent.isTemplate === true
-                        || latestEvent.isArchived === true;
-
-                    if (isClosed) {
-                        throw new Error('REGISTRATION_CLOSED');
-                    }
-
-                    const savingAsWaitlist = isWaitlist || latestCurrent >= latestMax;
-                    if (!savingAsWaitlist && latestCurrent >= latestMax) {
-                        throw new Error('REGISTRATION_CLOSED');
-                    }
-
-                    transaction.set(registrationRef, {
-                        registrationId: registrationRef.id,
-                        eventId: eventId,
-                        eventTitle: latestEvent.title,
-                        status: savingAsWaitlist ? REGISTRATION_STATUS.WAITLIST : REGISTRATION_STATUS.CONFIRMED,
-                        contactEmail: contactEmail || '',
-                        contactPhone: contactPhone || '',
-                        createdAt: new Date(registeredAtMs).toISOString(),
-                        createdAtMs: registeredAtMs,
-                        timestamp: new Date().toLocaleString('ru-RU'),
-                        answers: answers,
-                        answersLabeled: answersLabeled
-                    });
-
-                    if (!savingAsWaitlist) {
-                        transaction.update(eventRef, {
-                            currentVolunteers: firebase.firestore.FieldValue.increment(1)
-                        });
-                    }
+                const res = await fetch(apiUrl('/api/registrations'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        eventId,
+                        answers,
+                        answersLabeled,
+                        waitlist: isWaitlist
+                    })
                 });
 
+                const result = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    const code = result.error || 'INTERNAL';
+                    throw new Error(code);
+                }
+
                 registrationSaved = true;
+                const latestEvent = result.event || currentEvent;
+                const savedStatus = result.status || REGISTRATION_STATUS.CONFIRMED;
+                const savedWaitlist = savedStatus === REGISTRATION_STATUS.WAITLIST;
 
                 localStorage.removeItem(EVENT_CACHE_KEY);
                 localStorage.removeItem('volunteer_events');
@@ -1123,11 +1056,10 @@
 
                 if (EMAILJS_PUBLIC_KEY !== 'ВСТАВЬТЕ_PUBLIC_KEY') {
                     const summary = formatAnswersForEmail(answersLabeled);
-                    const statusNote = isWaitlist ? '\n[Лист ожидания]' : '';
+                    const statusNote = savedWaitlist ? '\n[Лист ожидания]' : '';
                     const eventTitle = latestEvent?.title || currentEvent?.title || '';
                     const eventDate = latestEvent?.date || currentEvent?.date || '';
 
-                    // Уведомление администратору
                     emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
                         to_email:   ADMIN_EMAIL,
                         event_name: eventTitle + statusNote,
@@ -1136,60 +1068,38 @@
                         reply_to:   contactEmail
                     }).catch(err => console.warn('EmailJS (админ):', err));
 
-                    // Письмо-подтверждение участнику (если настроен отдельный шаблон)
                     if (EMAILJS_CONFIRM_TEMPLATE_ID && EMAILJS_CONFIRM_TEMPLATE_ID !== 'ВСТАВЬТЕ_CONFIRM_TEMPLATE' && contactEmail) {
                         emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_CONFIRM_TEMPLATE_ID, {
                             to_email:    contactEmail,
                             event_name:  eventTitle,
                             event_date:  eventDate,
-                            status_text: isWaitlist
+                            status_text: savedWaitlist
                                 ? 'Вы добавлены в лист ожидания. Мы свяжемся с вами, если освободится место.'
                                 : 'Ваша заявка принята. Скоро с вами свяжутся.',
-                            cancel_url:  buildCancelUrl(registrationRef.id, eventId)
+                            cancel_url:  buildCancelUrl(result.registrationId, eventId, result.cancelToken)
                         }).catch(err => console.warn('EmailJS (участник):', err));
                     }
                 }
 
                 statusMessage.className = 'message success';
-                statusMessage.textContent = isWaitlist
+                statusMessage.textContent = savedWaitlist
                     ? '✓ Вы добавлены в лист ожидания.'
                     : '✓ Вы успешно зарегистрированы! Скоро с вами свяжутся.';
                 showSuccessScreen(latestEvent || currentEvent, {
-                    waitlist: isWaitlist,
-                    registrationId: registrationRef.id
-                });
-
-                // Фоновая синхронизация с Google Таблицами + Telegram (через Apps Script)
-                let telegramChatIds = [];
-                try {
-                    const tgSnap = await db.collection('settings').doc('notifications').get();
-                    const tgData = tgSnap.exists ? tgSnap.data() : {};
-                    if (tgData.telegramEnabled !== false && Array.isArray(tgData.telegramChatIds)) {
-                        telegramChatIds = tgData.telegramChatIds.map(String);
-                    }
-                } catch (_) {}
-
-                syncRegistration({
-                    registrationId: registrationRef.id,
-                    eventId:        eventId,
-                    eventName:      latestEvent?.title || currentEvent?.title || '',
-                    status:         isWaitlist ? REGISTRATION_STATUS.WAITLIST : REGISTRATION_STATUS.CONFIRMED,
-                    contactEmail:   contactEmail || '',
-                    contactPhone:   contactPhone || '',
-                    createdAt:      new Date(registeredAtMs).toISOString(),
-                    createdAtMs:    registeredAtMs,
-                    answersLabeled: answersLabeled,
-                    chatIds:        telegramChatIds
+                    waitlist: savedWaitlist,
+                    registrationId: result.registrationId,
+                    cancelToken: result.cancelToken
                 });
 
             } catch (error) {
                 console.error('Ошибка:', error);
                 statusMessage.className = 'message error';
-                if (error && error.message === 'DUPLICATE_EMAIL') {
+                const code = error && error.message;
+                if (code === 'DUPLICATE_EMAIL') {
                     statusMessage.textContent = '✗ Вы уже регистрировались на это мероприятие с этим email.';
-                } else if (error && error.message === 'DUPLICATE_PHONE') {
+                } else if (code === 'DUPLICATE_PHONE') {
                     statusMessage.textContent = '✗ Вы уже регистрировались на это мероприятие с этим номером телефона.';
-                } else if (error && (error.message === 'REGISTRATION_CLOSED' || error.message === 'EVENT_NOT_FOUND')) {
+                } else if (code === 'REGISTRATION_CLOSED' || code === 'EVENT_NOT_FOUND') {
                     statusMessage.textContent = '✗ Регистрация уже закрыта или мест больше нет. Страница будет обновлена.';
                     fetchEvent(false);
                 } else {

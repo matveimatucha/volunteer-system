@@ -356,6 +356,73 @@ function createApp({ admin, db, log = console }) {
         res.json({ ok: true });
     }));
 
+    adminRouter.put('/registrations/:id', asyncHandler(async (req, res) => {
+        const regRef = db.collection('registrations').doc(req.params.id);
+        const regSnap = await regRef.get();
+        if (!regSnap.exists) throw new ApiError(404, 'NOT_FOUND');
+
+        const body = req.body || {};
+        const allowed = ['status', 'contactEmail', 'contactPhone', 'answers', 'answersLabeled'];
+        const patch = {};
+        for (const key of allowed) {
+            if (body[key] !== undefined) patch[key] = body[key];
+        }
+        if (!Object.keys(patch).length) throw new ApiError(400, 'BAD_REQUEST');
+
+        if (patch.answers && (typeof patch.answers !== 'object' || Array.isArray(patch.answers))) {
+            throw new ApiError(400, 'BAD_REQUEST');
+        }
+
+        await regRef.update(patch);
+        res.json({ ok: true });
+    }));
+
+    adminRouter.get('/settings/notifications', asyncHandler(async (req, res) => {
+        const snap = await db.collection('settings').doc('notifications').get();
+        const data = snap.exists ? snap.data() : {};
+        res.json({
+            telegramEnabled: data.telegramEnabled !== false,
+            telegramChatIds: Array.isArray(data.telegramChatIds)
+                ? data.telegramChatIds.map(String)
+                : []
+        });
+    }));
+
+    adminRouter.put('/settings/notifications', asyncHandler(async (req, res) => {
+        const body = req.body || {};
+        const telegramChatIds = Array.isArray(body.telegramChatIds)
+            ? body.telegramChatIds.map(String).filter(Boolean)
+            : [];
+        await db.collection('settings').doc('notifications').set({
+            telegramEnabled: body.telegramEnabled !== false,
+            telegramChatIds,
+            updatedAt: new Date().toISOString()
+        }, { merge: true });
+        res.json({ ok: true });
+    }));
+
+    adminRouter.get('/settings/integrations', asyncHandler(async (req, res) => {
+        const snap = await db.collection('settings').doc('integrations').get();
+        const data = snap.exists ? snap.data() : {};
+        res.json({
+            sheetsWebhookUrl: data.sheetsWebhookUrl || '',
+            sheetsSpreadsheetUrl: data.sheetsSpreadsheetUrl || ''
+        });
+    }));
+
+    adminRouter.put('/settings/integrations', asyncHandler(async (req, res) => {
+        const body = req.body || {};
+        const patch = { updatedAt: new Date().toISOString() };
+        if (typeof body.sheetsWebhookUrl === 'string') {
+            patch.sheetsWebhookUrl = body.sheetsWebhookUrl.trim();
+        }
+        if (typeof body.sheetsSpreadsheetUrl === 'string') {
+            patch.sheetsSpreadsheetUrl = body.sheetsSpreadsheetUrl.trim();
+        }
+        await db.collection('settings').doc('integrations').set(patch, { merge: true });
+        res.json({ ok: true });
+    }));
+
     adminRouter.post('/registrations/:id/promote', asyncHandler(async (req, res) => {
         const regRef = db.collection('registrations').doc(req.params.id);
         let beforeData = null;
