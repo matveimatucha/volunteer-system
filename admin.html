@@ -1459,7 +1459,7 @@
                     showAuthMessage('error', 'Нет прав администратора');
                     return;
                 }
-                isSuperAdmin = tokenResult.claims.superadmin === true || tokenResult.claims.admin === true;
+                isSuperAdmin = tokenResult.claims.superadmin === true;
                 showAdminPanel();
             } catch (error) {
                 console.error(error);
@@ -1475,7 +1475,7 @@
             try {
                 const tokenResult = await user.getIdTokenResult();
                 if (tokenResult.claims.admin === true) {
-                    isSuperAdmin = tokenResult.claims.superadmin === true || tokenResult.claims.admin === true;
+                    isSuperAdmin = tokenResult.claims.superadmin === true;
                     if (!isAuthenticated) await showAdminPanel();
                 }
             } catch (_) {}

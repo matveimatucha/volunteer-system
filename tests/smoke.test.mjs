@@ -104,6 +104,7 @@ test('admin.html uses Firebase Auth and the admin API', async () => {
   assert.match(adminHtml, /firebase-auth-compat/);
   assert.match(adminHtml, /signInWithEmailAndPassword/);
   assert.match(adminHtml, /tokenResult\.claims\.admin === true/);
+  assert.match(adminHtml, /tokenResult\.claims\.superadmin === true/);
   assert.match(adminHtml, /apiFetch\('\/api\/admin\/events'\)/);
   assert.doesNotMatch(adminHtml, /const ADMIN_PASSWORD = '/);
   assert.doesNotMatch(adminHtml, /firebase-firestore-compat/);
