@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Статистика волонтёров</title>
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="shortcut icon" href="assets/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
+    <link rel="stylesheet" href="assets/opk-theme.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary:      #1B2480;
+            --primary-dark: #121963;
+            --secondary:    #4472C4;
+            --accent:       #E8C225;
+            --success:      #1e8c5a;
+            --danger:       #d63031;
+            --warn:         #e67e22;
+        }
+
+        body {
+            font-family: 'Source Sans 3', 'Segoe UI', sans-serif;
+            background: #f4f6fb;
+            color: #1a2060;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 1.5rem 1rem 3rem;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-bottom: 1.75rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid rgba(27,36,128,0.12);
+        }
+
+        header h1 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.9rem;
+            letter-spacing: 1px;
+            color: var(--primary);
+        }
+
+        .back-link {
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            opacity: 0.8;
+            transition: opacity 0.15s;
+        }
+        .back-link:hover { opacity: 1; }
+
+        .btn {
+            display: inline-block;
+            padding: 0.55rem 1.1rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 600;
+            background: var(--primary);
+            color: #fff;
+            text-decoration: none;
+            transition: opacity 0.15s;
+        }
+        .btn:hover { opacity: 0.88; }
+        .btn-small { padding: 0.35rem 0.8rem; font-size: 0.82rem; }
+        .btn-success { background: var(--success); }
+        .btn-danger  { background: var(--danger); }
+
+        .message {
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            font-weight: 600;
+            display: none;
+        }
+        .message.success { background: #d4edda; color: #155724; }
+        .message.error   { background: #f8d7da; color: #721c24; }
+
+        /* Auth */
+        .auth-section {
+            max-width: 420px;
+            margin: 4rem auto;
+            background: #fff;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(27,36,128,0.1);
+        }
+        .auth-section h2 { margin-bottom: 1.25rem; color: var(--primary); }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 0.3rem; font-size: 0.88rem; opacity: 0.85; }
+        .form-group input { width: 100%; padding: 0.65rem 0.9rem; border: 1px solid #ddd; border-radius: 6px; font-family: inherit; font-size: 0.95rem; }
+        .form-group input:focus { outline: none; border-color: var(--primary); }
+
+        /* Main panel */
+        .stats-panel { display: none; }
+        .stats-panel.active { display: block; }
+
+        /* Summary cards */
+        .summary-cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.9rem;
+            margin-bottom: 1.5rem;
+        }
+        .summary-card {
+            flex: 1 1 150px;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 1.1rem 1.25rem;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(27,36,128,0.05);
+        }
+        .summary-card .val {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--primary);
+            line-height: 1;
+        }
+        .summary-card .lbl {
+            font-size: 0.78rem;
+            opacity: 0.65;
+            margin-top: 0.35rem;
+        }
+
+        /* Event filter */
+        .event-filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.65rem;
+            margin-bottom: 1.25rem;
+            align-items: center;
+        }
+        .event-filter-row select,
+        .event-filter-row input {
+            padding: 0.55rem 1rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            background: #fff;
+        }
+        .event-filter-row select:focus,
+        .event-filter-row input:focus { outline: none; border-color: var(--primary); }
+        .event-filter-row input[type="search"] { flex: 1; min-width: 200px; }
+
+        /* Event stats bar */
+        .event-stats-bar {
+            display: none;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            margin-bottom: 1.25rem;
+            padding: 0.85rem 1rem;
+            background: rgba(27,36,128,0.04);
+            border-radius: 8px;
+            border: 1px solid rgba(27,36,128,0.1);
+        }
+        .event-stats-bar.visible { display: flex; }
+        .ev-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.87rem;
+            font-weight: 600;
+            padding: 0.28rem 0.75rem;
+            border-radius: 20px;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+        }
+        .ev-chip.present { border-color: #27ae60; color: #27ae60; }
+        .ev-chip.late    { border-color: #f39c12; color: #f39c12; }
+        .ev-chip.absent  { border-color: #e74c3c; color: #e74c3c; }
+        .ev-chip.hours   { border-color: #2980b9; color: #2980b9; }
+        .ev-chip.nomark  { border-color: #95a5a6; color: #95a5a6; }
+        .ev-chip.rate    { border-color: var(--primary); color: var(--primary); }
+
+        /* Table */
+        .table-wrap { overflow-x: auto; }
+        .vol-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            background: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(27,36,128,0.06);
+        }
+        .vol-table th {
+            background: #f0f2fa;
+            padding: 0.65rem 0.85rem;
+            text-align: left;
+            font-size: 0.8rem;
+            font-weight: 700;
+            opacity: 0.8;
+            white-space: nowrap;
+        }
+        .vol-table td {
+            padding: 0.6rem 0.85rem;
+            border-bottom: 1px solid #f0f0f0;
+            vertical-align: middle;
+        }
+        .vol-table tr:last-child td { border-bottom: none; }
+        .vol-table tr.main-row:hover td { background: rgba(27,36,128,0.03); cursor: pointer; }
+        .vol-table tr.detail-row { display: none; background: #fafbff; }
+        .vol-table tr.detail-row.open { display: table-row; }
+        .vol-table tr.detail-row td { padding: 0.5rem 1rem 0.8rem; }
+
+        .vol-event-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.78rem;
+            padding: 0.2rem 0.65rem;
+            border-radius: 14px;
+            margin: 0.15rem;
+            border: 1px solid #ddd;
+            background: #f9f9f9;
+        }
+        .vol-event-pill.present { border-color: #27ae60; background: #f0fff6; color: #1a7a45; }
+        .vol-event-pill.late    { border-color: #f39c12; background: #fffbf0; color: #b06000; }
+        .vol-event-pill.absent  { border-color: #e74c3c; background: #fff5f5; color: #a91e1e; }
+        .vol-event-pill.nomark  { border-color: #bdc3c7; color: #7f8c8d; }
+
+        .badge {
+            display: inline-block;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 0.15rem 0.5rem;
+            border-radius: 10px;
+        }
+        .badge-green  { background: #d4edda; color: #155724; }
+        .badge-orange { background: #fff3cd; color: #856404; }
+        .badge-red    { background: #f8d7da; color: #721c24; }
+        .badge-grey   { background: #e9ecef; color: #495057; }
+
+        .empty { text-align: center; padding: 3rem; opacity: 0.55; }
+
+        @media (max-width: 600px) {
+            .summary-card { flex: 1 1 130px; }
+            .vol-table th, .vol-table td { padding: 0.5rem 0.55rem; font-size: 0.82rem; }
+        }
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="assets/api-config.js?v=2"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏆 Статистика волонтёров</h1>
+            <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+                <button type="button" id="logoutBtn" class="back-link" style="display:none;border:none;cursor:pointer;font-family:inherit;" onclick="logoutUser()">Выйти</button>
+                <a href="admin.html" class="back-link">← Админ-панель</a>
+            </div>
+        </header>
+
+        <!-- Вход -->
+        <div id="authSection" class="auth-section">
+            <h2>Вход для администратора</h2>
+            <div id="authMessage" class="message"></div>
+            <form id="authForm">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="adminEmail" required placeholder="admin@example.com" autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label>Пароль</label>
+                    <input type="password" id="adminPassword" required placeholder="Введите пароль" autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn">Войти</button>
+            </form>
+        </div>
+
+        <!-- Основная панель -->
+        <div id="statsPanel" class="stats-panel">
+            <div id="pageMessage" class="message"></div>
+
+            <!-- Сводные карточки -->
+            <div id="summaryCards" class="summary-cards"></div>
+
+            <!-- Фильтры -->
+            <div class="event-filter-row">
+                <input type="search" id="volSearch" placeholder="Поиск по имени, email, телефону…" oninput="onSearch()">
+                <select id="eventFilter" onchange="onEventFilterChange()">
+                    <option value="all">Все мероприятия</option>
+                </select>
+                <button type="button" class="btn btn-small" onclick="loadStats()">🔄 Обновить</button>
+                <button type="button" class="btn btn-small btn-success" onclick="exportCSV()">⬇ CSV</button>
+            </div>
+
+            <!-- Статистика по выбранному мероприятию -->
+            <div id="eventStatsBar" class="event-stats-bar"></div>
+
+            <!-- Таблица -->
+            <div class="table-wrap">
+                <table class="vol-table" id="volTable">
+                    <thead>
+                        <tr>
+                            <th>Волонтёр</th>
+                            <th>Контакт</th>
+                            <th style="text-align:center;">Мероприятий</th>
+                            <th style="text-align:center;">Пришёл</th>
+                            <th style="text-align:center;">Часов</th>
+                            <th style="text-align:center;">Явка</th>
+                        </tr>
+                    </thead>
+                    <tbody id="volTableBody">
+                        <tr><td colspan="6" class="empty">Загрузка...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p style="font-size:0.8rem;opacity:0.5;margin-top:0.75rem;">Нажмите на строку, чтобы увидеть историю по мероприятиям</p>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey:            "AIzaSyCh17f9EFqQ-fAEGXTGpuzja-vY1RpePsc",
+            authDomain:        "volunteer-system-6ce7f.firebaseapp.com",
+            projectId:         "volunteer-system-6ce7f",
+            storageBucket:     "volunteer-system-6ce7f.firebasestorage.app",
+            messagingSenderId: "273894796704",
+            appId:             "1:273894796704:web:41a8f945d72bb58201c8c5"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        let allVolunteers = [];
+        let searchQuery = '';
+        let selectedEventId = 'all';
+
+        /* ── Auth ─────────────────────────────────────── */
+
+        async function apiFetch(path, options = {}) {
+            const user = auth.currentUser;
+            if (!user) throw new Error('UNAUTHORIZED');
+            const token = await user.getIdToken();
+            const headers = { ...(options.headers || {}), Authorization: `Bearer ${token}` };
+            if (options.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+            const res = await fetch(apiUrl(path), { ...options, headers });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || res.status);
+            return data;
+        }
+
+        function showAuthMsg(type, text) {
+            const el = document.getElementById('authMessage');
+            el.style.display = '';
+            el.className = `message ${type}`;
+            el.textContent = text;
+        }
+
+        function showMsg(type, text) {
+            const el = document.getElementById('pageMessage');
+            el.style.display = '';
+            el.className = `message ${type}`;
+            el.textContent = text;
+            setTimeout(() => { el.style.display = 'none'; }, 5000);
+        }
+
+        function escHtml(s) {
+            return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        document.getElementById('authForm').addEventListener('submit', async e => {
+            e.preventDefault();
+            const email = document.getElementById('adminEmail').value.trim();
+            const pass  = document.getElementById('adminPassword').value;
+            try {
+                await auth.signInWithEmailAndPassword(email, pass);
+            } catch (err) {
+                showAuthMsg('error', 'Неверный логин или пароль');
+            }
+        });
+
+        auth.onAuthStateChanged(async user => {
+            if (!user) {
+                document.getElementById('authSection').style.display = '';
+                document.getElementById('statsPanel').classList.remove('active');
+                document.getElementById('logoutBtn').style.display = 'none';
+                return;
+            }
+            const token = await user.getIdTokenResult();
+            if (!token.claims.admin) {
+                auth.signOut();
+                showAuthMsg('error', 'Нет прав доступа');
+                return;
+            }
+            document.getElementById('authSection').style.display = 'none';
+            document.getElementById('statsPanel').classList.add('active');
+            document.getElementById('logoutBtn').style.display = '';
+            loadStats();
+        });
+
+        function logoutUser() {
+            auth.signOut();
+        }
+
+        /* ── Data loading ──────────────────────────────── */
+
+        async function loadStats() {
+            document.getElementById('volTableBody').innerHTML =
+                '<tr><td colspan="6" class="empty">Загрузка...</td></tr>';
+            document.getElementById('summaryCards').innerHTML = '';
+
+            try {
+                const [statsData, eventsData] = await Promise.all([
+                    apiFetch('/api/admin/volunteer-stats'),
+                    apiFetch('/api/admin/events')
+                ]);
+
+                allVolunteers = statsData.volunteers || [];
+
+                // Populate event filter
+                const events = (eventsData.events || [])
+                    .filter(e => e.status !== 'draft' && !e.isTemplate)
+                    .sort((a,b) => String(a.title||'').localeCompare(String(b.title||''), 'ru'));
+                const sel = document.getElementById('eventFilter');
+                sel.innerHTML = '<option value="all">Все мероприятия</option>'
+                    + events.map(e => `<option value="${escHtml(e.id)}">${escHtml(e.title||e.id)}</option>`).join('');
+
+                renderSummaryCards();
+                renderTable();
+            } catch (err) {
+                console.error(err);
+                document.getElementById('volTableBody').innerHTML =
+                    '<tr><td colspan="6" class="empty" style="color:var(--danger);">Не удалось загрузить данные</td></tr>';
+            }
+        }
+
+        /* ── Filtering ─────────────────────────────────── */
+
+        function onSearch() {
+            searchQuery = (document.getElementById('volSearch').value || '').trim().toLowerCase();
+            renderTable();
+        }
+
+        function onEventFilterChange() {
+            selectedEventId = document.getElementById('eventFilter').value;
+            renderEventStatsBar();
+            renderTable();
+        }
+
+        function getFilteredVolunteers() {
+            let list = allVolunteers;
+
+            if (selectedEventId !== 'all') {
+                list = list
+                    .map(v => {
+                        const ev = v.events.find(e => e.eventId === selectedEventId);
+                        if (!ev) return null;
+                        return {
+                            ...v,
+                            _filteredEvent: ev,
+                            totalConfirmed: 1,
+                            presentCount: (ev.attendance === 'present' || ev.attendance === 'late') ? 1 : 0,
+                            totalHours: ev.workedHours != null ? Number(ev.workedHours) : 0,
+                            events: [ev]
+                        };
+                    })
+                    .filter(Boolean);
+            }
+
+            if (searchQuery) {
+                list = list.filter(v =>
+                    [v.name, v.email, v.phone].join(' ').toLowerCase().includes(searchQuery)
+                );
+            }
+
+            return list;
+        }
+
+        /* ── Rendering ─────────────────────────────────── */
+
+        function renderSummaryCards() {
+            const total = allVolunteers.length;
+            const everCame = allVolunteers.filter(v => v.presentCount > 0).length;
+            const totalHours = allVolunteers.reduce((s, v) => s + v.totalHours, 0);
+            const totalRegs = allVolunteers.reduce((s, v) => s + v.totalConfirmed, 0);
+
+            const card = (val, lbl) => `
+                <div class="summary-card">
+                    <div class="val">${val}</div>
+                    <div class="lbl">${lbl}</div>
+                </div>`;
+
+            document.getElementById('summaryCards').innerHTML =
+                card(total, 'Волонтёров в базе') +
+                card(everCame, 'Участвовали хотя бы раз') +
+                card(totalHours.toFixed(0), 'Часов в сумме') +
+                card(totalRegs, 'Регистраций');
+        }
+
+        function renderEventStatsBar() {
+            const bar = document.getElementById('eventStatsBar');
+            if (selectedEventId === 'all') {
+                bar.classList.remove('visible');
+                return;
+            }
+
+            const vols = allVolunteers
+                .map(v => v.events.find(e => e.eventId === selectedEventId))
+                .filter(Boolean);
+
+            if (!vols.length) { bar.classList.remove('visible'); return; }
+
+            const present = vols.filter(e => e.attendance === 'present').length;
+            const late    = vols.filter(e => e.attendance === 'late').length;
+            const absent  = vols.filter(e => e.attendance === 'absent').length;
+            const nomark  = vols.filter(e => !e.attendance).length;
+            const hours   = vols.reduce((s,e) => s + (Number(e.workedHours)||0), 0);
+            const confirmed = vols.length;
+            const rate = confirmed ? Math.round((present + late) / confirmed * 100) : 0;
+
+            bar.classList.add('visible');
+            bar.innerHTML = `
+                <span class="ev-chip present">✓ Пришли: ${present}</span>
+                <span class="ev-chip late">⏰ Опоздали: ${late}</span>
+                <span class="ev-chip absent">✗ Не пришли: ${absent}</span>
+                <span class="ev-chip nomark">? Без отметки: ${nomark}</span>
+                <span class="ev-chip hours">⏱ Часов: ${hours.toFixed(1)}</span>
+                <span class="ev-chip rate">📊 Явка: ${rate}%</span>
+            `;
+        }
+
+        function attPillClass(att) {
+            if (att === 'present') return 'present';
+            if (att === 'late')    return 'late';
+            if (att === 'absent')  return 'absent';
+            return 'nomark';
+        }
+
+        function attIcon(att) {
+            if (att === 'present') return '✓';
+            if (att === 'late')    return '⏰';
+            if (att === 'absent')  return '✗';
+            return '—';
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('volTableBody');
+            const list = getFilteredVolunteers();
+
+            if (!list.length) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty">Ничего не найдено</td></tr>';
+                return;
+            }
+
+            const rows = list.map((v, idx) => {
+                const detailId = `vd-${idx}`;
+                const rate = v.totalConfirmed
+                    ? Math.round(v.presentCount / v.totalConfirmed * 100) : 0;
+
+                const rateBadge = v.totalConfirmed === 0 ? '<span class="badge badge-grey">—</span>'
+                    : rate >= 80 ? `<span class="badge badge-green">${rate}%</span>`
+                    : rate >= 40 ? `<span class="badge badge-orange">${rate}%</span>`
+                    : `<span class="badge badge-red">${rate}%</span>`;
+
+                const pills = v.events.map(ev => {
+                    const cls = attPillClass(ev.attendance);
+                    const hrs = ev.workedHours != null ? ` · ${ev.workedHours}ч` : '';
+                    return `<span class="vol-event-pill ${cls}">${attIcon(ev.attendance)} ${escHtml(ev.eventTitle || ev.eventId)}${hrs}</span>`;
+                }).join('');
+
+                return `
+                    <tr class="main-row" onclick="document.getElementById('${detailId}').classList.toggle('open')">
+                        <td><strong>${escHtml(v.name || '—')}</strong></td>
+                        <td style="font-size:0.85rem;opacity:0.8;">${escHtml(v.email || v.phone || '—')}</td>
+                        <td style="text-align:center;">${v.totalConfirmed}</td>
+                        <td style="text-align:center;color:#27ae60;font-weight:700;">${v.presentCount}</td>
+                        <td style="text-align:center;font-weight:700;">${v.totalHours > 0 ? v.totalHours.toFixed(1) : '—'}</td>
+                        <td style="text-align:center;">${rateBadge}</td>
+                    </tr>
+                    <tr id="${detailId}" class="detail-row">
+                        <td colspan="6">
+                            <div style="padding:0.2rem 0;">
+                                ${pills || '<span style="opacity:0.55;">Нет данных о мероприятиях</span>'}
+                            </div>
+                        </td>
+                    </tr>`;
+            }).join('');
+
+            tbody.innerHTML = rows;
+        }
+
+        /* ── CSV export ────────────────────────────────── */
+
+        function escapeCsv(v) {
+            const s = String(v ?? '');
+            return s.includes(',') || s.includes('"') || s.includes('\n')
+                ? '"' + s.replace(/"/g, '""') + '"' : s;
+        }
+
+        function exportCSV() {
+            const list = getFilteredVolunteers();
+            if (!list.length) { alert('Нет данных для экспорта'); return; }
+
+            const header = ['Имя', 'Email', 'Телефон', 'Мероприятий', 'Пришёл', 'Часов', 'Явка %'].map(escapeCsv).join(',');
+            const rows = list.map(v => {
+                const rate = v.totalConfirmed ? Math.round(v.presentCount / v.totalConfirmed * 100) : 0;
+                return [
+                    v.name || '',
+                    v.email || '',
+                    v.phone || '',
+                    v.totalConfirmed,
+                    v.presentCount,
+                    v.totalHours.toFixed(1),
+                    v.totalConfirmed ? rate + '%' : ''
+                ].map(escapeCsv).join(',');
+            });
+
+            const csv = '\uFEFF' + [header, ...rows].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `volunteer_stats_${Date.now()}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
