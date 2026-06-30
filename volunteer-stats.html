@@ -26,7 +26,8 @@
 
         body {
             font-family: 'Source Sans 3', 'Segoe UI', sans-serif;
-            background: #f4f6fb;
+            background: linear-gradient(150deg, #1B2480 0%, #1f2ca0 50%, #1B2480 100%);
+            background-attachment: fixed;
             color: #1a2060;
             min-height: 100vh;
         }
@@ -45,25 +46,24 @@
             gap: 0.75rem;
             margin-bottom: 1.75rem;
             padding-bottom: 1rem;
-            border-bottom: 2px solid rgba(27,36,128,0.12);
+            border-bottom: 2px solid rgba(255,255,255,0.2);
         }
 
         header h1 {
             font-family: 'Bebas Neue', sans-serif;
             font-size: 1.9rem;
             letter-spacing: 1px;
-            color: var(--primary);
+            color: #fff;
         }
 
         .back-link {
-            color: var(--primary);
+            color: rgba(255,255,255,0.85);
             text-decoration: none;
             font-size: 0.9rem;
             font-weight: 600;
-            opacity: 0.8;
             transition: opacity 0.15s;
         }
-        .back-link:hover { opacity: 1; }
+        .back-link:hover { color: #fff; }
 
         .btn {
             display: inline-block;
@@ -314,16 +314,18 @@
                 <table class="vol-table" id="volTable">
                     <thead>
                         <tr>
-                            <th>Волонтёр</th>
-                            <th>Контакт</th>
-                            <th style="text-align:center;">Мероприятий</th>
+                            <th>ФИО</th>
+                            <th>Факультет</th>
+                            <th>Курс</th>
+                            <th>ВКонтакте</th>
+                            <th style="text-align:center;">Мероп-й</th>
                             <th style="text-align:center;">Пришёл</th>
                             <th style="text-align:center;">Часов</th>
                             <th style="text-align:center;">Явка</th>
                         </tr>
                     </thead>
                     <tbody id="volTableBody">
-                        <tr><td colspan="6" class="empty">Загрузка...</td></tr>
+                        <tr><td colspan="8" class="empty">Загрузка...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -418,7 +420,7 @@
 
         async function loadStats() {
             document.getElementById('volTableBody').innerHTML =
-                '<tr><td colspan="6" class="empty">Загрузка...</td></tr>';
+                '<tr><td colspan="8" class="empty">Загрузка...</td></tr>';
             document.getElementById('summaryCards').innerHTML = '';
 
             try {
@@ -442,7 +444,7 @@
             } catch (err) {
                 console.error(err);
                 document.getElementById('volTableBody').innerHTML =
-                    '<tr><td colspan="6" class="empty" style="color:var(--danger);">Не удалось загрузить данные</td></tr>';
+                    '<tr><td colspan="8" class="empty" style="color:var(--danger);">Не удалось загрузить данные</td></tr>';
             }
         }
 
@@ -560,7 +562,7 @@
             const list = getFilteredVolunteers();
 
             if (!list.length) {
-                tbody.innerHTML = '<tr><td colspan="6" class="empty">Ничего не найдено</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="empty">Ничего не найдено</td></tr>';
                 return;
             }
 
@@ -580,17 +582,24 @@
                     return `<span class="vol-event-pill ${cls}">${attIcon(ev.attendance)} ${escHtml(ev.eventTitle || ev.eventId)}${hrs}</span>`;
                 }).join('');
 
+                const vkVal = v.vk || '';
+                const vkHtml = vkVal
+                    ? `<a href="${vkVal.startsWith('http') ? escHtml(vkVal) : 'https://vk.com/' + escHtml(vkVal)}" target="_blank" rel="noopener" style="color:#2980b9;text-decoration:none;" onclick="event.stopPropagation()">🔗 VK</a>`
+                    : '—';
+
                 return `
                     <tr class="main-row" onclick="document.getElementById('${detailId}').classList.toggle('open')">
                         <td><strong>${escHtml(v.name || '—')}</strong></td>
-                        <td style="font-size:0.85rem;opacity:0.8;">${escHtml(v.email || v.phone || '—')}</td>
+                        <td style="font-size:0.85rem;">${escHtml(v.faculty || '—')}</td>
+                        <td style="font-size:0.85rem;text-align:center;">${escHtml(v.year || '—')}</td>
+                        <td style="font-size:0.85rem;">${vkHtml}</td>
                         <td style="text-align:center;">${v.totalConfirmed}</td>
                         <td style="text-align:center;color:#27ae60;font-weight:700;">${v.presentCount}</td>
                         <td style="text-align:center;font-weight:700;">${v.totalHours > 0 ? v.totalHours.toFixed(1) : '—'}</td>
                         <td style="text-align:center;">${rateBadge}</td>
                     </tr>
                     <tr id="${detailId}" class="detail-row">
-                        <td colspan="6">
+                        <td colspan="8">
                             <div style="padding:0.2rem 0;">
                                 ${pills || '<span style="opacity:0.55;">Нет данных о мероприятиях</span>'}
                             </div>
@@ -613,11 +622,14 @@
             const list = getFilteredVolunteers();
             if (!list.length) { alert('Нет данных для экспорта'); return; }
 
-            const header = ['Имя', 'Email', 'Телефон', 'Мероприятий', 'Пришёл', 'Часов', 'Явка %'].map(escapeCsv).join(',');
+            const header = ['ФИО', 'Факультет', 'Курс', 'ВКонтакте', 'Email', 'Телефон', 'Мероприятий', 'Пришёл', 'Часов', 'Явка %'].map(escapeCsv).join(',');
             const rows = list.map(v => {
                 const rate = v.totalConfirmed ? Math.round(v.presentCount / v.totalConfirmed * 100) : 0;
                 return [
                     v.name || '',
+                    v.faculty || '',
+                    v.year || '',
+                    v.vk || '',
                     v.email || '',
                     v.phone || '',
                     v.totalConfirmed,

@@ -468,34 +468,33 @@ adminRouter.get('/volunteer-stats', asyncHandler(async (req, res) => {
         if (!key) return;
 
         if (!byKey[key]) {
-            let name = '';
-            if (Array.isArray(r.answersLabeled)) {
-                const nameItem = r.answersLabeled.find(i =>
-                    /имя|name|фио/i.test(i.question || '')
-                );
-                if (nameItem) name = nameItem.answer || '';
+                byKey[key] = {
+                    key,
+                    name: '',
+                    faculty: '',
+                    year: '',
+                    vk: '',
+                    email: r.contactEmail || '',
+                    phone: r.contactPhone || '',
+                    totalConfirmed: 0,
+                    presentCount: 0,
+                    totalHours: 0,
+                    events: []
+                };
             }
-            byKey[key] = {
-                key,
-                name: name || r.contactEmail || r.contactPhone || '',
-                email: r.contactEmail || '',
-                phone: r.contactPhone || '',
-                totalConfirmed: 0,
-                presentCount: 0,
-                totalHours: 0,
-                events: []
-            };
-        }
 
-        const entry = byKey[key];
-        if (!entry.name || entry.name === entry.email || entry.name === entry.phone) {
+            const entry = byKey[key];
             if (Array.isArray(r.answersLabeled)) {
-                const nameItem = r.answersLabeled.find(i =>
-                    /имя|name|фио/i.test(i.question || '')
-                );
-                if (nameItem && nameItem.answer) entry.name = nameItem.answer;
+                for (const item of r.answersLabeled) {
+                    const q = (item.question || '').toLowerCase();
+                    const a = item.answer || '';
+                    if (!entry.name && /имя|фио|ф\.и\.о|name/.test(q)) entry.name = a;
+                    if (!entry.faculty && /факульт|школ|институт|кафедр|направлен/.test(q)) entry.faculty = a;
+                    if (!entry.year && /курс|год об|учеб/.test(q)) entry.year = a;
+                    if (!entry.vk && /вк|вконтакте|vk|vkontakte/.test(q)) entry.vk = a;
+                }
             }
-        }
+            if (!entry.name) entry.name = r.contactEmail || r.contactPhone || '';
 
         if (isConfirmedRegistration(r)) entry.totalConfirmed++;
         if (r.attendance === 'present' || r.attendance === 'late') {
