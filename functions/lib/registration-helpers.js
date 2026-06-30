@@ -92,13 +92,23 @@ function normalizeAnswers(answersLabeled) {
 }
 
 function extractCommonFields(answersLabeled) {
-    const fields = { name: '', faculty: '', year: '' };
+    const fields = {
+        name: '',
+        firstName: '',
+        lastName: '',
+        middleName: '',
+        faculty: '',
+        year: ''
+    };
     for (const item of normalizeAnswers(answersLabeled)) {
         const q = String(item.question || '').toLowerCase();
-        const a = item.answer || '';
-        if (!fields.name && (q.includes('имя') || q.includes('фио') || q.includes('ф.и.о') || q.includes('name'))) {
-            fields.name = a;
-        }
+        const a = String(item.answer || '').trim();
+        if (!a) continue;
+
+        if (!fields.lastName && q.includes('фамил')) fields.lastName = a;
+        if (!fields.firstName && (q.includes('имя') || q.includes('name'))) fields.firstName = a;
+        if (!fields.middleName && q.includes('отчест')) fields.middleName = a;
+        if (!fields.name && (q.includes('фио') || q.includes('ф.и.о'))) fields.name = a;
         if (!fields.faculty && (q.includes('факульт') || q.includes('школ') || q.includes('институт') || q.includes('кафедр') || q.includes('направлен'))) {
             fields.faculty = a;
         }
@@ -106,6 +116,11 @@ function extractCommonFields(answersLabeled) {
             fields.year = a;
         }
     }
+
+    if (!fields.name) {
+        fields.name = [fields.lastName, fields.firstName, fields.middleName].filter(Boolean).join(' ').trim();
+    }
+
     return fields;
 }
 
