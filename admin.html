@@ -706,6 +706,95 @@
             opacity: 0.6;
         }
 
+        .attendance-stats-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.65rem;
+            margin-bottom: 1rem;
+            padding: 0.85rem 1rem;
+            background: rgba(27,36,128,0.04);
+            border-radius: 8px;
+            border: 1px solid rgba(27,36,128,0.1);
+        }
+        .attendance-stat-chip {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.88rem;
+            font-weight: 600;
+            padding: 0.3rem 0.75rem;
+            border-radius: 20px;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+        }
+        .attendance-stat-chip.present { border-color: #27ae60; color: #27ae60; }
+        .attendance-stat-chip.late    { border-color: #f39c12; color: #f39c12; }
+        .attendance-stat-chip.absent  { border-color: #e74c3c; color: #e74c3c; }
+        .attendance-stat-chip.hours   { border-color: #2980b9; color: #2980b9; }
+        .attendance-stat-chip.nomark  { border-color: #95a5a6; color: #95a5a6; }
+
+        .att-btn {
+            border: none;
+            border-radius: 5px;
+            padding: 0.22rem 0.55rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+            font-weight: 700;
+            transition: opacity 0.15s, transform 0.1s;
+            opacity: 0.45;
+        }
+        .att-btn:hover { opacity: 1; transform: scale(1.08); }
+        .att-btn.active { opacity: 1; }
+        .att-btn-present { background: #27ae60; color: #fff; }
+        .att-btn-late    { background: #f39c12; color: #fff; }
+        .att-btn-absent  { background: #e74c3c; color: #fff; }
+        .att-btn-clear   { background: #bdc3c7; color: #fff; }
+        .att-hours-input {
+            width: 52px;
+            padding: 0.2rem 0.35rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+        .att-hours-input:focus { border-color: #2980b9; outline: none; }
+
+        .volunteer-stats-section { margin-bottom: 2rem; }
+        .volunteer-stats-section .dashboard-header { margin-bottom: 1rem; }
+        .vol-stat-cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
+        }
+        .vol-stat-card {
+            flex: 1 1 130px;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 0.9rem 1.1rem;
+            text-align: center;
+        }
+        .vol-stat-card .val { font-size: 1.7rem; font-weight: 800; color: #1B2480; }
+        .vol-stat-card .lbl { font-size: 0.8rem; opacity: 0.7; margin-top: 0.2rem; }
+        .vol-leaderboard { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        .vol-leaderboard th, .vol-leaderboard td { padding: 0.55rem 0.75rem; text-align: left; border-bottom: 1px solid #f0f0f0; }
+        .vol-leaderboard th { background: #f8f9ff; font-weight: 700; font-size: 0.82rem; opacity: 0.85; }
+        .vol-leaderboard tr:hover td { background: rgba(27,36,128,0.03); }
+        .vol-row-detail { display: none; background: #fafbff; }
+        .vol-row-detail.open { display: table-row; }
+        .vol-row-detail td { padding: 0.5rem 1rem 0.75rem; }
+        .vol-event-pill {
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            font-size: 0.78rem; padding: 0.2rem 0.6rem;
+            border-radius: 12px; margin: 0.15rem;
+            border: 1px solid #ddd;
+        }
+        .vol-event-pill.present { border-color: #27ae60; background: #f0fff6; }
+        .vol-event-pill.late    { border-color: #f39c12; background: #fffbf0; }
+        .vol-event-pill.absent  { border-color: #e74c3c; background: #fff5f5; }
+        .vol-event-pill.nomark  { border-color: #bdc3c7; background: #f9f9f9; }
+
         .registry-orphan-badge {
             display: inline-block;
             font-size: 0.72rem;
@@ -1024,6 +1113,24 @@
                 </div>
             </div>
 
+            <!-- Статистика волонтёров -->
+            <div id="volunteerStatsPanel" class="dashboard volunteer-stats-section" style="margin-bottom:2rem;">
+                <div class="dashboard-header">
+                    <h2>🏆 Статистика волонтёров</h2>
+                    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                        <button type="button" class="btn btn-small" onclick="loadVolunteerStats()">🔄 Обновить</button>
+                        <button type="button" class="btn btn-small" style="background:#16a085;" onclick="exportVolunteerStatsCSV()">⬇ CSV</button>
+                    </div>
+                </div>
+                <div id="volunteerStatsSummary" class="vol-stat-cards"></div>
+                <div style="margin-bottom:0.75rem;display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+                    <input type="search" id="volStatsSearch" placeholder="Поиск по имени, email, телефону…" style="flex:1;min-width:200px;padding:0.55rem 1rem;font-size:0.9rem;" oninput="onVolStatsSearch()">
+                </div>
+                <div id="volunteerStatsContent">
+                    <p style="opacity:0.6;padding:1rem;">Загрузка...</p>
+                </div>
+            </div>
+
             <div id="registryPanel" class="dashboard" style="display:none;margin-bottom:2rem;">
                 <div class="dashboard-header">
                     <h2>📋 Реестр заявок</h2>
@@ -1167,13 +1274,15 @@
                     <button class="btn btn-danger btn-small" onclick="closeParticipantsModal()">✕ Закрыть</button>
                 </div>
             </div>
-            <div id="participantsMeta" style="margin-bottom: 1rem; opacity: 0.75;"></div>
+            <div id="participantsMeta" style="margin-bottom: 0.75rem; opacity: 0.75;"></div>
+            <div id="participantsAttendanceStats" class="attendance-stats-bar" style="display:none;"></div>
             <div class="participants-toolbar" style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1rem;align-items:center;">
                 <input type="search" id="participantsSearch" placeholder="Поиск по имени, email, телефону…" style="flex:1;min-width:200px;padding:0.65rem 1rem;" oninput="onParticipantsSearch()">
                 <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
                     <button type="button" class="btn btn-small participants-filter-btn active" data-filter="all" onclick="setParticipantsFilter('all')">Все</button>
                     <button type="button" class="btn btn-small participants-filter-btn" data-filter="confirmed" onclick="setParticipantsFilter('confirmed')">Записанные</button>
                     <button type="button" class="btn btn-small participants-filter-btn" data-filter="waitlist" onclick="setParticipantsFilter('waitlist')">Лист ожидания</button>
+                    <button type="button" class="btn btn-small participants-filter-btn" data-filter="nomark" onclick="setParticipantsFilter('nomark')">Без отметки</button>
                 </div>
             </div>
             <div id="participantsContent">
@@ -1384,6 +1493,8 @@
         let registryDeletedEventKey = null;
         let editingRegistrationData = null;
         let telegramChatIds = [];
+        let volunteerStatsData = [];
+        let volStatsSearchQuery = '';
 
         async function apiFetch(path, options = {}) {
             const user = auth.currentUser;
@@ -1431,6 +1542,7 @@
             }
             await loadEvents();
             loadDashboard();
+            loadVolunteerStats();
             initSheetsPanel();
             initTelegramPanel();
             if (isSuperAdmin) await loadGlobalRegistry();
@@ -2020,6 +2132,32 @@
             const newCount = getNewParticipants().length;
             const cancelledHtml = cancelled ? ` · Отменено: <strong>${cancelled}</strong>` : '';
             meta.innerHTML = `Всего: <strong>${total}</strong> · Записано: <strong>${confirmed}</strong> · Ожидание: <strong>${waitlist}</strong>${cancelledHtml} · Показано: <strong>${filtered}</strong> · Новых: <strong>${newCount}</strong>`;
+
+            updateAttendanceStatsBar();
+        }
+
+        function updateAttendanceStatsBar() {
+            const bar = document.getElementById('participantsAttendanceStats');
+            if (!bar) return;
+            const confirmed = currentParticipantsData.filter(isConfirmedRegistration);
+            if (!confirmed.length) { bar.style.display = 'none'; return; }
+
+            const present = confirmed.filter(r => r.attendance === 'present').length;
+            const late    = confirmed.filter(r => r.attendance === 'late').length;
+            const absent  = confirmed.filter(r => r.attendance === 'absent').length;
+            const nomark  = confirmed.filter(r => !r.attendance).length;
+            const totalHours = currentParticipantsData.reduce((s, r) => s + (Number(r.workedHours) || 0), 0);
+            const rate = confirmed.length ? Math.round((present + late) / confirmed.length * 100) : 0;
+
+            bar.style.display = 'flex';
+            bar.innerHTML = `
+                <span class="attendance-stat-chip present">✓ Пришли: ${present}</span>
+                <span class="attendance-stat-chip late">⏰ Опоздали: ${late}</span>
+                <span class="attendance-stat-chip absent">✗ Не пришли: ${absent}</span>
+                <span class="attendance-stat-chip nomark">? Без отметки: ${nomark}</span>
+                <span class="attendance-stat-chip hours">⏱ Часов: ${totalHours.toFixed(1)}</span>
+                <span class="attendance-stat-chip" style="border-color:#1B2480;color:#1B2480;">📊 Явка: ${rate}%</span>
+            `;
         }
 
         function setParticipantsFilter(filter) {
@@ -2041,6 +2179,8 @@
                 list = list.filter(isConfirmedRegistration);
             } else if (participantsFilter === 'waitlist') {
                 list = list.filter(r => getRegistrationStatus(r) === REGISTRATION_STATUS.WAITLIST);
+            } else if (participantsFilter === 'nomark') {
+                list = list.filter(r => isConfirmedRegistration(r) && !r.attendance);
             }
             if (participantsSearchQuery) {
                 list = list.filter(r => {
@@ -2062,6 +2202,38 @@
             if (status === REGISTRATION_STATUS.WAITLIST) return 'Лист ожидания';
             if (status === REGISTRATION_STATUS.CANCELLED) return 'Отменено';
             return 'Записан';
+        }
+
+        async function setAttendance(registrationId, value) {
+            const attendance = value || null;
+            try {
+                await apiFetch(`/api/admin/registrations/${encodeURIComponent(registrationId)}/attendance`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ attendance })
+                });
+                const reg = currentParticipantsData.find(r => r.registrationId === registrationId);
+                if (reg) reg.attendance = attendance;
+                renderParticipantsTable();
+            } catch (err) {
+                console.error('Ошибка обновления посещаемости:', err);
+                showMessage('error', 'Не удалось сохранить отметку');
+            }
+        }
+
+        async function setWorkedHours(registrationId, rawValue) {
+            const workedHours = rawValue === '' ? null : Number(rawValue);
+            if (workedHours !== null && (isNaN(workedHours) || workedHours < 0 || workedHours > 72)) return;
+            try {
+                await apiFetch(`/api/admin/registrations/${encodeURIComponent(registrationId)}/attendance`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ workedHours })
+                });
+                const reg = currentParticipantsData.find(r => r.registrationId === registrationId);
+                if (reg) reg.workedHours = workedHours;
+                updateAttendanceStatsBar();
+            } catch (err) {
+                console.error('Ошибка обновления часов:', err);
+            }
         }
 
         async function syncVolunteerCount(eventId) {
@@ -2142,10 +2314,22 @@
                 const isNew = !seenIds.has(r.registrationId);
                 const rid = (typeof escapeHtmlAttr === 'function' ? escapeHtmlAttr : escapeHtmlText)(r.registrationId);
                 const isWait = getRegistrationStatus(r) === REGISTRATION_STATUS.WAITLIST;
+                const isConf = isConfirmedRegistration(r);
                 const actions = `
                     <button type="button" class="btn btn-danger btn-icon" title="Удалить" onclick="deleteRegistration('${rid}')">×</button>
                     ${isWait ? `<button type="button" class="btn btn-success btn-small" onclick="promoteFromWaitlist('${rid}')">Принять</button>` : ''}
                 `;
+
+                const att = r.attendance || '';
+                const attendanceCell = isConf ? `
+                    <td style="white-space:nowrap;">
+                        <button type="button" class="att-btn att-btn-present${att === 'present' ? ' active' : ''}" title="Пришёл" onclick="setAttendance('${rid}', '${att === 'present' ? '' : 'present'}')">✓</button>
+                        <button type="button" class="att-btn att-btn-late${att === 'late' ? ' active' : ''}" title="Опоздал" onclick="setAttendance('${rid}', '${att === 'late' ? '' : 'late'}')">⏰</button>
+                        <button type="button" class="att-btn att-btn-absent${att === 'absent' ? ' active' : ''}" title="Не пришёл" onclick="setAttendance('${rid}', '${att === 'absent' ? '' : 'absent'}')">✗</button>
+                    </td>
+                    <td><input type="number" class="att-hours-input" min="0" max="72" step="0.5" value="${r.workedHours != null ? r.workedHours : ''}" placeholder="ч" title="Часов отработано" onchange="setWorkedHours('${rid}', this.value)" onblur="setWorkedHours('${rid}', this.value)"></td>
+                ` : `<td>—</td><td>—</td>`;
+
                 return `<tr>
                     <td style="white-space:nowrap;">${actions}</td>
                     <td>${escapeHtmlText(r.createdAt || r.timestamp || '—')}${isNew ? ' <span style="color:#2ecc71;font-weight:700;">· NEW</span>' : ''}</td>
@@ -2153,6 +2337,7 @@
                     <td>${escapeHtmlText(getParticipantName(r))}</td>
                     <td>${escapeHtmlText(r.contactEmail || '—')}</td>
                     <td>${escapeHtmlText(r.contactPhone || '—')}</td>
+                    ${attendanceCell}
                     ${cells}
                 </tr>`;
             }).join('');
@@ -2160,7 +2345,7 @@
             container.innerHTML = `
                 <div class="participants-table-wrap">
                     <table class="participants-table">
-                        <thead><tr><th></th><th>Дата</th><th>Статус</th><th>Имя</th><th>Email</th><th>Телефон</th>${thead}</tr></thead>
+                        <thead><tr><th></th><th>Дата</th><th>Статус</th><th>Имя</th><th>Email</th><th>Телефон</th><th>Посещение</th><th>Часы</th>${thead}</tr></thead>
                         <tbody>${tbody}</tbody>
                     </table>
                 </div>
@@ -2375,7 +2560,8 @@
             const questionTextMap = buildQuestionTextMap(event?.questions || []);
 
             const headerKeys = keys.map(k => questionTextMap[k] || k);
-            const header = ['registrationId', 'status', 'createdAt', 'createdAtMs', 'timestamp', 'eventId', 'eventTitle', 'contactEmail', 'contactPhone', ...headerKeys].map(escapeCsv).join(',');
+            const header = ['registrationId', 'status', 'createdAt', 'createdAtMs', 'timestamp', 'eventId', 'eventTitle', 'contactEmail', 'contactPhone', 'attendance', 'workedHours', ...headerKeys].map(escapeCsv).join(',');
+            const attRu = { present: 'Пришёл', late: 'Опоздал', absent: 'Не пришёл' };
             const rows = records.map(r => {
                 const fixedColumns = [
                     r.registrationId || '',
@@ -2386,7 +2572,9 @@
                     r.eventId || '',
                     r.eventTitle || '',
                     r.contactEmail || '',
-                    r.contactPhone || ''
+                    r.contactPhone || '',
+                    attRu[r.attendance] || '',
+                    r.workedHours != null ? r.workedHours : ''
                 ];
                 const answers = keys.map(k => r.answers?.[k] || '');
                 return [...fixedColumns, ...answers].map(escapeCsv).join(',');
@@ -2675,6 +2863,130 @@
                 btn.disabled = false;
                 btn.textContent = '⬆ Синхронизировать всё';
             }
+        }
+
+        function onVolStatsSearch() {
+            volStatsSearchQuery = (document.getElementById('volStatsSearch')?.value || '').trim().toLowerCase();
+            renderVolunteerStatsTable();
+        }
+
+        function getFilteredVolunteers() {
+            if (!volStatsSearchQuery) return volunteerStatsData;
+            return volunteerStatsData.filter(v =>
+                [v.name, v.email, v.phone].join(' ').toLowerCase().includes(volStatsSearchQuery)
+            );
+        }
+
+        function attPillClass(att) {
+            if (att === 'present') return 'present';
+            if (att === 'late')    return 'late';
+            if (att === 'absent')  return 'absent';
+            return 'nomark';
+        }
+
+        function renderVolunteerStatsTable() {
+            const container = document.getElementById('volunteerStatsContent');
+            if (!container) return;
+            const list = getFilteredVolunteers();
+            if (!list.length) {
+                container.innerHTML = '<p style="opacity:0.6;padding:1rem;">Нет данных</p>';
+                return;
+            }
+            const rows = list.map((v, idx) => {
+                const detailId = `vol-detail-${idx}`;
+                const eventPills = v.events.map(ev => {
+                    const cls = attPillClass(ev.attendance);
+                    const hrs = ev.workedHours != null ? ` · ${ev.workedHours}ч` : '';
+                    return `<span class="vol-event-pill ${cls}">${escapeHtmlText(ev.eventTitle || ev.eventId)}${hrs}</span>`;
+                }).join('');
+                const rate = v.totalConfirmed ? Math.round(v.presentCount / v.totalConfirmed * 100) : 0;
+                return `
+                    <tr style="cursor:pointer;" onclick="document.getElementById('${detailId}').classList.toggle('open')">
+                        <td>${escapeHtmlText(v.name || '—')}</td>
+                        <td>${escapeHtmlText(v.email || v.phone || '—')}</td>
+                        <td style="text-align:center;">${v.totalConfirmed}</td>
+                        <td style="text-align:center;color:#27ae60;font-weight:700;">${v.presentCount}</td>
+                        <td style="text-align:center;font-weight:700;">${v.totalHours > 0 ? v.totalHours.toFixed(1) : '—'}</td>
+                        <td style="text-align:center;">${v.totalConfirmed ? rate + '%' : '—'}</td>
+                    </tr>
+                    <tr id="${detailId}" class="vol-row-detail">
+                        <td colspan="6"><div style="padding:0.25rem 0;">${eventPills || '<span style="opacity:0.6;">Нет данных</span>'}</div></td>
+                    </tr>
+                `;
+            }).join('');
+
+            container.innerHTML = `
+                <table class="vol-leaderboard">
+                    <thead><tr>
+                        <th>Волонтёр</th>
+                        <th>Контакт</th>
+                        <th style="text-align:center;">Мероп-й</th>
+                        <th style="text-align:center;">Пришёл</th>
+                        <th style="text-align:center;">Часов</th>
+                        <th style="text-align:center;">Явка</th>
+                    </tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+                <p style="font-size:0.8rem;opacity:0.55;margin-top:0.75rem;">Нажмите на строку, чтобы увидеть историю по мероприятиям</p>
+            `;
+        }
+
+        async function loadVolunteerStats() {
+            const summary = document.getElementById('volunteerStatsSummary');
+            const content = document.getElementById('volunteerStatsContent');
+            if (content) content.innerHTML = '<p style="opacity:0.6;padding:1rem;">Загрузка...</p>';
+            if (summary) summary.innerHTML = '';
+            try {
+                const data = await apiFetch('/api/admin/volunteer-stats');
+                volunteerStatsData = data.volunteers || [];
+
+                const totalVols = volunteerStatsData.length;
+                const withAttendance = volunteerStatsData.filter(v => v.presentCount > 0).length;
+                const totalHoursAll = volunteerStatsData.reduce((s, v) => s + v.totalHours, 0);
+                const totalEvents = volunteerStatsData.reduce((s, v) => s + v.totalConfirmed, 0);
+
+                if (summary) {
+                    const chip = (val, lbl) => `<div class="vol-stat-card"><div class="val">${val}</div><div class="lbl">${lbl}</div></div>`;
+                    summary.innerHTML =
+                        chip(totalVols, 'Волонтёров в базе') +
+                        chip(withAttendance, 'Участвовали хотя бы раз') +
+                        chip(totalHoursAll.toFixed(0), 'Часов в сумме') +
+                        chip(totalEvents, 'Регистраций');
+                }
+
+                renderVolunteerStatsTable();
+            } catch (err) {
+                console.error('Ошибка загрузки статистики волонтёров:', err);
+                if (content) content.innerHTML = '<p style="color:var(--danger);padding:1rem;">Не удалось загрузить данные</p>';
+            }
+        }
+
+        function exportVolunteerStatsCSV() {
+            if (!volunteerStatsData.length) {
+                alert('Нет данных для экспорта');
+                return;
+            }
+            const header = ['Имя', 'Email', 'Телефон', 'Мероприятий', 'Пришёл', 'Часов', 'Явка %'].map(escapeCsv).join(',');
+            const rows = volunteerStatsData.map(v => {
+                const rate = v.totalConfirmed ? Math.round(v.presentCount / v.totalConfirmed * 100) : 0;
+                return [
+                    v.name || '',
+                    v.email || '',
+                    v.phone || '',
+                    v.totalConfirmed,
+                    v.presentCount,
+                    v.totalHours.toFixed(1),
+                    v.totalConfirmed ? rate + '%' : ''
+                ].map(escapeCsv).join(',');
+            });
+            const csv = '\uFEFF' + [header, ...rows].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `volunteer_stats_${Date.now()}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
         }
 
         async function loadDashboard() {

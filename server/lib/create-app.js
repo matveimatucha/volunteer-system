@@ -377,6 +377,131 @@ function createApp({ admin, db, log = console }) {
         res.json({ ok: true });
     }));
 
+    adminRouter.patch('/registrations/:id/attendance', asyncHandler(async (req, res) => {
+        const regRef = db.collection('registrations').doc(req.params.id);
+        const regSnap = await regRef.get();
+        if (!regSnap.exists) throw new ApiError(404, 'NOT_FOUND');
+
+        const body = req.body || {};
+        const patch = {};
+
+        if (body.attendance !== undefined) {
+            const validValues = ['present', 'absent', 'late', null];
+            if (!validValues.includes(body.attendance)) throw new ApiError(400, 'BAD_REQUEST');
+            patch.attendance = body.attendance;
+        }
+        if (body.workedHours !== undefined) {
+            if (body.workedHours !== null) {
+                const h = Number(body.workedHours);
+                if (isNaN(h) || h < 0 || h > 72) throw new ApiError(400, 'BAD_REQUEST');
+                patch.workedHours = h;
+            } else {
+                patch.workedHours = null;
+            }
+        }
+        if (body.coordinatorNote !== undefined) {
+            patch.coordinatorNote = String(body.coordinatorNote || '').slice(0, 1000);
+        }
+
+        if (!Object.keys(patch).length) throw new ApiError(400, 'BAD_REQUEST');
+        await regRef.update(patch);
+        res.json({ ok: true });
+    }));
+
+    adminRouter.get('/events/:id/attendance-stats', asyncHandler(async (req, res) => {
+        const snap = await db.collection('registrations')
+            .where('eventId', '==', req.params.id)
+            .get();
+
+        const regs = snap.docs.map(d => d.data());
+        const confirmed = regs.filter(isConfirmedRegistration);
+        const present = regs.filter(r => r.attendance === 'present');
+        const late = regs.filter(r => r.attendance === 'late');
+        const absent = regs.filter(r => r.attendance === 'absent');
+        const totalHours = regs.reduce((sum, r) => sum + (Number(r.workedHours) || 0), 0);
+        const marked = present.length + late.length + absent.length;
+        const attendanceRate = confirmed.length
+            ? Math.round((present.length + late.length) / confirmed.length * 100)
+            : 0;
+
+        res.json({
+            total: regs.length,
+            confirmed: confirmed.length,
+            present: present.length,
+            late: late.length,
+            absent: absent.length,
+            noMark: confirmed.length - marked,
+            totalHours,
+            attendanceRate
+        });
+    }));
+
+    adminRouter.get('/volunteer-stats', asyncHandler(async (req, res) => {
+        const [evSnap, regSnap] = await Promise.all([
+            db.collection('events').get(),
+            db.collection('registrations').get()
+        ]);
+
+        const eventTitles = {};
+        evSnap.forEach(doc => { eventTitles[doc.id] = doc.data().title || doc.id; });
+
+        const byKey = {};
+        regSnap.docs.forEach(doc => {
+            const r = doc.data();
+            if (r.status === REGISTRATION_STATUS.CANCELLED) return;
+            const key = r.contactEmail || r.contactPhone || r.registrationId || doc.id;
+            if (!key) return;
+
+            if (!byKey[key]) {
+                let name = '';
+                if (Array.isArray(r.answersLabeled)) {
+                    const nameItem = r.answersLabeled.find(i =>
+                        /имя|name|фио/i.test(i.question || '')
+                    );
+                    if (nameItem) name = nameItem.answer || '';
+                }
+                byKey[key] = {
+                    key,
+                    name: name || r.contactEmail || r.contactPhone || '',
+                    email: r.contactEmail || '',
+                    phone: r.contactPhone || '',
+                    totalConfirmed: 0,
+                    presentCount: 0,
+                    totalHours: 0,
+                    events: []
+                };
+            }
+
+            const entry = byKey[key];
+            if (!entry.name || entry.name === entry.email || entry.name === entry.phone) {
+                if (Array.isArray(r.answersLabeled)) {
+                    const nameItem = r.answersLabeled.find(i =>
+                        /имя|name|фио/i.test(i.question || '')
+                    );
+                    if (nameItem && nameItem.answer) entry.name = nameItem.answer;
+                }
+            }
+
+            if (isConfirmedRegistration(r)) entry.totalConfirmed++;
+            if (r.attendance === 'present' || r.attendance === 'late') {
+                entry.presentCount++;
+                entry.totalHours += Number(r.workedHours) || 0;
+            }
+
+            entry.events.push({
+                eventId: r.eventId || '',
+                eventTitle: r.eventTitle || eventTitles[r.eventId] || r.eventId || '',
+                status: r.status || '',
+                attendance: r.attendance || null,
+                workedHours: r.workedHours != null ? Number(r.workedHours) : null,
+                registrationId: r.registrationId || doc.id
+            });
+        });
+
+        const volunteers = Object.values(byKey).sort((a, b) => b.totalHours - a.totalHours);
+        res.json({ volunteers });
+    }));
+
     adminRouter.get('/settings/notifications', asyncHandler(async (req, res) => {
         const snap = await db.collection('settings').doc('notifications').get();
         const data = snap.exists ? snap.data() : {};
