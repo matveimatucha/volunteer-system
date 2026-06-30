@@ -498,6 +498,14 @@
             margin-top: 1rem;
         }
 
+        .archive-hint {
+            text-align: center;
+            color: rgba(27, 36, 128, 0.62);
+            font-size: 0.92rem;
+            margin: 0 0 1.25rem;
+            line-height: 1.45;
+        }
+
         .archive-section .events-grid {
             opacity: 0.65;
         }
@@ -1295,11 +1303,20 @@
             }
 
             if (past.length > 0) {
+                const pastHasRecap = past.some(e => {
+                    const photo = getDirectImageUrl(e.archivePhoto);
+                    const text = String(e.archiveText || '').trim();
+                    return photo || text;
+                });
+                const archiveHint = pastHasRecap
+                    ? '<p class="archive-hint">Нажми на мероприятие, чтобы узнать подробнее</p>'
+                    : '';
                 html += `<div class="archive-toggle">
                     <span class="archive-label">Прошедших мероприятий: ${past.length}</span>
                     <button class="archive-btn" onclick="toggleArchive()">Показать архив</button>
                 </div>
                 <div id="archiveSection" class="archive-section" style="display:none;">
+                    ${archiveHint}
                     <div class="events-grid" id="archiveGrid"></div>
                 </div>`;
             }
