@@ -754,6 +754,46 @@
         }
         .free-toggle input { width: 18px; height: 18px; cursor: pointer; accent-color: #1B2480; }
 
+        .site-contacts {
+            margin: 3rem auto 1rem;
+            max-width: 420px;
+            text-align: center;
+            padding: 1.5rem 1.25rem;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.72);
+            border: 1px solid rgba(27, 36, 128, 0.12);
+            box-shadow: 0 8px 28px rgba(27, 36, 128, 0.08);
+        }
+
+        .site-contacts-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.45rem;
+            letter-spacing: 0.5px;
+            color: #1B2480;
+            margin-bottom: 0.85rem;
+        }
+
+        .site-contacts-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.45rem;
+        }
+
+        .site-contacts-list a {
+            color: #1B2480;
+            text-decoration: none;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: color 0.2s ease;
+        }
+
+        .site-contacts-list a:hover {
+            color: #4472C4;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+
     </style>
 </head>
 <body>
@@ -967,6 +1007,16 @@
                 <p>Загружаем мероприятия...</p>
             </div>
         </div>
+
+        <footer class="site-contacts" aria-label="Контакты Профкома МГУ">
+            <h2 class="site-contacts-title">Наши контакты</h2>
+            <ul class="site-contacts-list">
+                <li><a href="https://vk.com/MSUprofcom" target="_blank" rel="noopener noreferrer">Vk.com/MSUprofcom</a></li>
+                <li><a href="https://t.me/msuprofcom" target="_blank" rel="noopener noreferrer">T.me/msuprofcom</a></li>
+                <li><a href="https://max.ru/msuprofcom" target="_blank" rel="noopener noreferrer">Max.ru/msuprofcom</a></li>
+                <li><a href="https://msuprof.com" target="_blank" rel="noopener noreferrer">MSUprof.com</a></li>
+            </ul>
+        </footer>
     </div>
 
     <div id="recapModal" class="recap-modal" aria-hidden="true">
