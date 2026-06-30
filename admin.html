@@ -1321,6 +1321,15 @@
                     </label>
                 </div>
 
+                <div class="form-group" style="border-top: 1px solid rgba(27,36,128,0.12); padding-top: 1.25rem; margin-top: 0.5rem;">
+                    <label style="text-transform: none; font-size: 1rem; margin-bottom: 0.75rem;">📷 Итоги прошедшего мероприятия</label>
+                    <small style="opacity: 0.75; font-size: 0.85rem; display: block; margin-bottom: 1rem;">Показываются на главной при нажатии на карточку в архиве. Заполните после окончания события.</small>
+                    <label style="font-size: 0.85rem; text-transform: none; opacity: 0.85;">Фото (волонтёры или другое)</label>
+                    <input type="url" id="eventArchivePhoto" placeholder="https://drive.google.com/file/d/.../view" style="margin-bottom: 0.75rem;">
+                    <label style="font-size: 0.85rem; text-transform: none; opacity: 0.85;">Короткий текст об итогах</label>
+                    <textarea id="eventArchiveText" rows="3" placeholder="Спасибо всем волонтёрам! Вместе мы собрали 120 кг мусора…"></textarea>
+                </div>
+
                 <!-- КОНСТРУКТОР ВОПРОСОВ -->
                 <div class="questions-section">
                     <div class="questions-header">
@@ -1626,6 +1635,8 @@
             document.getElementById('eventIsArchived').checked = !!event.isArchived;
             document.getElementById('eventImage').value = event.image || '';
             document.getElementById('eventLogo').value = event.logo || '';
+            document.getElementById('eventArchivePhoto').value = event.archivePhoto || '';
+            document.getElementById('eventArchiveText').value = event.archiveText || '';
             currentQuestions = (event.questions || []).map(q => ({
                 ...q,
                 options: Array.isArray(q.options) ? q.options : []
@@ -1858,6 +1869,8 @@
                 isArchived: document.getElementById('eventIsArchived').checked,
                 image: document.getElementById('eventImage').value.trim(),
                 logo: document.getElementById('eventLogo').value.trim(),
+                archivePhoto: document.getElementById('eventArchivePhoto').value.trim(),
+                archiveText: document.getElementById('eventArchiveText').value.trim(),
                 questions: currentQuestions
             };
 
@@ -1931,6 +1944,8 @@
             document.getElementById('eventIsArchived').checked = false;
             document.getElementById('eventImage').value = original.image || '';
             document.getElementById('eventLogo').value = original.logo || '';
+            document.getElementById('eventArchivePhoto').value = '';
+            document.getElementById('eventArchiveText').value = '';
             currentQuestions = JSON.parse(JSON.stringify(original.questions || []));
             renderQuestions();
             document.getElementById('eventModal').classList.add('active');
@@ -1957,6 +1972,8 @@
             document.getElementById('eventIsArchived').checked = false;
             document.getElementById('eventImage').value = template.image || '';
             document.getElementById('eventLogo').value = template.logo || '';
+            document.getElementById('eventArchivePhoto').value = '';
+            document.getElementById('eventArchiveText').value = '';
             currentQuestions = JSON.parse(JSON.stringify(template.questions || []));
             renderQuestions();
             document.getElementById('eventModal').classList.add('active');

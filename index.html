@@ -506,6 +506,110 @@
             filter: grayscale(30%);
         }
 
+        .event-card.past.has-recap {
+            cursor: pointer;
+        }
+
+        .event-card.past.has-recap:hover {
+            filter: grayscale(10%);
+        }
+
+        .recap-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.25rem;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.25s ease, visibility 0.25s ease;
+        }
+
+        .recap-modal.is-open {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .recap-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 18, 28, 0.72);
+            backdrop-filter: blur(4px);
+        }
+
+        .recap-dialog {
+            position: relative;
+            z-index: 1;
+            width: min(520px, 100%);
+            max-height: min(90vh, 720px);
+            overflow-y: auto;
+            background: #fff;
+            border-radius: 20px;
+            padding: 1.5rem 1.5rem 1.75rem;
+            box-shadow: 0 24px 64px rgba(26, 26, 46, 0.28);
+            transform: translateY(12px) scale(0.98);
+            transition: transform 0.25s ease;
+        }
+
+        .recap-modal.is-open .recap-dialog {
+            transform: translateY(0) scale(1);
+        }
+
+        .recap-close {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(27, 36, 128, 0.08);
+            color: #1B2480;
+            font-size: 1.5rem;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .recap-close:hover {
+            background: rgba(27, 36, 128, 0.15);
+        }
+
+        .recap-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.65rem;
+            color: #1B2480;
+            letter-spacing: 0.5px;
+            margin: 0 2rem 1rem 0;
+            line-height: 1.1;
+        }
+
+        .recap-photo-wrap {
+            border-radius: 14px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+            background: #f0f2f8;
+        }
+
+        .recap-photo-wrap img {
+            display: block;
+            width: 100%;
+            max-height: 360px;
+            object-fit: cover;
+        }
+
+        .recap-text {
+            margin: 0;
+            color: #333;
+            font-size: 0.98rem;
+            line-height: 1.65;
+            white-space: pre-wrap;
+        }
+
         /* ===== ПЛАНШЕТ ===== */
         @media (max-width: 768px) {
             .container {
@@ -857,6 +961,16 @@
         </div>
     </div>
 
+    <div id="recapModal" class="recap-modal" aria-hidden="true">
+        <div class="recap-backdrop" onclick="closeEventRecap()"></div>
+        <div class="recap-dialog" role="dialog" aria-labelledby="recapTitle">
+            <button type="button" class="recap-close" onclick="closeEventRecap()" aria-label="Закрыть">&times;</button>
+            <h2 class="recap-title" id="recapTitle"></h2>
+            <div class="recap-photo-wrap" id="recapPhotoWrap" hidden></div>
+            <p class="recap-text" id="recapText" hidden></p>
+        </div>
+    </div>
+
     <script src="assets/api-config.js"></script>
     <script src="assets/event-images.js"></script>
     <script src="assets/registration-utils.js"></script>
@@ -884,9 +998,10 @@
             return `rgba(${r}, ${g}, ${b}, ${alpha})`;
         }
 
-        function createEventCard(event) {
+        function createEventCard(event, options = {}) {
             const card = document.createElement('div');
             card.className = 'event-card';
+            const isPast = !!options.isPast;
             
             const maxVolunteers = Number(event.maxVolunteers) || 0;
             const currentVolunteers = Number(event.currentVolunteers) || 0;
@@ -924,6 +1039,23 @@
             const btnExtraStyle = (!isClosed && isWaitlistOnly)
                 ? 'background:linear-gradient(135deg,#e67e22 0%,#d35400 100%)!important;box-shadow:0 8px 22px rgba(230,126,34,.35)!important;'
                 : '';
+
+            const archivePhotoUrl = getDirectImageUrl(event.archivePhoto);
+            const archiveText = String(event.archiveText || '').trim();
+            const hasRecap = isPast && (archivePhotoUrl || archiveText);
+
+            if (hasRecap) {
+                card.classList.add('has-recap');
+                card.setAttribute('role', 'button');
+                card.setAttribute('tabindex', '0');
+                card.setAttribute('title', 'Итоги мероприятия');
+                window._eventRecapData = window._eventRecapData || {};
+                window._eventRecapData[eventId] = {
+                    title: event.title || '',
+                    photo: archivePhotoUrl,
+                    text: archiveText
+                };
+            }
             
             card.innerHTML = `
                 <div class="${headerClass}" style="${headerBg}">
@@ -968,8 +1100,61 @@
                 </div>
             `;
             
+            if (hasRecap) {
+                const openRecap = (e) => {
+                    if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+                    if (e.type === 'keydown') e.preventDefault();
+                    showEventRecap(eventId);
+                };
+                card.addEventListener('click', openRecap);
+                card.addEventListener('keydown', openRecap);
+            }
+
             return card;
         }
+
+        function showEventRecap(eventId) {
+            const data = window._eventRecapData?.[eventId];
+            if (!data) return;
+
+            const modal = document.getElementById('recapModal');
+            const titleEl = document.getElementById('recapTitle');
+            const photoWrap = document.getElementById('recapPhotoWrap');
+            const textEl = document.getElementById('recapText');
+
+            titleEl.textContent = data.title || 'Итоги мероприятия';
+
+            if (data.photo) {
+                photoWrap.hidden = false;
+                photoWrap.innerHTML = `<img src="${escapeHtmlAttr(data.photo)}" alt="" referrerpolicy="no-referrer">`;
+            } else {
+                photoWrap.hidden = true;
+                photoWrap.innerHTML = '';
+            }
+
+            if (data.text) {
+                textEl.hidden = false;
+                textEl.textContent = data.text;
+            } else {
+                textEl.hidden = true;
+                textEl.textContent = '';
+            }
+
+            modal.classList.add('is-open');
+            modal.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeEventRecap() {
+            const modal = document.getElementById('recapModal');
+            modal.classList.remove('is-open');
+            modal.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeEventRecap();
+        });
 
         // Функция для затемнения/осветления цвета
         function adjustColor(color, amount) {
@@ -1134,6 +1319,7 @@
             }
 
             container._pastEvents = past;
+            window._eventRecapData = {};
 
             // Если актуальных нет, но архив есть — раскрываем его сразу
             if (active.length === 0 && past.length > 0) {
@@ -1151,7 +1337,7 @@
             grid.innerHTML = '';
             container._pastEvents.forEach(event => {
                 try {
-                    const card = createEventCard(event);
+                    const card = createEventCard(event, { isPast: true });
                     card.classList.add('past');
                     grid.appendChild(card);
                 } catch (err) {
