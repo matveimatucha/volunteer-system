@@ -754,44 +754,117 @@
         }
         .free-toggle input { width: 18px; height: 18px; cursor: pointer; accent-color: #1B2480; }
 
-        .site-contacts {
-            margin: 3rem auto 1rem;
-            max-width: 420px;
-            text-align: center;
-            padding: 1.5rem 1.25rem;
-            border-radius: 16px;
-            background: rgba(255, 255, 255, 0.72);
-            border: 1px solid rgba(27, 36, 128, 0.12);
-            box-shadow: 0 8px 28px rgba(27, 36, 128, 0.08);
+        .site-footer {
+            position: relative;
+            z-index: 2;
+            margin-top: 3.5rem;
+            background: linear-gradient(165deg, #121963 0%, #1B2480 55%, #151b52 100%);
+            color: rgba(255, 255, 255, 0.92);
         }
 
-        .site-contacts-title {
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 1.45rem;
-            letter-spacing: 0.5px;
-            color: #1B2480;
-            margin-bottom: 0.85rem;
+        .site-footer-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2.5rem 2rem 2rem;
         }
 
-        .site-contacts-list {
-            list-style: none;
+        .site-footer-main {
             display: flex;
             flex-direction: column;
-            gap: 0.45rem;
+            align-items: flex-start;
+            gap: 1.35rem;
         }
 
-        .site-contacts-list a {
-            color: #1B2480;
+        .site-footer-brand {
+            display: inline-flex;
+            align-items: center;
             text-decoration: none;
-            font-size: 1rem;
-            font-weight: 600;
-            transition: color 0.2s ease;
         }
 
-        .site-contacts-list a:hover {
-            color: #4472C4;
-            text-decoration: underline;
-            text-underline-offset: 3px;
+        .site-footer-logo {
+            height: 56px;
+            width: auto;
+            display: block;
+            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.25));
+        }
+
+        .site-footer-social {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.65rem;
+        }
+
+        .site-footer-social a {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+            text-decoration: none;
+            overflow: hidden;
+        }
+
+        .site-footer-social a:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.22);
+            transform: translateY(-1px);
+        }
+
+        .site-footer-social-icon {
+            width: 28px;
+            height: 28px;
+            display: block;
+            object-fit: contain;
+        }
+
+        .site-footer-social-icon--max {
+            width: 30px;
+            height: 30px;
+            border-radius: 7px;
+        }
+
+        .site-footer-social-icon--site {
+            width: 26px;
+            height: 26px;
+        }
+
+        .site-footer-legal {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            max-width: 520px;
+        }
+
+        .site-footer-legal p {
+            margin: 0;
+            font-size: 0.88rem;
+            line-height: 1.5;
+            color: rgba(255, 255, 255, 0.72);
+        }
+
+        .site-footer-legal p:first-child {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.95rem;
+        }
+
+        @media (max-width: 768px) {
+            .site-footer-inner {
+                padding: 2rem 1.25rem 1.75rem;
+            }
+
+            .site-footer-main {
+                align-items: center;
+                text-align: center;
+            }
+
+            .site-footer-legal {
+                align-items: center;
+            }
         }
 
     </style>
@@ -1007,17 +1080,37 @@
                 <p>Загружаем мероприятия...</p>
             </div>
         </div>
-
-        <footer class="site-contacts" aria-label="Контакты Профкома МГУ">
-            <h2 class="site-contacts-title">Наши контакты</h2>
-            <ul class="site-contacts-list">
-                <li><a href="https://vk.com/MSUprofcom" target="_blank" rel="noopener noreferrer">Vk.com/MSUprofcom</a></li>
-                <li><a href="https://t.me/msuprofcom" target="_blank" rel="noopener noreferrer">T.me/msuprofcom</a></li>
-                <li><a href="https://max.ru/msuprofcom" target="_blank" rel="noopener noreferrer">Max.ru/msuprofcom</a></li>
-                <li><a href="https://msuprof.com" target="_blank" rel="noopener noreferrer">MSUprof.com</a></li>
-            </ul>
-        </footer>
     </div>
+
+    <footer class="site-footer" aria-label="Подвал сайта">
+        <div class="site-footer-inner">
+            <div class="site-footer-main">
+                <a href="https://msuprof.com" class="site-footer-brand" target="_blank" rel="noopener noreferrer" aria-label="ОПК МГУ">
+                    <img src="assets/logo.png" alt="ОПК МГУ" class="site-footer-logo">
+                </a>
+
+                <nav class="site-footer-social" aria-label="Наши контакты">
+                    <a href="https://vk.com/MSUprofcom" target="_blank" rel="noopener noreferrer" title="ВКонтакте" aria-label="ВКонтакте">
+                        <img src="assets/social/vk.svg" alt="" class="site-footer-social-icon" width="28" height="28">
+                    </a>
+                    <a href="https://t.me/msuprofcom" target="_blank" rel="noopener noreferrer" title="Telegram" aria-label="Telegram">
+                        <img src="assets/social/telegram.svg" alt="" class="site-footer-social-icon" width="28" height="28">
+                    </a>
+                    <a href="https://max.ru/msuprofcom" target="_blank" rel="noopener noreferrer" title="MAX" aria-label="MAX">
+                        <img src="assets/social/max.png" alt="" class="site-footer-social-icon site-footer-social-icon--max" width="30" height="30">
+                    </a>
+                    <a href="https://msuprof.com" target="_blank" rel="noopener noreferrer" title="MSUprof.com" aria-label="MSUprof.com">
+                        <img src="assets/logo.png" alt="" class="site-footer-social-icon site-footer-social-icon--site" width="26" height="26">
+                    </a>
+                </nav>
+
+                <div class="site-footer-legal">
+                    <p>© 2025–2026</p>
+                    <p>Портал волонтёров · Профком МГУ имени М.В. Ломоносова</p>
+                </div>
+            </div>
+        </div>
+    </footer>
 
     <div id="recapModal" class="recap-modal" aria-hidden="true">
         <div class="recap-backdrop" onclick="closeEventRecap()"></div>
