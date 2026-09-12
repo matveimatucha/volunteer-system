@@ -22,8 +22,13 @@ const {
     findContactPhone,
     getRegistrationStatus,
     isConfirmedRegistration,
+    isFirstNameQuestion,
     isEventClosedForRegistration,
     isEventHidden,
+    isMultiDayEvent,
+    sanitizeSelectedDays,
+    withSelectedDaysLabeled,
+    MAX_EVENT_DAYS,
     buildSheetsRegisterPayload,
     buildSheetsBulkRow
 } = require('./lib/registration-helpers');
@@ -100,14 +105,31 @@ function sanitizeAnswers(rawAnswers, rawAnswersLabeled) {
     return { answers, answersLabeled };
 }
 
-async function findDuplicateRegistration(eventId, field, value) {
+async function findDuplicateRegistration(eventId, field, value, transaction) {
     if (!value) return false;
-    const snap = await db.collection('registrations')
+    const query = db.collection('registrations')
         .where('eventId', '==', eventId)
         .where(field, '==', value)
-        .limit(5)
-        .get();
+        .limit(5);
+    const snap = transaction ? await transaction.get(query) : await query.get();
     return snap.docs.some(d => d.data().status !== REGISTRATION_STATUS.CANCELLED);
+}
+
+function assertRequiredAnswers(answers, questions) {
+    const list = Array.isArray(questions) ? questions : [];
+    if (!list.length) {
+        const hasName = String(answers.name || '').trim().length >= 2;
+        const hasContact = !!(findContactEmail(answers, list) || findContactPhone(answers, list) || answers.email || answers.phone);
+        if (!hasName || !hasContact) throw new ApiError(400, 'MISSING_REQUIRED');
+        return;
+    }
+    for (const q of list) {
+        if (!q || q.type === 'infotext' || !q.required) continue;
+        const value = answers[`question_${q.id}`];
+        if (value == null || String(value).trim() === '') {
+            throw new ApiError(400, 'MISSING_REQUIRED');
+        }
+    }
 }
 
 /** Первый в листе ожидания (по дате создания) для мероприятия. */
@@ -174,13 +196,13 @@ router.post('/registrations', asyncHandler(async (req, res) => {
     const questions = preSnap.data().questions || [];
     const contactEmail = findContactEmail(answers, questions);
     const contactPhone = findContactPhone(answers, questions);
+    assertRequiredAnswers(answers, questions);
 
-    if (await findDuplicateRegistration(eventId, 'contactEmail', contactEmail)) {
-        throw new ApiError(409, 'DUPLICATE_EMAIL');
+    const selectedDays = sanitizeSelectedDays(body.selectedDays, preSnap.data());
+    if (isMultiDayEvent(preSnap.data()) && selectedDays.length === 0) {
+        throw new ApiError(400, 'MISSING_DAYS');
     }
-    if (await findDuplicateRegistration(eventId, 'contactPhone', contactPhone)) {
-        throw new ApiError(409, 'DUPLICATE_PHONE');
-    }
+    const labeled = withSelectedDaysLabeled(answersLabeled, selectedDays);
 
     const registrationRef = db.collection('registrations').doc();
     const cancelToken = crypto.randomBytes(16).toString('hex');
@@ -194,6 +216,12 @@ router.post('/registrations', asyncHandler(async (req, res) => {
         latestEvent = eventSnap.data();
         if (isEventClosedForRegistration(latestEvent)) {
             throw new ApiError(409, 'REGISTRATION_CLOSED');
+        }
+        if (await findDuplicateRegistration(eventId, 'contactEmail', contactEmail, transaction)) {
+            throw new ApiError(409, 'DUPLICATE_EMAIL');
+        }
+        if (await findDuplicateRegistration(eventId, 'contactPhone', contactPhone, transaction)) {
+            throw new ApiError(409, 'DUPLICATE_PHONE');
         }
 
         const max = Number(latestEvent.maxVolunteers) ? Number(latestEvent.maxVolunteers) : 999999;
@@ -212,7 +240,8 @@ router.post('/registrations', asyncHandler(async (req, res) => {
             createdAtMs: Date.now(),
             timestamp: new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' }),
             answers,
-            answersLabeled,
+            answersLabeled: labeled,
+            selectedDays,
             cancelToken
         });
 
@@ -238,7 +267,7 @@ router.get('/registrations/:id', asyncHandler(async (req, res) => {
 
     const reg = doc.data();
     // Старые заявки (до внедрения сервера) не имеют cancelToken — пускаем по старой ссылке
-    if (reg.cancelToken && reg.cancelToken !== String(req.query.token || '')) {
+    if (!reg.cancelToken || reg.cancelToken !== String(req.query.token || '')) {
         throw new ApiError(403, 'FORBIDDEN');
     }
 
@@ -265,14 +294,24 @@ router.post('/registrations/:id/cancel', asyncHandler(async (req, res) => {
         if (!regSnap.exists) throw new ApiError(404, 'NOT_FOUND');
 
         const reg = regSnap.data();
-        if (reg.cancelToken && reg.cancelToken !== token) {
+        if (!reg.cancelToken || reg.cancelToken !== token) {
             throw new ApiError(403, 'FORBIDDEN');
         }
         if (reg.status === REGISTRATION_STATUS.CANCELLED) return;
 
         const wasConfirmed = isConfirmedRegistration(reg);
-        const eventRef = reg.eventId ? db.collection('events').doc(reg.eventId) : null;
-        const evSnap = (wasConfirmed && eventRef) ? await transaction.get(eventRef) : null;
+        const eventRef = (wasConfirmed && reg.eventId) ? db.collection('events').doc(reg.eventId) : null;
+        let evSnap = null;
+        let waitlistSnap = null;
+        if (eventRef) {
+            const waitlistQuery = db.collection('registrations')
+                .where('eventId', '==', reg.eventId)
+                .where('status', '==', REGISTRATION_STATUS.WAITLIST);
+            [evSnap, waitlistSnap] = await Promise.all([
+                transaction.get(eventRef),
+                transaction.get(waitlistQuery)
+            ]);
+        }
 
         transaction.update(regRef, {
             status: REGISTRATION_STATUS.CANCELLED,
@@ -284,18 +323,12 @@ router.post('/registrations/:id/cancel', asyncHandler(async (req, res) => {
             const max = Number(event.maxVolunteers) ? Number(event.maxVolunteers) : 999999;
             const current = Number(event.currentVolunteers) || 0;
             const afterCancel = Math.max(current - 1, 0);
-            transaction.update(eventRef, { currentVolunteers: afterCancel });
-
-            if (afterCancel < max && reg.eventId) {
-                const waitlistQuery = db.collection('registrations')
-                    .where('eventId', '==', reg.eventId)
-                    .where('status', '==', REGISTRATION_STATUS.WAITLIST);
-                const waitlistSnap = await transaction.get(waitlistQuery);
-                const nextWait = pickFirstWaitlistDoc(waitlistSnap.docs);
-                if (nextWait) {
-                    transaction.update(nextWait.ref, { status: REGISTRATION_STATUS.CONFIRMED });
-                    transaction.update(eventRef, { currentVolunteers: afterCancel + 1 });
-                }
+            const nextWait = afterCancel < max ? pickFirstWaitlistDoc(waitlistSnap.docs) : null;
+            if (nextWait) {
+                transaction.update(nextWait.ref, { status: REGISTRATION_STATUS.CONFIRMED });
+                transaction.update(eventRef, { currentVolunteers: afterCancel + 1 });
+            } else {
+                transaction.update(eventRef, { currentVolunteers: afterCancel });
             }
         }
     });
@@ -316,16 +349,32 @@ adminRouter.get('/events', asyncHandler(async (req, res) => {
 }));
 
 adminRouter.put('/events/:id', asyncHandler(async (req, res) => {
-    const event = req.body || {};
-    if (!event.title || typeof event.title !== 'string') throw new ApiError(400, 'BAD_REQUEST');
-    event.id = req.params.id;
+    const src = req.body || {};
+    if (!src.title || typeof src.title !== 'string') throw new ApiError(400, 'BAD_REQUEST');
+    const event = {
+        ...src,
+        id: req.params.id,
+        title: String(src.title).trim().slice(0, 300)
+    };
     await db.collection('events').doc(req.params.id).set(event);
     res.json({ ok: true });
 }));
 
 adminRouter.delete('/events/:id', asyncHandler(async (req, res) => {
-    await db.collection('events').doc(req.params.id).delete();
-    res.json({ ok: true });
+    const eventId = req.params.id;
+    const regs = await db.collection('registrations').where('eventId', '==', eventId).get();
+    const docs = regs.docs;
+    if (!docs.length) {
+        await db.collection('events').doc(eventId).delete();
+    } else {
+        for (let i = 0; i < docs.length; i += 400) {
+            const batch = db.batch();
+            docs.slice(i, i + 400).forEach(doc => batch.delete(doc.ref));
+            if (i === 0) batch.delete(db.collection('events').doc(eventId));
+            await batch.commit();
+        }
+    }
+    res.json({ ok: true, deletedRegistrations: docs.length });
 }));
 
 /** Пересчёт счётчика участников по фактическим заявкам. */
@@ -374,6 +423,11 @@ adminRouter.post('/registrations/:id/promote', asyncHandler(async (req, res) => 
         if (!regSnap.exists) throw new ApiError(404, 'NOT_FOUND');
 
         const reg = regSnap.data();
+        const currentStatus = getRegistrationStatus(reg);
+        if (currentStatus === REGISTRATION_STATUS.CONFIRMED) return;
+        if (currentStatus === REGISTRATION_STATUS.CANCELLED) {
+            throw new ApiError(409, 'CANCELLED');
+        }
         const eventRef = db.collection('events').doc(reg.eventId);
         const eventSnap = await transaction.get(eventRef);
         if (!eventSnap.exists) throw new ApiError(404, 'NOT_FOUND');
@@ -494,7 +548,7 @@ adminRouter.get('/volunteer-stats', asyncHandler(async (req, res) => {
                 if (!a) continue;
 
                 if (!entry.lastName && /фамил/.test(q)) entry.lastName = a;
-                if (!entry.firstName && (q.includes('имя') || q.includes('name'))) entry.firstName = a;
+                if (!entry.firstName && isFirstNameQuestion(q)) entry.firstName = a;
                 if (!entry.middleName && /отчест/.test(q)) entry.middleName = a;
                 if (!entry.name && /фио|ф\.и\.о/.test(q)) entry.name = a;
                 if (!entry.faculty && /факульт|школ|институт|кафедр|направлен/.test(q)) entry.faculty = a;
@@ -521,7 +575,8 @@ adminRouter.get('/volunteer-stats', asyncHandler(async (req, res) => {
             status: r.status || '',
             attendance: r.attendance || null,
             workedHours: r.workedHours != null ? Number(r.workedHours) : null,
-            registrationId: r.registrationId || doc.id
+            registrationId: r.registrationId || doc.id,
+            selectedDays: Array.isArray(r.selectedDays) ? r.selectedDays.slice(0, MAX_EVENT_DAYS) : []
         });
     });
 

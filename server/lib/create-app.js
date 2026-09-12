@@ -7,8 +7,14 @@ const {
     findContactPhone,
     getRegistrationStatus,
     isConfirmedRegistration,
+    isFirstNameQuestion,
     isEventClosedForRegistration,
     isEventHidden,
+    isMultiDayEvent,
+    sanitizeSelectedDays,
+    withSelectedDaysLabeled,
+    enumerateEventDays,
+    MAX_EVENT_DAYS,
     buildSheetsBulkRow
 } = require('./registration-helpers');
 const { getSheetsUrl, postToSheets, scheduleSheetsSync } = require('./sheets-sync');
@@ -24,6 +30,34 @@ class ApiError extends Error {
         super(code);
         this.httpStatus = httpStatus;
         this.code = code;
+    }
+}
+
+function createRateLimiter({ windowMs = 60_000, max = 12 } = {}) {
+    const hits = new Map();
+    return (req, res, next) => {
+        const forwarded = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+        const key = forwarded || req.ip || (req.socket && req.socket.remoteAddress) || 'unknown';
+        const now = Date.now();
+        const recent = (hits.get(key) || []).filter(t => now - t < windowMs);
+        if (recent.length >= max) {
+            res.status(429).json({ error: 'RATE_LIMIT' });
+            return;
+        }
+        recent.push(now);
+        hits.set(key, recent);
+        if (hits.size > 4000) {
+            for (const [ip, times] of hits) {
+                if (!times.length || now - times[times.length - 1] > windowMs) hits.delete(ip);
+            }
+        }
+        next();
+    };
+}
+
+function assertCancelToken(reg, token) {
+    if (!reg.cancelToken || reg.cancelToken !== String(token || '')) {
+        throw new ApiError(403, 'FORBIDDEN');
     }
 }
 
@@ -75,20 +109,124 @@ function createApp({ admin, db, log = console }) {
         return { answers, answersLabeled };
     }
 
-    async function findDuplicateRegistration(eventId, field, value) {
+    async function findDuplicateRegistration(eventId, field, value, transaction) {
         if (!value) return false;
-        const snap = await db.collection('registrations')
+        const query = db.collection('registrations')
             .where('eventId', '==', eventId)
             .where(field, '==', value)
-            .limit(5)
-            .get();
+            .limit(5);
+        const snap = transaction ? await transaction.get(query) : await query.get();
         return snap.docs.some(d => d.data().status !== REGISTRATION_STATUS.CANCELLED);
+    }
+
+    function assertRequiredAnswers(answers, questions) {
+        const list = Array.isArray(questions) ? questions : [];
+        if (!list.length) {
+            const hasName = String(answers.name || '').trim().length >= 2;
+            const hasContact = !!(findContactEmail(answers, list) || findContactPhone(answers, list) || answers.email || answers.phone);
+            if (!hasName || !hasContact) throw new ApiError(400, 'MISSING_REQUIRED');
+            return;
+        }
+        for (const q of list) {
+            if (!q || q.type === 'infotext' || !q.required) continue;
+            const value = answers[`question_${q.id}`];
+            if (value == null || String(value).trim() === '') {
+                throw new ApiError(400, 'MISSING_REQUIRED');
+            }
+        }
     }
 
     function pickFirstWaitlistDoc(docs) {
         return docs
             .filter(d => getRegistrationStatus(d.data()) === REGISTRATION_STATUS.WAITLIST)
             .sort((a, b) => (a.data().createdAtMs || 0) - (b.data().createdAtMs || 0))[0] || null;
+    }
+
+    async function vacateConfirmedSpot(transaction, reg) {
+        if (!reg.eventId) return null;
+        const eventRef = db.collection('events').doc(reg.eventId);
+        const waitlistQuery = db.collection('registrations')
+            .where('eventId', '==', reg.eventId)
+            .where('status', '==', REGISTRATION_STATUS.WAITLIST);
+        const [evSnap, waitlistSnap] = await Promise.all([
+            transaction.get(eventRef),
+            transaction.get(waitlistQuery)
+        ]);
+        if (!evSnap.exists) return null;
+
+        const event = evSnap.data();
+        const max = Number(event.maxVolunteers) ? Number(event.maxVolunteers) : 999999;
+        const current = Number(event.currentVolunteers) || 0;
+        const afterCancel = Math.max(current - 1, 0);
+        const nextWait = afterCancel < max ? pickFirstWaitlistDoc(waitlistSnap.docs) : null;
+
+        if (nextWait) {
+            transaction.update(nextWait.ref, { status: REGISTRATION_STATUS.CONFIRMED });
+            transaction.update(eventRef, { currentVolunteers: afterCancel + 1 });
+            return {
+                id: nextWait.id,
+                before: nextWait.data(),
+                after: { ...nextWait.data(), status: REGISTRATION_STATUS.CONFIRMED }
+            };
+        }
+
+        transaction.update(eventRef, { currentVolunteers: afterCancel });
+        return null;
+    }
+
+    function sanitizeEventPayload(raw, eventId) {
+        const src = raw && typeof raw === 'object' ? raw : {};
+        const status = ['open', 'draft', 'closed'].includes(src.status) ? src.status : 'open';
+        const questions = Array.isArray(src.questions)
+            ? src.questions.slice(0, 60).map((q) => {
+                if (!q || typeof q !== 'object') return null;
+                return {
+                    id: q.id,
+                    text: String(q.text ?? '').slice(0, 500),
+                    type: String(q.type ?? 'text').slice(0, 40),
+                    required: q.required === true,
+                    description: String(q.description ?? '').slice(0, 1000),
+                    options: Array.isArray(q.options)
+                        ? q.options.slice(0, 40).map(opt => String(opt ?? '').slice(0, 200))
+                        : []
+                };
+            }).filter(Boolean)
+            : [];
+        const dateRaw = String(src.dateRaw || '').slice(0, 40);
+        let dateEndRaw = String(src.dateEndRaw || '').slice(0, 40);
+        let dateEnd = String(src.dateEnd || '').slice(0, 80);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateEndRaw) || dateEndRaw === dateRaw || (dateRaw && dateEndRaw < dateRaw)) {
+            dateEndRaw = '';
+            dateEnd = '';
+        } else if (dateRaw) {
+            const days = enumerateEventDays({ dateRaw, dateEndRaw });
+            if (days.length) {
+                dateEndRaw = days[days.length - 1];
+            }
+        }
+        return {
+            id: eventId,
+            title: String(src.title || '').trim().slice(0, 300),
+            dateRaw,
+            date: String(src.date || '').slice(0, 80),
+            dateEndRaw,
+            dateEnd,
+            location: String(src.location || '').slice(0, 300),
+            description: String(src.description || '').slice(0, 5000),
+            maxVolunteers: Math.max(0, Number(src.maxVolunteers) || 0),
+            currentVolunteers: Math.max(0, Number(src.currentVolunteers) || 0),
+            color: String(src.color || '#ff6b35').slice(0, 20),
+            status,
+            successMessage: String(src.successMessage || '').slice(0, 2000),
+            chatLink: String(src.chatLink || '').slice(0, 500),
+            isTemplate: src.isTemplate === true,
+            isArchived: src.isArchived === true,
+            image: String(src.image || '').slice(0, 1000),
+            logo: String(src.logo || '').slice(0, 1000),
+            archivePhoto: String(src.archivePhoto || '').slice(0, 1000),
+            archiveText: String(src.archiveText || '').slice(0, 4000),
+            questions
+        };
     }
 
     async function requireAdmin(req, res, next) {
@@ -111,6 +249,7 @@ function createApp({ admin, db, log = console }) {
     }
 
     const router = express.Router();
+    const writeLimiter = createRateLimiter({ windowMs: 60_000, max: 12 });
 
     router.get('/events', asyncHandler(async (req, res) => {
         const snap = await db.collection('events').get();
@@ -126,7 +265,7 @@ function createApp({ admin, db, log = console }) {
         res.json({ event });
     }));
 
-    router.post('/registrations', asyncHandler(async (req, res) => {
+    router.post('/registrations', writeLimiter, asyncHandler(async (req, res) => {
         const body = req.body || {};
         const eventId = typeof body.eventId === 'string' ? body.eventId.trim() : '';
         if (!eventId) throw new ApiError(400, 'BAD_REQUEST');
@@ -141,13 +280,13 @@ function createApp({ admin, db, log = console }) {
         const questions = preSnap.data().questions || [];
         const contactEmail = findContactEmail(answers, questions);
         const contactPhone = findContactPhone(answers, questions);
+        assertRequiredAnswers(answers, questions);
 
-        if (await findDuplicateRegistration(eventId, 'contactEmail', contactEmail)) {
-            throw new ApiError(409, 'DUPLICATE_EMAIL');
+        const selectedDays = sanitizeSelectedDays(body.selectedDays, preSnap.data());
+        if (isMultiDayEvent(preSnap.data()) && selectedDays.length === 0) {
+            throw new ApiError(400, 'MISSING_DAYS');
         }
-        if (await findDuplicateRegistration(eventId, 'contactPhone', contactPhone)) {
-            throw new ApiError(409, 'DUPLICATE_PHONE');
-        }
+        const labeled = withSelectedDaysLabeled(answersLabeled, selectedDays);
 
         const registrationRef = db.collection('registrations').doc();
         const cancelToken = crypto.randomBytes(16).toString('hex');
@@ -161,6 +300,12 @@ function createApp({ admin, db, log = console }) {
             latestEvent = eventSnap.data();
             if (isEventClosedForRegistration(latestEvent)) {
                 throw new ApiError(409, 'REGISTRATION_CLOSED');
+            }
+            if (await findDuplicateRegistration(eventId, 'contactEmail', contactEmail, transaction)) {
+                throw new ApiError(409, 'DUPLICATE_EMAIL');
+            }
+            if (await findDuplicateRegistration(eventId, 'contactPhone', contactPhone, transaction)) {
+                throw new ApiError(409, 'DUPLICATE_PHONE');
             }
 
             const max = Number(latestEvent.maxVolunteers) ? Number(latestEvent.maxVolunteers) : 999999;
@@ -179,7 +324,8 @@ function createApp({ admin, db, log = console }) {
                 createdAtMs: Date.now(),
                 timestamp: new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' }),
                 answers,
-                answersLabeled,
+                answersLabeled: labeled,
+                selectedDays,
                 cancelToken
             });
 
@@ -214,6 +360,11 @@ function createApp({ admin, db, log = console }) {
     }));
 
     router.post('/telegram/webhook', asyncHandler(async (req, res) => {
+        const expected = (process.env.TELEGRAM_WEBHOOK_SECRET || '').trim();
+        const provided = String(req.headers['x-telegram-bot-api-secret-token'] || req.query.secret || '');
+        if (expected && provided !== expected) {
+            throw new ApiError(403, 'FORBIDDEN');
+        }
         if (req.body) {
             handleTelegramUpdate(req.body, log).catch(() => {});
         }
@@ -225,9 +376,7 @@ function createApp({ admin, db, log = console }) {
         if (!doc.exists) throw new ApiError(404, 'NOT_FOUND');
 
         const reg = doc.data();
-        if (reg.cancelToken && reg.cancelToken !== String(req.query.token || '')) {
-            throw new ApiError(403, 'FORBIDDEN');
-        }
+        assertCancelToken(reg, req.query.token);
 
         let eventTitle = reg.eventTitle || '';
         try {
@@ -243,11 +392,12 @@ function createApp({ admin, db, log = console }) {
         });
     }));
 
-    router.post('/registrations/:id/cancel', asyncHandler(async (req, res) => {
+    router.post('/registrations/:id/cancel', writeLimiter, asyncHandler(async (req, res) => {
         const regRef = db.collection('registrations').doc(req.params.id);
         const token = String((req.body && req.body.token) || '');
         let beforeData = null;
         let afterData = null;
+        let promoted = null;
 
         await db.runTransaction(async (transaction) => {
             const regSnap = await transaction.get(regRef);
@@ -255,14 +405,12 @@ function createApp({ admin, db, log = console }) {
 
             const reg = regSnap.data();
             beforeData = { ...reg };
-            if (reg.cancelToken && reg.cancelToken !== token) {
-                throw new ApiError(403, 'FORBIDDEN');
-            }
+            assertCancelToken(reg, token);
             if (reg.status === REGISTRATION_STATUS.CANCELLED) return;
 
-            const wasConfirmed = isConfirmedRegistration(reg);
-            const eventRef = reg.eventId ? db.collection('events').doc(reg.eventId) : null;
-            const evSnap = (wasConfirmed && eventRef) ? await transaction.get(eventRef) : null;
+            if (isConfirmedRegistration(reg)) {
+                promoted = await vacateConfirmedSpot(transaction, reg);
+            }
 
             const cancelledAt = new Date().toISOString();
             transaction.update(regRef, {
@@ -270,30 +418,13 @@ function createApp({ admin, db, log = console }) {
                 cancelledAt
             });
             afterData = { ...reg, status: REGISTRATION_STATUS.CANCELLED, cancelledAt };
-
-            if (evSnap && evSnap.exists) {
-                const event = evSnap.data();
-                const max = Number(event.maxVolunteers) ? Number(event.maxVolunteers) : 999999;
-                const current = Number(event.currentVolunteers) || 0;
-                const afterCancel = Math.max(current - 1, 0);
-                transaction.update(eventRef, { currentVolunteers: afterCancel });
-
-                if (afterCancel < max && reg.eventId) {
-                    const waitlistQuery = db.collection('registrations')
-                        .where('eventId', '==', reg.eventId)
-                        .where('status', '==', REGISTRATION_STATUS.WAITLIST);
-                    const waitlistSnap = await transaction.get(waitlistQuery);
-                    const nextWait = pickFirstWaitlistDoc(waitlistSnap.docs);
-                    if (nextWait) {
-                        transaction.update(nextWait.ref, { status: REGISTRATION_STATUS.CONFIRMED });
-                        transaction.update(eventRef, { currentVolunteers: afterCancel + 1 });
-                    }
-                }
-            }
         });
 
         if (beforeData && afterData && beforeData.status !== afterData.status) {
             scheduleSheetsSync(beforeData, afterData, req.params.id, db);
+        }
+        if (promoted) {
+            scheduleSheetsSync(promoted.before, promoted.after, promoted.id, db);
         }
 
         res.json({ ok: true });
@@ -308,16 +439,28 @@ function createApp({ admin, db, log = console }) {
     }));
 
     adminRouter.put('/events/:id', asyncHandler(async (req, res) => {
-        const event = req.body || {};
-        if (!event.title || typeof event.title !== 'string') throw new ApiError(400, 'BAD_REQUEST');
-        event.id = req.params.id;
+        const event = sanitizeEventPayload(req.body, req.params.id);
+        if (!event.title) throw new ApiError(400, 'BAD_REQUEST');
         await db.collection('events').doc(req.params.id).set(event);
         res.json({ ok: true });
     }));
 
     adminRouter.delete('/events/:id', asyncHandler(async (req, res) => {
-        await db.collection('events').doc(req.params.id).delete();
-        res.json({ ok: true });
+        const eventId = req.params.id;
+        const regs = await db.collection('registrations').where('eventId', '==', eventId).get();
+        const docs = regs.docs;
+        const chunkSize = 400;
+        if (!docs.length) {
+            await db.collection('events').doc(eventId).delete();
+        } else {
+            for (let i = 0; i < docs.length; i += chunkSize) {
+                const batch = db.batch();
+                docs.slice(i, i + chunkSize).forEach(doc => batch.delete(doc.ref));
+                if (i === 0) batch.delete(db.collection('events').doc(eventId));
+                await batch.commit();
+            }
+        }
+        res.json({ ok: true, deletedRegistrations: docs.length });
     }));
 
     adminRouter.post('/events/:id/recount', asyncHandler(async (req, res) => {
@@ -339,40 +482,56 @@ function createApp({ admin, db, log = console }) {
 
     adminRouter.delete('/registrations/:id', asyncHandler(async (req, res) => {
         const regRef = db.collection('registrations').doc(req.params.id);
-        const regSnap = await regRef.get();
-        if (!regSnap.exists) {
-            res.json({ ok: true });
-            return;
+        let deletedReg = null;
+        let promoted = null;
+
+        await db.runTransaction(async (transaction) => {
+            const regSnap = await transaction.get(regRef);
+            if (!regSnap.exists) return;
+
+            const reg = regSnap.data();
+            deletedReg = { ...reg };
+
+            if (isConfirmedRegistration(reg) && reg.eventId) {
+                promoted = await vacateConfirmedSpot(transaction, reg);
+            }
+            transaction.delete(regRef);
+        });
+
+        if (deletedReg) {
+            scheduleSheetsSync(deletedReg, {
+                ...deletedReg,
+                status: REGISTRATION_STATUS.CANCELLED,
+                cancelledAt: new Date().toISOString()
+            }, req.params.id, db);
         }
-
-        const reg = regSnap.data();
-        await regRef.delete();
-
-        if (isConfirmedRegistration(reg) && reg.eventId) {
-            await db.collection('events').doc(reg.eventId).update({
-                currentVolunteers: admin.firestore.FieldValue.increment(-1)
-            }).catch(() => {});
+        if (promoted) {
+            scheduleSheetsSync(promoted.before, promoted.after, promoted.id, db);
         }
         res.json({ ok: true });
     }));
 
     adminRouter.put('/registrations/:id', asyncHandler(async (req, res) => {
         const regRef = db.collection('registrations').doc(req.params.id);
-        const regSnap = await regRef.get();
-        if (!regSnap.exists) throw new ApiError(404, 'NOT_FOUND');
-
         const body = req.body || {};
-        const allowed = ['status', 'contactEmail', 'contactPhone', 'answers', 'answersLabeled'];
+        const allowed = ['contactEmail', 'contactPhone', 'answers', 'answersLabeled'];
         const patch = {};
         for (const key of allowed) {
             if (body[key] !== undefined) patch[key] = body[key];
         }
-        if (!Object.keys(patch).length) throw new ApiError(400, 'BAD_REQUEST');
-
-        if (patch.answers && (typeof patch.answers !== 'object' || Array.isArray(patch.answers))) {
+        if (patch.answers) {
+            const sanitized = sanitizeAnswers(patch.answers, patch.answersLabeled);
+            patch.answers = sanitized.answers;
+            if (patch.answersLabeled !== undefined) patch.answersLabeled = sanitized.answersLabeled;
+        } else if (patch.answersLabeled !== undefined && !Array.isArray(patch.answersLabeled)) {
             throw new ApiError(400, 'BAD_REQUEST');
         }
+        if (typeof patch.contactEmail === 'string') patch.contactEmail = patch.contactEmail.slice(0, 200);
+        if (typeof patch.contactPhone === 'string') patch.contactPhone = patch.contactPhone.slice(0, 40);
+        if (!Object.keys(patch).length) throw new ApiError(400, 'BAD_REQUEST');
 
+        const snap = await regRef.get();
+        if (!snap.exists) throw new ApiError(404, 'NOT_FOUND');
         await regRef.update(patch);
         res.json({ ok: true });
     }));
@@ -479,7 +638,7 @@ function createApp({ admin, db, log = console }) {
                     if (!a) continue;
 
                     if (!entry.lastName && /фамил/.test(q)) entry.lastName = a;
-                    if (!entry.firstName && (q.includes('имя') || q.includes('name'))) entry.firstName = a;
+                    if (!entry.firstName && isFirstNameQuestion(q)) entry.firstName = a;
                     if (!entry.middleName && /отчест/.test(q)) entry.middleName = a;
                     if (!entry.name && /фио|ф\.и\.о/.test(q)) entry.name = a;
                     if (!entry.faculty && /факульт|школ|институт|кафедр|направлен/.test(q)) entry.faculty = a;
@@ -506,7 +665,8 @@ function createApp({ admin, db, log = console }) {
                 status: r.status || '',
                 attendance: r.attendance || null,
                 workedHours: r.workedHours != null ? Number(r.workedHours) : null,
-                registrationId: r.registrationId || doc.id
+                registrationId: r.registrationId || doc.id,
+                selectedDays: Array.isArray(r.selectedDays) ? r.selectedDays.slice(0, MAX_EVENT_DAYS) : []
             });
         });
 
@@ -571,6 +731,11 @@ function createApp({ admin, db, log = console }) {
 
             const reg = regSnap.data();
             beforeData = { ...reg };
+            const currentStatus = getRegistrationStatus(reg);
+            if (currentStatus === REGISTRATION_STATUS.CONFIRMED) return;
+            if (currentStatus === REGISTRATION_STATUS.CANCELLED) {
+                throw new ApiError(409, 'CANCELLED');
+            }
             const eventRef = db.collection('events').doc(reg.eventId);
             const eventSnap = await transaction.get(eventRef);
             if (!eventSnap.exists) throw new ApiError(404, 'NOT_FOUND');

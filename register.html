@@ -288,6 +288,50 @@
             cursor: pointer;
         }
 
+        .days-picker {
+            flex-direction: row;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .day-chip {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.55rem 0.9rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            background: #f8f9fa;
+            cursor: pointer;
+            font-weight: 600;
+            user-select: none;
+            margin: 0;
+            text-transform: none;
+        }
+        .day-chip input {
+            width: auto;
+            margin: 0;
+        }
+        .day-chip:has(input:checked) {
+            border-color: var(--primary);
+            background: rgba(27, 36, 128, 0.08);
+            color: var(--primary);
+        }
+        .days-picker-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin: 0.35rem 0 0.15rem;
+        }
+        .days-picker-actions button {
+            background: none;
+            border: none;
+            color: var(--primary);
+            font: inherit;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 0;
+            text-decoration: underline;
+        }
+
         .submit-btn {
             width: 100%;
             padding: 1.2rem;
@@ -466,9 +510,8 @@
     </div>
 
     <script src="assets/event-images.js"></script>
-    <script src="assets/registration-utils.js?v=5"></script>
+    <script src="assets/registration-utils.js?v=7"></script>
     <script src="assets/api-config.js"></script>
-    <script src="assets/sheets-sync.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script>
         // EMAILJS — уведомления на email
@@ -567,7 +610,9 @@
         }
 
         function hexToRgba(hex, alpha) {
-            const num = parseInt(hex.replace('#', ''), 16);
+            const raw = String(hex || '').replace('#', '');
+            if (!/^[0-9a-fA-F]{6}$/.test(raw)) return `rgba(27, 36, 128, ${alpha})`;
+            const num = parseInt(raw, 16);
             const r = (num >> 16);
             const g = (num >> 8) & 0x00FF;
             const b = num & 0x0000FF;
@@ -583,7 +628,8 @@
             const isClosed = (event.status || 'open') === 'closed'
                 || (event.status || 'open') === 'draft'
                 || event.isTemplate === true
-                || event.isArchived === true;
+                || event.isArchived === true
+                || (typeof isEventArchived === 'function' && isEventArchived(event, new Date()));
             
             const imageUrl = getDirectImageUrl(event.image);
 
@@ -595,10 +641,13 @@
             const hasCover = !!imageUrl;
 
             const formFields = generateFormFields(event.questions || []);
+            const daysFields = generateDaysPicker(event);
             const isWaitlistMode = !isClosed && !isUnlimited && spotsLeft <= 0;
-            const displayDate = typeof formatEventDisplayDate === 'function'
-                ? formatEventDisplayDate(event.date || event.dateRaw || '')
-                : (event.date || '');
+            const displayDate = typeof formatEventDateRange === 'function'
+                ? formatEventDateRange(event)
+                : (typeof formatEventDisplayDate === 'function'
+                    ? formatEventDisplayDate(event.date || event.dateRaw || '')
+                    : (event.date || ''));
 
             const scrimHtml = hasCover
                 ? `<div style="position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(10,12,30,.45) 0%,rgba(10,12,30,.75) 60%,rgba(10,12,30,.92) 100%);pointer-events:none;"></div>`
@@ -655,6 +704,7 @@
                     <div id="statusMessage" class="message"></div>
 
                     <form id="registrationForm" data-waitlist="${isWaitlistMode ? 'true' : 'false'}">
+                        ${daysFields}
                         ${formFields}
 
                         <button type="submit" class="submit-btn" id="submitBtn" style="background: linear-gradient(135deg, ${isWaitlistMode ? '#e67e22' : eventColor}, ${adjustColor(isWaitlistMode ? '#d35400' : eventColor, -20)});">
@@ -679,6 +729,25 @@
             const safeLink = chatLink.startsWith('http://') || chatLink.startsWith('https://') ? chatLink : '';
 
             const btnStyle = 'display:inline-block;text-decoration:none;width:auto;padding:0.9rem 1.4rem;margin-top:0;';
+            const cal = typeof buildCalendarLinks === 'function' ? buildCalendarLinks(event) : null;
+            if (cal) {
+                window._icsContent = cal.ics;
+                window._icsName = `${String(event?.title || 'event').replace(/[^\wа-яё-]+/gi, '_')}.ics`;
+            } else {
+                window._icsContent = '';
+            }
+
+            const calendarHtml = cal ? `
+                <a href="${escapeHtmlAttr(cal.googleUrl)}" target="_blank" rel="noopener noreferrer" class="submit-btn" style="${btnStyle}">
+                    В Google Календарь
+                </a>
+                <button type="button" class="submit-btn" style="${btnStyle}" onclick="downloadIcs()">Скачать .ics</button>
+            ` : '';
+            const chatHtml = safeLink ? `
+                <a href="${escapeHtmlAttr(safeLink)}" target="_blank" rel="noopener noreferrer" class="submit-btn" style="${btnStyle}">
+                    Перейти в чат
+                </a>
+            ` : '';
 
             const cancelHtml = registrationId ? `
                 <p style="margin-top:1.5rem;font-size:0.9rem;opacity:0.8;">
@@ -689,8 +758,10 @@
             document.getElementById('contentArea').innerHTML = `
                 <div class="success-screen">
                     <h2>${isWaitlist ? '✓ Вы в листе ожидания' : '✓ Заявка принята'}</h2>
-                    <p>${message}</p>
+                    <p>${escapeHtmlText(message).replace(/\n/g, '<br>')}</p>
                     <div class="success-actions">
+                        ${chatHtml}
+                        ${calendarHtml}
                         <a href="index.html" class="submit-btn" style="${btnStyle}">
                             На главную
                         </a>
@@ -772,6 +843,39 @@
             'Магистратура - 2 курс',
             'Другое (укажите в комментарии)'
         ];
+
+        function toggleAllSelectedDays(checked) {
+            document.querySelectorAll('input[name="selectedDays"]').forEach((cb) => {
+                cb.checked = !!checked;
+            });
+        }
+
+        function generateDaysPicker(event) {
+            if (typeof isMultiDayEvent !== 'function' || !isMultiDayEvent(event)) return '';
+            const days = enumerateEventDays(event);
+            if (days.length < 2) return '';
+            const chips = days.map((iso) => {
+                const label = typeof formatEventDayChip === 'function' ? formatEventDayChip(iso) : iso;
+                return `<label class="day-chip">
+                    <input type="checkbox" name="selectedDays" value="${escapeHtmlAttr(iso)}">
+                    <span>${escapeHtmlText(label)}</span>
+                </label>`;
+            }).join('');
+            return `
+                <div class="form-group">
+                    <label>Дни участия <span class="required">*</span></label>
+                    <small style="color:#666;margin-bottom:0.5rem;display:block;">Выберите дни, в которые вы можете помочь</small>
+                    <div class="days-picker-actions">
+                        <button type="button" onclick="toggleAllSelectedDays(true)">Выбрать все</button>
+                        <button type="button" onclick="toggleAllSelectedDays(false)">Сбросить</button>
+                    </div>
+                    <div class="checkbox-group days-picker" data-multiselect-required>
+                        ${chips}
+                    </div>
+                    <div class="field-error">Выберите хотя бы один день</div>
+                </div>
+            `;
+        }
 
         function generateFormFields(questions) {
             if (!questions || questions.length === 0) {
@@ -1024,6 +1128,10 @@
 
             const questions = currentEvent?.questions || [];
             const { answers, answersLabeled, contactEmail, contactPhone } = collectAnswersFromForm(form, questions);
+            const selectedDays = Array.from(form.querySelectorAll('input[name="selectedDays"]:checked')).map((cb) => cb.value);
+            const labeled = typeof withSelectedDaysLabeled === 'function'
+                ? withSelectedDaysLabeled(answersLabeled, selectedDays)
+                : answersLabeled;
             const isWaitlist = form.dataset.waitlist === 'true';
             let registrationSaved = false;
 
@@ -1034,7 +1142,8 @@
                     body: JSON.stringify({
                         eventId,
                         answers,
-                        answersLabeled,
+                        answersLabeled: labeled,
+                        selectedDays,
                         waitlist: isWaitlist
                     })
                 });
@@ -1055,10 +1164,12 @@
                 localStorage.removeItem('volunteer_events_v2');
 
                 if (EMAILJS_PUBLIC_KEY !== 'ВСТАВЬТЕ_PUBLIC_KEY') {
-                    const summary = formatAnswersForEmail(answersLabeled);
+                    const summary = formatAnswersForEmail(labeled);
                     const statusNote = savedWaitlist ? '\n[Лист ожидания]' : '';
                     const eventTitle = latestEvent?.title || currentEvent?.title || '';
-                    const eventDate = latestEvent?.date || currentEvent?.date || '';
+                    const eventDate = typeof formatEventDateRange === 'function'
+                        ? formatEventDateRange(latestEvent || currentEvent)
+                        : (latestEvent?.date || currentEvent?.date || '');
 
                     emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
                         to_email:   ADMIN_EMAIL,
@@ -1102,6 +1213,12 @@
                 } else if (code === 'REGISTRATION_CLOSED' || code === 'EVENT_NOT_FOUND') {
                     statusMessage.textContent = '✗ Регистрация уже закрыта или мест больше нет. Страница будет обновлена.';
                     fetchEvent(false);
+                } else if (code === 'MISSING_REQUIRED' || code === 'MISSING_DAYS') {
+                    statusMessage.textContent = code === 'MISSING_DAYS'
+                        ? '✗ Выберите хотя бы один день участия.'
+                        : '✗ Заполните все обязательные поля.';
+                } else if (code === 'RATE_LIMIT') {
+                    statusMessage.textContent = '✗ Слишком много попыток. Подождите минуту и попробуйте снова.';
                 } else {
                     statusMessage.textContent = '✗ Ошибка при регистрации. Попробуйте снова.';
                 }
@@ -1264,7 +1381,9 @@
         // Функция для затемнения/осветления цвета
         function adjustColor(color, amount) {
             const clamp = (num) => Math.min(Math.max(num, 0), 255);
-            const num = parseInt(color.replace('#', ''), 16);
+            const raw = String(color || '').replace('#', '');
+            if (!/^[0-9a-fA-F]{6}$/.test(raw)) return '#1B2480';
+            const num = parseInt(raw, 16);
             const r = clamp((num >> 16) + amount);
             const g = clamp(((num >> 8) & 0x00FF) + amount);
             const b = clamp((num & 0x0000FF) + amount);

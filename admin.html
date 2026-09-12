@@ -108,6 +108,41 @@
             margin-bottom: 1.5rem;
         }
 
+        .form-row-dates {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-row-dates .form-hint {
+            opacity: 0.7;
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+            display: block;
+            text-transform: none;
+            letter-spacing: 0;
+            font-weight: 400;
+        }
+
+        .participants-day-filter {
+            display: none;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .participants-day-btn.active {
+            background: #1B2480;
+            border-color: #1B2480;
+            color: #fff;
+        }
+        .day-filter-label {
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            opacity: 0.7;
+            margin-right: 0.25rem;
+        }
+
         label {
             display: block;
             margin-bottom: 0.5rem;
@@ -1090,9 +1125,10 @@
                     <input type="password" id="adminPassword" required placeholder="Введите пароль" autocomplete="current-password">
                 </div>
                 <button type="submit" class="btn btn-primary">Войти</button>
+                <button type="button" class="btn" id="resetPasswordBtn" style="margin-top:0.6rem;background:#eef1f8;color:#1B2480;" onclick="sendAdminPasswordReset()">Не помню пароль</button>
             </form>
             <p style="margin-top:1rem;font-size:0.85rem;opacity:0.75;text-align:center;">
-                Доступ через Firebase Auth. Права выдаются командой <code>node scripts/set-admin.js email</code>
+                Если пароль ещё не задавали — нажмите «Не помню пароль», письмо придёт на эту почту.
             </p>
         </div>
 
@@ -1232,6 +1268,7 @@
                     <button type="button" class="btn btn-small participants-filter-btn" data-filter="nomark" onclick="setParticipantsFilter('nomark')">Без отметки</button>
                 </div>
             </div>
+            <div id="participantsDayFilter" class="participants-day-filter"></div>
             <div id="participantsContent">
                 <p class="empty-participants">Загрузка...</p>
             </div>
@@ -1253,9 +1290,16 @@
                     <input type="text" id="eventTitle" required placeholder="Субботник в парке">
                 </div>
 
-                <div class="form-group">
-                    <label>Дата *</label>
-                    <input type="date" id="eventDate" required>
+                <div class="form-row-dates">
+                    <div class="form-group">
+                        <label>Дата начала *</label>
+                        <input type="date" id="eventDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Дата окончания</label>
+                        <input type="date" id="eventDateEnd">
+                        <span class="form-hint">Оставьте пустым, если мероприятие на один день. Если указать окончание — волонтёры выберут дни участия, и в списке участников можно будет искать по дням.</span>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -1364,7 +1408,7 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth-compat.js"></script>
-    <script src="assets/registration-utils.js?v=5"></script>
+    <script src="assets/registration-utils.js?v=7"></script>
     <script src="assets/api-config.js"></script>
     <script src="assets/sheets-sync.js?v=3"></script>
     <script>
@@ -1386,8 +1430,8 @@
         let currentParticipantsData = [];
         let currentParticipantsEventId = null;
         let participantsFilter = 'all';
+        let participantsDayFilter = 'all';
         let participantsSearchQuery = '';
-        let editingRegistrationData = null;
         let telegramChatIds = [];
 
         async function apiFetch(path, options = {}) {
@@ -1421,6 +1465,18 @@
                     colorPreview.style.background = e.target.value;
                 });
             }
+            const startInput = document.getElementById('eventDate');
+            const endInput = document.getElementById('eventDateEnd');
+            if (startInput && endInput) {
+                const syncEndMin = () => {
+                    endInput.min = startInput.value || '';
+                    if (endInput.value && startInput.value && endInput.value < startInput.value) {
+                        endInput.value = startInput.value;
+                    }
+                };
+                startInput.addEventListener('change', syncEndMin);
+                startInput.addEventListener('input', syncEndMin);
+            }
         });
 
         async function showAdminPanel() {
@@ -1439,7 +1495,6 @@
         function hideAdminPanel() {
             isAuthenticated = false;
             isSuperAdmin = false;
-            editingRegistrationData = null;
             document.getElementById('authSection').style.display = '';
             document.getElementById('adminPanel').classList.remove('active');
             document.getElementById('logoutBtn').style.display = 'none';
@@ -1486,11 +1541,6 @@
             } catch (_) {}
         });
 
-        document.getElementById('registrationEditForm')?.addEventListener('submit', (e) => {
-            e.preventDefault();
-            saveRegistrationEdit();
-        });
-
         // Загрузка мероприятий
         async function loadEvents() {
             try {
@@ -1527,30 +1577,30 @@
             div.innerHTML = `
                 <div class="event-item-header">
                     <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                        <h3>${event.title}</h3>
-                        <span class="status-badge status-${status}">${statusLabel}</span>
+                        <h3>${escapeHtmlText(event.title)}</h3>
+                        <span class="status-badge status-${escapeHtmlAttr(status)}">${escapeHtmlText(statusLabel)}</span>
                         ${templateBadge}
                     </div>
                     <div class="event-item-actions" style="flex-wrap: wrap;">
-                        <button class="btn btn-success btn-small" onclick="showParticipants('${event.id}')">👥 Участники</button>
-                        <button class="btn btn-small" style="background: #27ae60;" onclick="syncEventToSheets('${event.id}')" title="Отправить участников в отдельный лист Google Таблицы">📊 В таблицу</button>
-                        <button class="btn btn-small" style="background: #16a085;" onclick="copyRegLink('${event.id}', this)" title="Скопировать ссылку на форму регистрации">🔗 Ссылка на форму</button>
-                        <button class="btn btn-small" onclick="syncVolunteerCount('${event.id}')" title="Пересчитать по заявкам в базе">🔄 Счётчик</button>
-                        ${event.isTemplate ? `<button class="btn btn-small" style="background: #4facfe;" onclick="createFromTemplate('${event.id}')">⚡ Создать из шаблона</button>` : ''}
-                        <button class="btn btn-small" style="background: var(--secondary);" onclick="duplicateEvent('${event.id}')">⧉ Скопировать</button>
-                        <button class="btn btn-primary btn-small" onclick="editEventById('${event.id}')">Редактировать</button>
-                        <button class="btn btn-danger btn-small" onclick="deleteEvent('${event.id}')">Удалить</button>
+                        <button class="btn btn-success btn-small" onclick="showParticipants('${escapeHtmlAttr(event.id)}')">👥 Участники</button>
+                        <button class="btn btn-small" style="background: #27ae60;" onclick="syncEventToSheets('${escapeHtmlAttr(event.id)}')" title="Отправить участников в отдельный лист Google Таблицы">📊 В таблицу</button>
+                        <button class="btn btn-small" style="background: #16a085;" onclick="copyRegLink('${escapeHtmlAttr(event.id)}', this)" title="Скопировать ссылку на форму регистрации">🔗 Ссылка на форму</button>
+                        <button class="btn btn-small" onclick="syncVolunteerCount('${escapeHtmlAttr(event.id)}')" title="Пересчитать по заявкам в базе">🔄 Счётчик</button>
+                        ${event.isTemplate ? `<button class="btn btn-small" style="background: #4facfe;" onclick="createFromTemplate('${escapeHtmlAttr(event.id)}')">⚡ Создать из шаблона</button>` : ''}
+                        <button class="btn btn-small" style="background: var(--secondary);" onclick="duplicateEvent('${escapeHtmlAttr(event.id)}')">⧉ Скопировать</button>
+                        <button class="btn btn-primary btn-small" onclick="editEventById('${escapeHtmlAttr(event.id)}')">Редактировать</button>
+                        <button class="btn btn-danger btn-small" onclick="deleteEvent('${escapeHtmlAttr(event.id)}')">Удалить</button>
                     </div>
                 </div>
-                <p>${event.description}</p>
+                <p>${escapeHtmlText(event.description)}</p>
                 <div class="event-item-info">
                     <div class="info-item">
                         <div class="info-label">Дата</div>
-                        <div>${event.date}</div>
+                        <div>${escapeHtmlText(typeof formatEventDateRange === 'function' ? formatEventDateRange(event) : (event.date || ''))}</div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">Место</div>
-                        <div>${event.location}</div>
+                        <div>${escapeHtmlText(event.location)}</div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">Волонтёры</div>
@@ -1579,6 +1629,7 @@
             document.getElementById('modalTitle').textContent = 'Создать мероприятие';
             document.getElementById('eventForm').reset();
             document.getElementById('eventId').value = '';
+            document.getElementById('eventDateEnd').min = '';
             
             // Добавляем шаблонные вопросы
             addFullTemplateQuestions();
@@ -1594,9 +1645,11 @@
             document.getElementById('modalTitle').textContent = 'Создать мероприятие';
             document.getElementById('eventForm').reset();
             document.getElementById('eventId').value = '';
+            document.getElementById('eventDateEnd').min = '';
             currentQuestions = [];
             renderQuestions();
             
+            document.getElementById('eventDateEnd').min = '';
             document.getElementById('eventModal').classList.add('active');
         }
 
@@ -1619,6 +1672,9 @@
             document.getElementById('eventCurrentVolunteers').value = event.currentVolunteers || 0;
             document.getElementById('eventTitle').value = event.title;
             document.getElementById('eventDate').value = event.dateRaw || event.date || '';
+            document.getElementById('eventDateEnd').value = event.dateEndRaw || '';
+            const endInput = document.getElementById('eventDateEnd');
+            if (endInput) endInput.min = document.getElementById('eventDate').value || '';
             document.getElementById('eventLocation').value = event.location;
             document.getElementById('eventDescription').value = event.description;
             document.getElementById('eventMaxVolunteers').value = event.maxVolunteers ? event.maxVolunteers : '';
@@ -1848,11 +1904,31 @@
             submitBtn.textContent = 'Сохранение...';
             
             const dateRaw = document.getElementById('eventDate').value;
+            let dateEndRaw = document.getElementById('eventDateEnd').value;
+            if (dateEndRaw && dateRaw && dateEndRaw < dateRaw) {
+                showModalMessage('error', 'Дата окончания не может быть раньше даты начала');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Сохранить';
+                return;
+            }
+            if (dateEndRaw && dateEndRaw === dateRaw) dateEndRaw = '';
+            if (dateEndRaw && typeof enumerateEventDays === 'function') {
+                const span = enumerateEventDays({ dateRaw, dateEndRaw });
+                const maxDays = typeof MAX_EVENT_DAYS === 'number' ? MAX_EVENT_DAYS : 62;
+                if (span.length >= maxDays && dateEndRaw > span[span.length - 1]) {
+                    showModalMessage('error', `Диапазон не больше ${maxDays} дней`);
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Сохранить';
+                    return;
+                }
+            }
             const eventData = {
                 id: document.getElementById('eventId').value || Date.now().toString(),
                 title: document.getElementById('eventTitle').value,
                 dateRaw: dateRaw,
                 date: formatDateRuFromIso(dateRaw) || dateRaw,
+                dateEndRaw: dateEndRaw,
+                dateEnd: dateEndRaw ? (formatDateRuFromIso(dateEndRaw) || dateEndRaw) : '',
                 location: document.getElementById('eventLocation').value,
                 description: document.getElementById('eventDescription').value,
                 maxVolunteers: parseInt(document.getElementById('eventMaxVolunteers').value) || 0,
@@ -1896,7 +1972,7 @@
 
         // Удалить мероприятие
         async function deleteEvent(eventId) {
-            if (!confirm('Вы уверены, что хотите удалить это мероприятие?')) {
+            if (!confirm('Удалить мероприятие и все заявки на него? Это действие нельзя отменить.')) {
                 return;
             }
 
@@ -1928,6 +2004,8 @@
             document.getElementById('eventCurrentVolunteers').value = 0;
             document.getElementById('eventTitle').value = original.title + ' (копия)';
             document.getElementById('eventDate').value = '';
+            document.getElementById('eventDateEnd').value = '';
+            document.getElementById('eventDateEnd').min = '';
             document.getElementById('eventLocation').value = original.location;
             document.getElementById('eventDescription').value = original.description;
             document.getElementById('eventMaxVolunteers').value = original.maxVolunteers ? original.maxVolunteers : '';
@@ -1956,6 +2034,8 @@
             document.getElementById('eventCurrentVolunteers').value = 0;
             document.getElementById('eventTitle').value = template.title.replace(/^Шаблон:\s*/i, '');
             document.getElementById('eventDate').value = '';
+            document.getElementById('eventDateEnd').value = '';
+            document.getElementById('eventDateEnd').min = '';
             document.getElementById('eventLocation').value = template.location || '';
             document.getElementById('eventDescription').value = template.description || '';
             document.getElementById('eventMaxVolunteers').value = template.maxVolunteers ? template.maxVolunteers : '';
@@ -2057,6 +2137,40 @@
             renderParticipantsTable();
         }
 
+        function setParticipantsDayFilter(day) {
+            participantsDayFilter = day || 'all';
+            renderParticipantsTable();
+        }
+
+        function renderParticipantsDayFilter() {
+            const wrap = document.getElementById('participantsDayFilter');
+            if (!wrap) return;
+            const event = eventsData[currentParticipantsEventId];
+            if (!event || typeof isMultiDayEvent !== 'function' || !isMultiDayEvent(event)) {
+                wrap.style.display = 'none';
+                wrap.innerHTML = '';
+                participantsDayFilter = 'all';
+                return;
+            }
+            const days = enumerateEventDays(event);
+            const counts = {};
+            days.forEach((d) => { counts[d] = 0; });
+            currentParticipantsData.forEach((r) => {
+                if (!isConfirmedRegistration(r)) return;
+                days.forEach((d) => {
+                    if (registrationHasDay(r, d)) counts[d]++;
+                });
+            });
+            wrap.style.display = 'flex';
+            wrap.innerHTML = `<span class="day-filter-label">День</span>`
+                + `<button type="button" class="btn btn-small participants-day-btn${participantsDayFilter === 'all' ? ' active' : ''}" onclick="setParticipantsDayFilter('all')">Все дни</button>`
+                + days.map((d) => {
+                    const active = participantsDayFilter === d ? ' active' : '';
+                    const label = typeof formatEventDayChip === 'function' ? formatEventDayChip(d) : d;
+                    return `<button type="button" class="btn btn-small participants-day-btn${active}" onclick="setParticipantsDayFilter('${escapeHtmlAttr(d)}')">${escapeHtmlText(label)} · ${counts[d]}</button>`;
+                }).join('');
+        }
+
         function getFilteredParticipants() {
             let list = [...currentParticipantsData];
             if (participantsFilter === 'confirmed') {
@@ -2066,6 +2180,9 @@
             } else if (participantsFilter === 'nomark') {
                 list = list.filter(r => isConfirmedRegistration(r) && !r.attendance);
             }
+            if (participantsDayFilter && participantsDayFilter !== 'all') {
+                list = list.filter(r => registrationHasDay(r, participantsDayFilter));
+            }
             if (participantsSearchQuery) {
                 list = list.filter(r => {
                     const blob = [
@@ -2073,7 +2190,8 @@
                         r.contactPhone,
                         r.eventTitle,
                         JSON.stringify(r.answers || {}),
-                        JSON.stringify(r.answersLabeled || {})
+                        JSON.stringify(r.answersLabeled || {}),
+                        Array.isArray(r.selectedDays) ? r.selectedDays.join(' ') : ''
                     ].join(' ').toLowerCase();
                     return blob.includes(participantsSearchQuery);
                 });
@@ -2167,12 +2285,22 @@
             return '';
         }
 
+        function formatParticipantDays(record) {
+            if (Array.isArray(record.selectedDays) && record.selectedDays.length) {
+                return typeof formatSelectedDaysDisplay === 'function'
+                    ? formatSelectedDaysDisplay(record.selectedDays)
+                    : record.selectedDays.join(', ');
+            }
+            return '—';
+        }
+
         function renderParticipantsTable() {
             const event = eventsData[currentParticipantsEventId];
             const container = document.getElementById('participantsContent');
             if (!container) return;
 
             updateParticipantsMeta();
+            renderParticipantsDayFilter();
 
             if (!currentParticipantsData.length) {
                 container.innerHTML = '<p class="empty-participants">Заявок пока нет</p>';
@@ -2189,6 +2317,8 @@
             const seenIds = getSeenIds(currentParticipantsEventId);
             const questionTextMap = buildQuestionTextMap(event?.questions || []);
 
+            const isRange = typeof isMultiDayEvent === 'function' && isMultiDayEvent(event);
+            const daysHeader = isRange ? '<th>Дни участия</th>' : '';
             const thead = keys.map(k => `<th>${escapeHtmlText(questionTextMap[k] || k)}</th>`).join('');
             const tbody = records.map(r => {
                 const cells = keys.map(k => {
@@ -2213,6 +2343,7 @@
                     </td>
                     <td><input type="number" class="att-hours-input" min="0" max="72" step="0.5" value="${r.workedHours != null ? r.workedHours : ''}" placeholder="ч" title="Часов отработано" onchange="setWorkedHours('${rid}', this.value)" onblur="setWorkedHours('${rid}', this.value)"></td>
                 ` : `<td>—</td><td>—</td>`;
+                const daysCell = isRange ? `<td>${escapeHtmlText(formatParticipantDays(r))}</td>` : '';
 
                 return `<tr>
                     <td style="white-space:nowrap;">${actions}</td>
@@ -2221,6 +2352,7 @@
                     <td>${escapeHtmlText(getParticipantName(r))}</td>
                     <td>${escapeHtmlText(r.contactEmail || '—')}</td>
                     <td>${escapeHtmlText(r.contactPhone || '—')}</td>
+                    ${daysCell}
                     ${attendanceCell}
                     ${cells}
                 </tr>`;
@@ -2229,7 +2361,7 @@
             container.innerHTML = `
                 <div class="participants-table-wrap">
                     <table class="participants-table">
-                        <thead><tr><th></th><th>Дата</th><th>Статус</th><th>Имя</th><th>Email</th><th>Телефон</th><th>Посещение</th><th>Часы</th>${thead}</tr></thead>
+                        <thead><tr><th></th><th>Дата</th><th>Статус</th><th>Имя</th><th>Email</th><th>Телефон</th>${daysHeader}<th>Посещение</th><th>Часы</th>${thead}</tr></thead>
                         <tbody>${tbody}</tbody>
                     </table>
                 </div>
@@ -2241,6 +2373,7 @@
             const eventTitle = event ? event.title : '';
             currentParticipantsEventId = eventId;
             participantsFilter = 'all';
+            participantsDayFilter = 'all';
             participantsSearchQuery = '';
             document.getElementById('participantsTitle').textContent = 'Участники: ' + eventTitle;
             document.getElementById('participantsMeta').innerHTML = '';
@@ -2249,6 +2382,11 @@
             document.querySelectorAll('.participants-filter-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.filter === 'all');
             });
+            const dayFilterWrap = document.getElementById('participantsDayFilter');
+            if (dayFilterWrap) {
+                dayFilterWrap.style.display = 'none';
+                dayFilterWrap.innerHTML = '';
+            }
             document.getElementById('participantsContent').innerHTML = '<p class="empty-participants">Загрузка...</p>';
             document.getElementById('participantsModal').classList.add('active');
 
@@ -2441,7 +2579,7 @@
             const questionTextMap = buildQuestionTextMap(event?.questions || []);
 
             const headerKeys = keys.map(k => questionTextMap[k] || k);
-            const header = ['registrationId', 'status', 'createdAt', 'createdAtMs', 'timestamp', 'eventId', 'eventTitle', 'contactEmail', 'contactPhone', 'attendance', 'workedHours', ...headerKeys].map(escapeCsv).join(',');
+            const header = ['registrationId', 'status', 'createdAt', 'createdAtMs', 'timestamp', 'eventId', 'eventTitle', 'contactEmail', 'contactPhone', 'selectedDays', 'attendance', 'workedHours', ...headerKeys].map(escapeCsv).join(',');
             const attRu = { present: 'Пришёл', late: 'Опоздал', absent: 'Не пришёл' };
             const rows = records.map(r => {
                 const fixedColumns = [
@@ -2454,6 +2592,7 @@
                     r.eventTitle || '',
                     r.contactEmail || '',
                     r.contactPhone || '',
+                    Array.isArray(r.selectedDays) ? r.selectedDays.join('; ') : '',
                     attRu[r.attendance] || '',
                     r.workedHours != null ? r.workedHours : ''
                 ];
@@ -2794,7 +2933,7 @@
                         : '<span style="opacity:0.6;">∞</span>';
                     return `<tr>
                         <td>${escapeHtmlText(e.title || '—')}</td>
-                        <td>${escapeHtmlText(e.date || '')}</td>
+                        <td>${escapeHtmlText(typeof formatEventDateRange === 'function' ? formatEventDateRange(e) : (e.date || ''))}</td>
                         <td>${c.confirmed}${max ? ' / ' + max : ''}</td>
                         <td>${c.waitlist || '—'}</td>
                         <td>${c.cancelled || '—'}</td>
@@ -2831,7 +2970,7 @@
                     alert('Заявок пока нет');
                     return;
                 }
-                const header = ['registrationId', 'status', 'createdAt', 'timestamp', 'eventId', 'eventTitle', 'contactEmail', 'contactPhone']
+                const header = ['registrationId', 'status', 'createdAt', 'timestamp', 'eventId', 'eventTitle', 'contactEmail', 'contactPhone', 'selectedDays']
                     .map(escapeCsv).join(',');
                 const rows = regs
                     .sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0))
@@ -2843,7 +2982,8 @@
                         r.eventId || '',
                         r.eventTitle || '',
                         r.contactEmail || '',
-                        r.contactPhone || ''
+                        r.contactPhone || '',
+                        Array.isArray(r.selectedDays) ? r.selectedDays.join('; ') : ''
                     ].map(escapeCsv).join(','));
                 const csv = '\uFEFF' + [header, ...rows].join('\n');
                 const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -2859,12 +2999,35 @@
             }
         }
 
-        function showAuthMessage(type, text) {
+        async function sendAdminPasswordReset() {
+            const email = document.getElementById('adminEmail').value.trim();
+            if (!email) {
+                showAuthMessage('error', 'Введите email, чтобы сбросить пароль', 5000);
+                return;
+            }
+            try {
+                await auth.sendPasswordResetEmail(email);
+                showAuthMessage('success', 'Письмо со ссылкой отправлено. Проверьте почту и папку «Спам».', 8000);
+            } catch (error) {
+                const code = error && error.code;
+                if (code === 'auth/user-not-found') {
+                    showAuthMessage('error', 'Пользователь с таким email не найден', 5000);
+                } else if (code === 'auth/invalid-email') {
+                    showAuthMessage('error', 'Некорректный email', 5000);
+                } else if (code === 'auth/too-many-requests') {
+                    showAuthMessage('error', 'Слишком много попыток. Подождите немного.', 5000);
+                } else {
+                    showAuthMessage('error', 'Не удалось отправить письмо. Попробуйте позже.', 5000);
+                }
+            }
+        }
+
+        function showAuthMessage(type, text, hideAfterMs) {
             const msg = document.getElementById('authMessage');
             msg.style.display = '';
             msg.className = `message ${type}`;
             msg.textContent = text;
-            setTimeout(() => { msg.style.display = 'none'; }, 3000);
+            setTimeout(() => { msg.style.display = 'none'; }, hideAfterMs || 3000);
         }
 
         function showModalMessage(type, text) {

@@ -1124,7 +1124,7 @@
 
     <script src="assets/api-config.js"></script>
     <script src="assets/event-images.js"></script>
-    <script src="assets/registration-utils.js"></script>
+    <script src="assets/registration-utils.js?v=7"></script>
     <script>
 
 
@@ -1142,7 +1142,9 @@
         }
 
         function hexToRgba(hex, alpha) {
-            const num = parseInt(hex.replace('#', ''), 16);
+            const raw = String(hex || '').replace('#', '');
+            if (!/^[0-9a-fA-F]{6}$/.test(raw)) return `rgba(27, 36, 128, ${alpha})`;
+            const num = parseInt(raw, 16);
             const r = (num >> 16);
             const g = (num >> 8) & 0x00FF;
             const b = num & 0x0000FF;
@@ -1158,7 +1160,9 @@
             const currentVolunteers = Number(event.currentVolunteers) || 0;
             const isUnlimited = !maxVolunteers;
             const spotsLeft = isUnlimited ? 999999 : Math.max(maxVolunteers - currentVolunteers, 0);
-            const isClosed = (event.status || 'open') === 'closed' || event.isArchived === true;
+            const isPastEvent = !!options.isPast
+                || (typeof isEventArchived === 'function' && isEventArchived(event, new Date()));
+            const isClosed = (event.status || 'open') === 'closed' || event.isArchived === true || isPastEvent;
             const isWaitlistOnly = !isUnlimited && spotsLeft <= 0;
             const canRegister = !isClosed && (isUnlimited || spotsLeft > 0 || isWaitlistOnly);
             
@@ -1170,9 +1174,11 @@
                 ? getEventLogoUrl(event.logo)
                 : (getDirectImageUrl(event.logo) || 'assets/logo.png');
             const eventId = event.id || '';
-            const displayDate = typeof formatEventDisplayDate === 'function'
-                ? formatEventDisplayDate(event.date || event.dateRaw || '')
-                : (event.date || event.dateRaw || '');
+            const displayDate = typeof formatEventDateRange === 'function'
+                ? formatEventDateRange(event)
+                : (typeof formatEventDisplayDate === 'function'
+                    ? formatEventDisplayDate(event.date || event.dateRaw || '')
+                    : (event.date || event.dateRaw || ''));
             const hasCover = !!imageUrl;
             const headerBg = hasCover
                 ? 'background: #1a1f2e;'
@@ -1245,7 +1251,7 @@
                             `}
                         </div>
                         <div class="event-footer">
-                            <button type="button" class="register-btn" onclick="goToRegistration('${escapeHtmlAttr(eventId)}')" ${!canRegister ? 'disabled' : ''} style="${btnExtraStyle}">${btnLabel}</button>
+                            <button type="button" class="register-btn" onclick="event.stopPropagation(); goToRegistration('${escapeHtmlAttr(eventId)}')" ${!canRegister ? 'disabled' : ''} style="${btnExtraStyle}">${btnLabel}</button>
                         </div>
                     </div>
                 </div>
@@ -1310,7 +1316,9 @@
         // Функция для затемнения/осветления цвета
         function adjustColor(color, amount) {
             const clamp = (num) => Math.min(Math.max(num, 0), 255);
-            const num = parseInt(color.replace('#', ''), 16);
+            const raw = String(color || '').replace('#', '');
+            if (!/^[0-9a-fA-F]{6}$/.test(raw)) return '#1B2480';
+            const num = parseInt(raw, 16);
             const r = clamp((num >> 16) + amount);
             const g = clamp(((num >> 8) & 0x00FF) + amount);
             const b = clamp((num & 0x0000FF) + amount);
@@ -1374,7 +1382,9 @@
             if (state.freeOnly) {
                 const max = Number(event.maxVolunteers) || 0;
                 const current = Number(event.currentVolunteers) || 0;
-                const isClosed = (event.status || 'open') === 'closed' || event.isArchived === true;
+                const isClosed = (event.status || 'open') === 'closed'
+                    || event.isArchived === true
+                    || (typeof isEventArchived === 'function' && isEventArchived(event, new Date()));
                 const hasRoom = !max || current < max;
                 if (isClosed || !hasRoom) return false;
             }

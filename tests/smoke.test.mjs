@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 
 const ROOT = new URL('../', import.meta.url);
+const require = createRequire(import.meta.url);
 
 async function readProjectFile(fileName) {
   return readFile(new URL(fileName, ROOT), 'utf8');
@@ -11,7 +13,7 @@ async function readProjectFile(fileName) {
 test('index.html blocks signup for closed events', async () => {
   const indexHtml = await readProjectFile('index.html');
 
-  assert.match(indexHtml, /const isClosed = \(event\.status \|\| 'open'\) === 'closed' \|\| event\.isArchived === true;/);
+  assert.match(indexHtml, /const isClosed = \(event\.status \|\| 'open'\) === 'closed' \|\| event\.isArchived === true \|\| isPastEvent;/);
   assert.match(indexHtml, /const canRegister = !isClosed && \(isUnlimited \|\| spotsLeft > 0 \|\| isWaitlistOnly\);/);
   assert.match(indexHtml, /isWaitlistOnly \? '.* Лист ожидания'/);
   assert.match(indexHtml, /\$\{!canRegister \? 'disabled' : ''\}/);
@@ -43,6 +45,8 @@ test('server API prevents oversubscription inside a transaction', async () => {
   assert.match(functionsIndex, /cancelToken/);
   assert.match(functionsIndex, /pickFirstWaitlistDoc/);
   assert.match(functionsIndex, /REGISTRATION_STATUS\.WAITLIST/);
+  assert.match(functionsIndex, /MISSING_DAYS/);
+  assert.match(functionsIndex, /selectedDays/);
 });
 
 test('standalone VPS server exposes the same API routes', async () => {
@@ -52,6 +56,46 @@ test('standalone VPS server exposes the same API routes', async () => {
   assert.match(serverApp, /router\.post\('\/registrations'/);
   assert.match(serverApp, /scheduleSheetsSync/);
   assert.match(serverApp, /pickFirstWaitlistDoc/);
+  assert.match(serverApp, /assertRequiredAnswers/);
+  assert.match(serverApp, /vacateConfirmedSpot/);
+  assert.match(serverApp, /assertCancelToken/);
+  assert.match(serverApp, /RATE_LIMIT/);
+  assert.match(serverApp, /MISSING_DAYS/);
+  assert.match(serverApp, /dateEndRaw/);
+});
+
+test('multi-day events stay open until the last day', () => {
+  const helpers = require('../functions/lib/registration-helpers.js');
+  const event = { dateRaw: '2026-09-01', dateEndRaw: '2026-09-10' };
+
+  assert.equal(helpers.isMultiDayEvent(event), true);
+  assert.equal(helpers.isEventDatePassed(event, new Date(2026, 8, 10)), false);
+  assert.equal(helpers.isEventDatePassed(event, new Date(2026, 8, 11)), true);
+  assert.deepEqual(helpers.enumerateEventDays(event).slice(0, 3), ['2026-09-01', '2026-09-02', '2026-09-03']);
+  assert.deepEqual(
+    helpers.sanitizeSelectedDays(['2026-09-02', 'nope', '2026-09-02', '2026-09-11'], event),
+    ['2026-09-02']
+  );
+  assert.equal(helpers.isMultiDayEvent({ dateRaw: '2026-09-01' }), false);
+});
+
+test('registration helpers close past-dated events', async () => {
+  const helpers = await readProjectFile('functions/lib/registration-helpers.js');
+
+  assert.match(helpers, /function isEventDatePassed/);
+  assert.match(helpers, /function isFirstNameQuestion/);
+  assert.match(helpers, /isEventDatePassed\(event\)/);
+  assert.match(helpers, /function enumerateEventDays/);
+  assert.match(helpers, /function sanitizeSelectedDays/);
+  assert.match(helpers, /dateEndRaw/);
+});
+
+test('firebase hosting redirect folder exists', async () => {
+  const firebaseJson = await readProjectFile('firebase.json');
+  const redirectPage = await readProjectFile('deploy/hosting-redirect/index.html');
+
+  assert.match(firebaseJson, /deploy\/hosting-redirect/);
+  assert.match(redirectPage, /volonter-msu\.ru/);
 });
 
 test('server entry serves static files and health check', async () => {
@@ -93,9 +137,12 @@ test('admin.html template count message is consistent', async () => {
   assert.match(adminHtml, /onclick="exportCSV\('new'\)"/);
   assert.match(adminHtml, /onclick="exportCSV\('all'\)"/);
   assert.match(adminHtml, /function exportCSV\(mode = 'all'\)/);
-  assert.match(adminHtml, /'contactPhone', \.\.\.headerKeys/);
+  assert.match(adminHtml, /'contactPhone', 'selectedDays', 'attendance', 'workedHours', \.\.\.headerKeys/);
   assert.match(adminHtml, /syncVolunteerCount/);
   assert.match(adminHtml, /dateRaw:/);
+  assert.match(adminHtml, /dateEndRaw:/);
+  assert.match(adminHtml, /id="eventDateEnd"/);
+  assert.match(adminHtml, /setParticipantsDayFilter/);
 });
 
 test('admin.html uses Firebase Auth and the admin API', async () => {
@@ -130,6 +177,8 @@ test('register.html offers calendar and self-cancel links', async () => {
 
   assert.match(registerHtml, /function downloadIcs\(\)/);
   assert.match(registerHtml, /buildCancelUrl/);
+  assert.match(registerHtml, /buildCalendarLinks/);
+  assert.match(registerHtml, /Перейти в чат/);
 });
 
 test('registration-utils still provides calendar links helper', async () => {
@@ -154,4 +203,14 @@ test('registration-utils exposes calendar helpers and cancelled status', async (
   assert.match(utils, /function buildCalendarLinks\(event\)/);
   assert.match(utils, /CANCELLED: 'cancelled'/);
   assert.match(utils, /function isCancelledRegistration/);
+  assert.match(utils, /function formatEventDateRange/);
+  assert.match(utils, /function enumerateEventDays/);
+});
+
+test('register.html lets volunteers pick days in a range', async () => {
+  const registerHtml = await readProjectFile('register.html');
+
+  assert.match(registerHtml, /function generateDaysPicker/);
+  assert.match(registerHtml, /name="selectedDays"/);
+  assert.match(registerHtml, /MISSING_DAYS/);
 });

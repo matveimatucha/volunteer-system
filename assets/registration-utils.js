@@ -135,7 +135,7 @@ function collectAnswersFromForm(form, questions) {
     // Collect entries, joining multiple checkbox values (multiselect) with ", "
     const rawEntries = {};
     for (const [key, value] of formData.entries()) {
-        if (key === 'registrationMode') continue;
+        if (key === 'registrationMode' || key === 'selectedDays') continue;
         const v = typeof value === 'string' ? value.trim() : value;
         if (rawEntries[key] !== undefined) {
             if (!Array.isArray(rawEntries[key])) rawEntries[key] = [rawEntries[key]];
@@ -211,12 +211,14 @@ function formatEventDisplayDate(dateStr) {
 
 const RU_MONTHS = {
     'января': 0, 'февраля': 1, 'марта': 2, 'апреля': 3, 'мая': 4, 'июня': 5,
-    'июля': 6, 'августа': 7, 'сентября': 8, 'октября': 9, 'ноября': 10, 'декабря': 11
+    'июля': 6, 'августа': 7, 'сентября': 8, 'октября': 9, 'ноября': 10, 'декабря': 11,
+    'янв': 0, 'фев': 1, 'мар': 2, 'апр': 3, 'май': 4, 'июн': 5,
+    'июл': 6, 'авг': 7, 'сен': 8, 'окт': 9, 'ноя': 10, 'дек': 11
 };
 
 function parseEventDateValue(dateStr) {
     if (!dateStr || !String(dateStr).trim()) return null;
-    const raw = String(dateStr).trim();
+    const raw = String(dateStr).trim().replace(/\s*г\.?\s*$/i, '').trim();
 
     if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
         const [year, month, day] = raw.split('-').map(Number);
@@ -237,13 +239,115 @@ function parseEventDateValue(dateStr) {
     return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+const MAX_EVENT_DAYS = 62;
+const SELECTED_DAYS_LABEL = 'Дни участия';
+const DISPLAY_WEEKDAYS = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+
+function toIsoDate(date) {
+    if (!date) return '';
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
 function getEventDate(event) {
     return parseEventDateValue(event?.dateRaw || event?.date);
 }
 
+function getEventEndDate(event) {
+    return parseEventDateValue(event?.dateEndRaw || event?.dateEnd) || getEventDate(event);
+}
+
+function isMultiDayEvent(event) {
+    const start = getEventDate(event);
+    const end = getEventEndDate(event);
+    return !!(start && end && end.getTime() > start.getTime());
+}
+
+function enumerateEventDays(event) {
+    const start = getEventDate(event);
+    if (!start) return [];
+    const end = getEventEndDate(event) || start;
+    const last = end.getTime() >= start.getTime() ? end : start;
+    const days = [];
+    const cur = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const lastDay = new Date(last.getFullYear(), last.getMonth(), last.getDate());
+    for (let i = 0; i < MAX_EVENT_DAYS; i++) {
+        days.push(toIsoDate(cur));
+        if (cur.getTime() >= lastDay.getTime()) break;
+        cur.setDate(cur.getDate() + 1);
+    }
+    return days;
+}
+
+function formatEventDateRange(event) {
+    if (!event) return '';
+    const start = getEventDate(event);
+    if (!start) return String(event.date || event.dateRaw || '');
+    const end = getEventEndDate(event);
+    if (!end || end.getTime() <= start.getTime()) {
+        return formatEventDisplayDate(toIsoDate(start));
+    }
+    const sameYear = start.getFullYear() === end.getFullYear();
+    const sameMonth = sameYear && start.getMonth() === end.getMonth();
+    if (sameMonth) {
+        return `${start.getDate()}–${end.getDate()} ${DISPLAY_MONTHS[end.getMonth()]} ${end.getFullYear()}`;
+    }
+    const startPart = sameYear
+        ? `${start.getDate()} ${DISPLAY_MONTHS[start.getMonth()]}`
+        : `${start.getDate()} ${DISPLAY_MONTHS[start.getMonth()]} ${start.getFullYear()}`;
+    return `${startPart} — ${end.getDate()} ${DISPLAY_MONTHS[end.getMonth()]} ${end.getFullYear()}`;
+}
+
+function formatEventDayChip(isoDate) {
+    const date = parseEventDateValue(isoDate);
+    if (!date) return String(isoDate || '');
+    return `${DISPLAY_WEEKDAYS[date.getDay()]}, ${date.getDate()} ${DISPLAY_MONTHS[date.getMonth()]}`;
+}
+
+function formatSelectedDaysDisplay(days) {
+    if (!Array.isArray(days) || !days.length) return '';
+    return days.map((iso) => formatEventDayChip(iso)).join(', ');
+}
+
+function sanitizeSelectedDays(raw, event) {
+    const allowed = new Set(enumerateEventDays(event));
+    const input = Array.isArray(raw)
+        ? raw
+        : (typeof raw === 'string' && raw ? raw.split(/[,;]/) : []);
+    const unique = [];
+    const seen = new Set();
+    for (const item of input) {
+        const iso = String(item || '').trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(iso) || !allowed.has(iso) || seen.has(iso)) continue;
+        seen.add(iso);
+        unique.push(iso);
+    }
+    unique.sort();
+    return unique;
+}
+
+function withSelectedDaysLabeled(answersLabeled, selectedDays) {
+    const list = Array.isArray(answersLabeled)
+        ? answersLabeled.filter((item) => item && item.question !== SELECTED_DAYS_LABEL)
+        : [];
+    if (Array.isArray(selectedDays) && selectedDays.length) {
+        list.unshift({
+            question: SELECTED_DAYS_LABEL,
+            answer: formatSelectedDaysDisplay(selectedDays)
+        });
+    }
+    return list;
+}
+
+function registrationHasDay(record, iso) {
+    if (!iso) return true;
+    const days = Array.isArray(record?.selectedDays) ? record.selectedDays : [];
+    if (!days.length) return true;
+    return days.includes(iso);
+}
+
 function isEventArchived(event, today) {
     if (event?.isArchived) return true;
-    const eventDate = getEventDate(event);
+    const eventDate = getEventEndDate(event) || getEventDate(event);
     if (!eventDate) return false;
     const day = new Date(eventDate);
     day.setHours(0, 0, 0, 0);
@@ -276,7 +380,9 @@ function buildCalendarLinks(event) {
 
     const start = new Date(date);
     start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
+    const last = getEventEndDate(event) || start;
+    const end = new Date(last);
+    end.setHours(0, 0, 0, 0);
     end.setDate(end.getDate() + 1);
 
     const title = event?.title || 'Волонтёрское мероприятие';

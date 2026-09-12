@@ -260,6 +260,7 @@
     </style>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="assets/registration-utils.js?v=7"></script>
     <script src="assets/api-config.js?v=2"></script>
 </head>
 <body>
@@ -286,6 +287,7 @@
                     <input type="password" id="adminPassword" required placeholder="Введите пароль" autocomplete="current-password">
                 </div>
                 <button type="submit" class="btn">Войти</button>
+                <button type="button" class="btn" style="margin-top:0.6rem;background:#eef1f8;color:#1B2480;" onclick="sendAdminPasswordReset()">Не помню пароль</button>
             </form>
         </div>
 
@@ -301,6 +303,9 @@
                 <input type="search" id="volSearch" placeholder="Поиск по имени, email, телефону…" oninput="onSearch()">
                 <select id="eventFilter" onchange="onEventFilterChange()">
                     <option value="all">Все мероприятия</option>
+                </select>
+                <select id="dayFilter" onchange="onDayFilterChange()" style="display:none;">
+                    <option value="all">Все дни</option>
                 </select>
                 <button type="button" class="btn btn-small" onclick="loadStats()">🔄 Обновить</button>
                 <button type="button" class="btn btn-small btn-success" onclick="exportCSV()">⬇ CSV</button>
@@ -346,8 +351,10 @@
         const auth = firebase.auth();
 
         let allVolunteers = [];
+        let allEvents = [];
         let searchQuery = '';
         let selectedEventId = 'all';
+        let selectedDay = 'all';
 
         /* ── Auth ─────────────────────────────────────── */
 
@@ -368,6 +375,29 @@
             el.style.display = '';
             el.className = `message ${type}`;
             el.textContent = text;
+        }
+
+        async function sendAdminPasswordReset() {
+            const email = document.getElementById('adminEmail').value.trim();
+            if (!email) {
+                showAuthMsg('error', 'Введите email, чтобы сбросить пароль');
+                return;
+            }
+            try {
+                await auth.sendPasswordResetEmail(email);
+                showAuthMsg('success', 'Письмо со ссылкой отправлено. Проверьте почту и папку «Спам».');
+            } catch (error) {
+                const code = error && error.code;
+                if (code === 'auth/user-not-found') {
+                    showAuthMsg('error', 'Пользователь с таким email не найден');
+                } else if (code === 'auth/invalid-email') {
+                    showAuthMsg('error', 'Некорректный email');
+                } else if (code === 'auth/too-many-requests') {
+                    showAuthMsg('error', 'Слишком много попыток. Подождите немного.');
+                } else {
+                    showAuthMsg('error', 'Не удалось отправить письмо. Попробуйте позже.');
+                }
+            }
         }
 
         function showMsg(type, text) {
@@ -430,14 +460,18 @@
                 ]);
 
                 allVolunteers = statsData.volunteers || [];
+                allEvents = eventsData.events || [];
 
                 // Populate event filter
-                const events = (eventsData.events || [])
+                const events = allEvents
                     .filter(e => e.status !== 'draft' && !e.isTemplate)
                     .sort((a,b) => String(a.title||'').localeCompare(String(b.title||''), 'ru'));
                 const sel = document.getElementById('eventFilter');
                 sel.innerHTML = '<option value="all">Все мероприятия</option>'
                     + events.map(e => `<option value="${escHtml(e.id)}">${escHtml(e.title||e.id)}</option>`).join('');
+                if (![...sel.options].some(o => o.value === selectedEventId)) selectedEventId = 'all';
+                sel.value = selectedEventId;
+                updateDayFilterOptions();
 
                 renderSummaryCards();
                 renderTable();
@@ -457,8 +491,37 @@
 
         function onEventFilterChange() {
             selectedEventId = document.getElementById('eventFilter').value;
+            selectedDay = 'all';
+            updateDayFilterOptions();
             renderEventStatsBar();
             renderTable();
+        }
+
+        function onDayFilterChange() {
+            selectedDay = document.getElementById('dayFilter').value;
+            renderTable();
+        }
+
+        function updateDayFilterOptions() {
+            const sel = document.getElementById('dayFilter');
+            if (!sel) return;
+            const event = allEvents.find(e => e.id === selectedEventId);
+            const multi = event && typeof isMultiDayEvent === 'function' && isMultiDayEvent(event);
+            if (!multi) {
+                sel.style.display = 'none';
+                sel.innerHTML = '<option value="all">Все дни</option>';
+                selectedDay = 'all';
+                return;
+            }
+            const days = enumerateEventDays(event);
+            sel.style.display = '';
+            sel.innerHTML = '<option value="all">Все дни</option>'
+                + days.map(d => {
+                    const label = typeof formatEventDayChip === 'function' ? formatEventDayChip(d) : d;
+                    return `<option value="${escHtml(d)}">${escHtml(label)}</option>`;
+                }).join('');
+            if (![...sel.options].some(o => o.value === selectedDay)) selectedDay = 'all';
+            sel.value = selectedDay;
         }
 
         function getFilteredVolunteers() {
@@ -479,6 +542,15 @@
                         };
                     })
                     .filter(Boolean);
+            }
+
+            if (selectedEventId !== 'all' && selectedDay !== 'all') {
+                list = list.filter(v => {
+                    const ev = v._filteredEvent || v.events.find(e => e.eventId === selectedEventId);
+                    const days = ev && Array.isArray(ev.selectedDays) ? ev.selectedDays : [];
+                    if (!days.length) return true;
+                    return days.includes(selectedDay);
+                });
             }
 
             if (searchQuery) {
@@ -579,7 +651,10 @@
                 const pills = v.events.map(ev => {
                     const cls = attPillClass(ev.attendance);
                     const hrs = ev.workedHours != null ? ` · ${ev.workedHours}ч` : '';
-                    return `<span class="vol-event-pill ${cls}">${attIcon(ev.attendance)} ${escHtml(ev.eventTitle || ev.eventId)}${hrs}</span>`;
+                    const days = Array.isArray(ev.selectedDays) && ev.selectedDays.length
+                        ? ` · ${typeof formatSelectedDaysDisplay === 'function' ? formatSelectedDaysDisplay(ev.selectedDays) : ev.selectedDays.join(', ')}`
+                        : '';
+                    return `<span class="vol-event-pill ${cls}">${attIcon(ev.attendance)} ${escHtml(ev.eventTitle || ev.eventId)}${hrs}${days}</span>`;
                 }).join('');
 
                 const vkVal = v.vk || '';
