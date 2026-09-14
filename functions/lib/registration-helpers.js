@@ -215,7 +215,7 @@ function isEventClosedForRegistration(event) {
 /** Мероприятие не должно быть видно публично. */
 function isEventHidden(event) {
     const status = (event && event.status) || 'open';
-    return status === 'draft' || event.isTemplate === true;
+    return status === 'draft' || event.isTemplate === true || event.isLegacyImport === true;
 }
 
 /* ---------- Формат данных для Google Sheets (как в assets/sheets-sync.js) ---------- */
@@ -266,6 +266,152 @@ function formatAnswersList(answersLabeled) {
         .filter(item => item.answer !== '' && item.answer != null)
         .map(item => `${item.question}: ${item.answer}`)
         .join(' | ');
+}
+
+function normalizeVkHandle(value) {
+    if (!value) return '';
+    let s = String(value).trim().toLowerCase();
+    s = s.replace(/^https?:\/\//, '').replace(/^www\./, '');
+    s = s.replace(/^(vk\.com|vk\.ru|m\.vk\.com|m\.vk\.ru)\//, '');
+    s = s.replace(/^\/+/, '').split('?')[0].split('/')[0];
+    return s.replace(/[^a-z0-9._]/g, '');
+}
+
+function extractVkHandle(answersLabeled, answers) {
+    for (const item of normalizeAnswers(answersLabeled)) {
+        const q = String(item.question || '').toLowerCase();
+        if (/вк|вконтакте|vk|vkontakte/.test(q)) {
+            const handle = normalizeVkHandle(item.answer);
+            if (handle) return handle;
+        }
+    }
+    if (answers && answers.vk) return normalizeVkHandle(answers.vk);
+    return '';
+}
+
+function volunteerIdentityTokens(reg, docId) {
+    const tokens = [];
+    const email = normalizeEmail(reg && reg.contactEmail);
+    if (email) tokens.push('e:' + email);
+    const phone = normalizePhone(reg && reg.contactPhone);
+    if (phone) tokens.push('p:' + phone);
+    const vk = extractVkHandle(reg && reg.answersLabeled, reg && reg.answers);
+    if (vk) tokens.push('vk:' + vk);
+    const common = extractCommonFields(reg && reg.answersLabeled);
+    const fio = [common.lastName, common.firstName, common.middleName]
+        .filter(Boolean)
+        .join(' ')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ' ');
+    if (fio) tokens.push('n:' + fio);
+    if (!tokens.length) tokens.push('id:' + (reg && (reg.registrationId || docId) || 'unknown'));
+    return tokens;
+}
+
+function emptyVolunteerEntry(key) {
+    return {
+        key,
+        name: '',
+        firstName: '',
+        lastName: '',
+        middleName: '',
+        faculty: '',
+        year: '',
+        vk: '',
+        email: '',
+        phone: '',
+        totalConfirmed: 0,
+        presentCount: 0,
+        totalHours: 0,
+        events: []
+    };
+}
+
+function fillVolunteerFromRegistration(entry, r, docId, eventTitles) {
+    if (r.contactEmail && !entry.email) entry.email = r.contactEmail;
+    if (r.contactPhone && !entry.phone) entry.phone = r.contactPhone;
+
+    if (Array.isArray(r.answersLabeled)) {
+        for (const item of r.answersLabeled) {
+            const q = (item.question || '').toLowerCase();
+            const a = String(item.answer || '').trim();
+            if (!a) continue;
+
+            if (!entry.lastName && /фамил/.test(q)) entry.lastName = a;
+            if (!entry.firstName && isFirstNameQuestion(q)) entry.firstName = a;
+            if (!entry.middleName && /отчест/.test(q)) entry.middleName = a;
+            if (!entry.name && /фио|ф\.и\.о/.test(q)) entry.name = a;
+            if (!entry.faculty && /факульт|школ|институт|кафедр|направлен/.test(q)) entry.faculty = a;
+            if (!entry.year && /курс|год об|учеб/.test(q)) entry.year = a;
+            if (!entry.vk && /вк|вконтакте|vk|vkontakte/.test(q)) entry.vk = a;
+        }
+    }
+
+    if (!entry.name) {
+        const fullName = [entry.lastName, entry.firstName, entry.middleName].filter(Boolean).join(' ').trim();
+        if (fullName) entry.name = fullName;
+    }
+    if (!entry.name) entry.name = r.contactEmail || r.contactPhone || '';
+
+    if (isConfirmedRegistration(r)) entry.totalConfirmed++;
+    if (r.attendance === 'present' || r.attendance === 'late') {
+        entry.presentCount++;
+        entry.totalHours += Number(r.workedHours) || 0;
+    }
+
+    entry.events.push({
+        eventId: r.eventId || '',
+        eventTitle: r.eventTitle || eventTitles[r.eventId] || r.eventId || '',
+        status: r.status || '',
+        attendance: r.attendance || null,
+        workedHours: r.workedHours != null ? Number(r.workedHours) : null,
+        registrationId: r.registrationId || docId,
+        selectedDays: Array.isArray(r.selectedDays) ? r.selectedDays.slice(0, MAX_EVENT_DAYS) : []
+    });
+}
+
+function buildVolunteerStats(regDocs, eventTitles) {
+    const titles = eventTitles || {};
+    const parent = new Map();
+
+    function find(x) {
+        if (!parent.has(x)) parent.set(x, x);
+        let root = x;
+        while (parent.get(root) !== root) root = parent.get(root);
+        let cur = x;
+        while (cur !== root) {
+            const next = parent.get(cur);
+            parent.set(cur, root);
+            cur = next;
+        }
+        return root;
+    }
+
+    function union(a, b) {
+        const ra = find(a);
+        const rb = find(b);
+        if (ra !== rb) parent.set(rb, ra);
+    }
+
+    const items = [];
+    for (const doc of regDocs) {
+        const r = typeof doc.data === 'function' ? doc.data() : doc;
+        const docId = doc.id || r.registrationId || '';
+        if (r.status === REGISTRATION_STATUS.CANCELLED) continue;
+        const tokens = volunteerIdentityTokens(r, docId);
+        for (let i = 1; i < tokens.length; i++) union(tokens[0], tokens[i]);
+        items.push({ tokens, r, docId });
+    }
+
+    const groups = new Map();
+    for (const item of items) {
+        const root = find(item.tokens[0]);
+        if (!groups.has(root)) groups.set(root, emptyVolunteerEntry(root));
+        fillVolunteerFromRegistration(groups.get(root), item.r, item.docId, titles);
+    }
+
+    return Array.from(groups.values()).sort((a, b) => b.totalHours - a.totalHours || b.presentCount - a.presentCount);
 }
 
 /** Payload action=register для Apps Script. */
@@ -333,6 +479,9 @@ module.exports = {
     extractCommonFields,
     normalizeAnswers,
     formatAnswersList,
+    buildVolunteerStats,
+    extractVkHandle,
+    normalizeVkHandle,
     buildSheetsRegisterPayload,
     buildSheetsBulkRow
 };

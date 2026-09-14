@@ -1416,7 +1416,7 @@
             // Черновики и шаблоны скрыты; архив — вручную или по дате (см. isEventArchived)
             const visible = events.filter(e => {
                 const status = e.status || 'open';
-                return status !== 'draft' && e.isTemplate !== true;
+                return status !== 'draft' && e.isTemplate !== true && e.isLegacyImport !== true;
             });
 
             document.getElementById('searchControls').style.display = visible.length > 0 ? 'flex' : 'none';

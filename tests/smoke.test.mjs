@@ -79,6 +79,44 @@ test('multi-day events stay open until the last day', () => {
   assert.equal(helpers.isMultiDayEvent({ dateRaw: '2026-09-01' }), false);
 });
 
+test('volunteer stats merge the same person by VK', () => {
+  const helpers = require('../functions/lib/registration-helpers.js');
+  const regs = [
+    {
+      id: '1',
+      data: () => ({
+        status: 'confirmed',
+        attendance: 'present',
+        answersLabeled: [
+          { question: 'Фамилия', answer: 'Иванов' },
+          { question: 'Имя', answer: 'Иван' },
+          { question: 'ВКонтакте', answer: 'https://vk.com/foo' }
+        ],
+        eventTitle: 'A'
+      })
+    },
+    {
+      id: '2',
+      data: () => ({
+        status: 'confirmed',
+        attendance: 'present',
+        contactEmail: 'ivan@test.ru',
+        answersLabeled: [
+          { question: 'Фамилия', answer: 'Иванов' },
+          { question: 'Имя', answer: 'Иван' },
+          { question: 'ВКонтакте', answer: 'vk.com/foo' }
+        ],
+        eventTitle: 'B'
+      })
+    }
+  ];
+  const list = helpers.buildVolunteerStats(regs, {});
+  assert.equal(list.length, 1);
+  assert.equal(list[0].presentCount, 2);
+  assert.equal(list[0].email, 'ivan@test.ru');
+  assert.equal(helpers.isEventHidden({ isLegacyImport: true }), true);
+});
+
 test('registration helpers close past-dated events', async () => {
   const helpers = await readProjectFile('functions/lib/registration-helpers.js');
 

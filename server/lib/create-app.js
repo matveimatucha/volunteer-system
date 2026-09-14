@@ -7,14 +7,13 @@ const {
     findContactPhone,
     getRegistrationStatus,
     isConfirmedRegistration,
-    isFirstNameQuestion,
     isEventClosedForRegistration,
     isEventHidden,
     isMultiDayEvent,
     sanitizeSelectedDays,
     withSelectedDaysLabeled,
     enumerateEventDays,
-    MAX_EVENT_DAYS,
+    buildVolunteerStats,
     buildSheetsBulkRow
 } = require('./registration-helpers');
 const { getSheetsUrl, postToSheets, scheduleSheetsSync } = require('./sheets-sync');
@@ -604,73 +603,7 @@ function createApp({ admin, db, log = console }) {
         const eventTitles = {};
         evSnap.forEach(doc => { eventTitles[doc.id] = doc.data().title || doc.id; });
 
-        const byKey = {};
-        regSnap.docs.forEach(doc => {
-            const r = doc.data();
-            if (r.status === REGISTRATION_STATUS.CANCELLED) return;
-            const key = r.contactEmail || r.contactPhone || r.registrationId || doc.id;
-            if (!key) return;
-
-            if (!byKey[key]) {
-                byKey[key] = {
-                    key,
-                    name: '',
-                    firstName: '',
-                    lastName: '',
-                    middleName: '',
-                    faculty: '',
-                    year: '',
-                    vk: '',
-                    email: r.contactEmail || '',
-                    phone: r.contactPhone || '',
-                    totalConfirmed: 0,
-                    presentCount: 0,
-                    totalHours: 0,
-                    events: []
-                };
-            }
-
-            const entry = byKey[key];
-            if (Array.isArray(r.answersLabeled)) {
-                for (const item of r.answersLabeled) {
-                    const q = (item.question || '').toLowerCase();
-                    const a = String(item.answer || '').trim();
-                    if (!a) continue;
-
-                    if (!entry.lastName && /фамил/.test(q)) entry.lastName = a;
-                    if (!entry.firstName && isFirstNameQuestion(q)) entry.firstName = a;
-                    if (!entry.middleName && /отчест/.test(q)) entry.middleName = a;
-                    if (!entry.name && /фио|ф\.и\.о/.test(q)) entry.name = a;
-                    if (!entry.faculty && /факульт|школ|институт|кафедр|направлен/.test(q)) entry.faculty = a;
-                    if (!entry.year && /курс|год об|учеб/.test(q)) entry.year = a;
-                    if (!entry.vk && /вк|вконтакте|vk|vkontakte/.test(q)) entry.vk = a;
-                }
-            }
-
-            if (!entry.name) {
-                const fullName = [entry.lastName, entry.firstName, entry.middleName].filter(Boolean).join(' ').trim();
-                if (fullName) entry.name = fullName;
-            }
-            if (!entry.name) entry.name = r.contactEmail || r.contactPhone || '';
-
-            if (isConfirmedRegistration(r)) entry.totalConfirmed++;
-            if (r.attendance === 'present' || r.attendance === 'late') {
-                entry.presentCount++;
-                entry.totalHours += Number(r.workedHours) || 0;
-            }
-
-            entry.events.push({
-                eventId: r.eventId || '',
-                eventTitle: r.eventTitle || eventTitles[r.eventId] || r.eventId || '',
-                status: r.status || '',
-                attendance: r.attendance || null,
-                workedHours: r.workedHours != null ? Number(r.workedHours) : null,
-                registrationId: r.registrationId || doc.id,
-                selectedDays: Array.isArray(r.selectedDays) ? r.selectedDays.slice(0, MAX_EVENT_DAYS) : []
-            });
-        });
-
-        const volunteers = Object.values(byKey).sort((a, b) => b.totalHours - a.totalHours);
+        const volunteers = buildVolunteerStats(regSnap.docs, eventTitles);
         res.json({ volunteers });
     }));
 
