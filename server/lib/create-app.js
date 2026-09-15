@@ -15,7 +15,9 @@ const {
     withSelectedDaysLabeled,
     enumerateEventDays,
     buildVolunteerStats,
-    buildSheetsBulkRow
+    buildSheetsBulkRow,
+    canArchiveEvent,
+    normalizeEventTodos
 } = require('./registration-helpers');
 const { getSheetsUrl, postToSheets, scheduleSheetsSync } = require('./sheets-sync');
 const {
@@ -234,7 +236,8 @@ function createApp({ admin, db, log = console }) {
             logo: String(src.logo || '').slice(0, 1000),
             archivePhoto: String(src.archivePhoto || '').slice(0, 1000),
             archiveText: String(src.archiveText || '').slice(0, 4000),
-            questions
+            questions,
+            todos: normalizeEventTodos(src.todos)
         };
     }
 
@@ -450,6 +453,12 @@ function createApp({ admin, db, log = console }) {
     adminRouter.put('/events/:id', asyncHandler(async (req, res) => {
         const event = sanitizeEventPayload(req.body, req.params.id);
         if (!event.title) throw new ApiError(400, 'BAD_REQUEST');
+        if (event.isArchived && !event.isTemplate && !canArchiveEvent(event)) {
+            const prev = await db.collection('events').doc(req.params.id).get();
+            if (!(prev.exists && prev.data().isArchived === true)) {
+                throw new ApiError(400, 'TODOS_INCOMPLETE');
+            }
+        }
         await db.collection('events').doc(req.params.id).set(event);
         res.json({ ok: true });
     }));

@@ -691,6 +691,134 @@
         .status-open   { background: rgba(46,204,113,0.15); color: #2ecc71; border: 1px solid rgba(46,204,113,0.4); }
         .status-draft  { background: rgba(247,184,1,0.15);  color: #f7b801; border: 1px solid rgba(247,184,1,0.4); }
         .status-closed { background: rgba(231,76,60,0.15);  color: #e74c3c; border: 1px solid rgba(231,76,60,0.4); }
+        .status-archived { background: rgba(127,140,141,0.18); color: #5d6d7e; border: 1px solid rgba(127,140,141,0.45); }
+
+        .admin-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.25rem;
+            flex-wrap: wrap;
+        }
+        .admin-tab {
+            border: 2px solid rgba(27, 36, 128, 0.18);
+            background: rgba(255,255,255,0.7);
+            color: #1B2480;
+            font-family: inherit;
+            font-weight: 700;
+            font-size: 0.95rem;
+            padding: 0.65rem 1.15rem;
+            border-radius: 999px;
+            cursor: pointer;
+        }
+        .admin-tab.active {
+            background: #1B2480;
+            color: #fff;
+            border-color: #1B2480;
+        }
+        .tab-count {
+            display: inline-block;
+            min-width: 1.25rem;
+            margin-left: 0.35rem;
+            padding: 0 0.35rem;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.2);
+            font-size: 0.8rem;
+        }
+        .admin-tab:not(.active) .tab-count {
+            background: rgba(27, 36, 128, 0.12);
+        }
+        .event-todos {
+            margin-top: 1.15rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(27, 36, 128, 0.12);
+        }
+        .event-todos-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.7rem;
+            font-weight: 700;
+            color: #1B2480;
+        }
+        .event-todos-progress {
+            font-size: 0.85rem;
+            font-weight: 600;
+            opacity: 0.75;
+        }
+        .event-todos-phase {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: rgba(27, 36, 128, 0.62);
+            margin: 0.7rem 0 0.4rem;
+        }
+        .event-todo-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.55rem;
+            margin-bottom: 0.35rem;
+            font-size: 0.92rem;
+        }
+        .event-todo-item input {
+            width: auto;
+            margin-top: 0.2rem;
+            flex-shrink: 0;
+        }
+        .event-todo-item span {
+            flex: 1;
+            line-height: 1.35;
+        }
+        .event-todo-item.done span {
+            text-decoration: line-through;
+            opacity: 0.55;
+        }
+        .event-todo-item button {
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            flex-shrink: 0;
+        }
+        .event-todos-add {
+            display: flex;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+            margin-top: 0.7rem;
+        }
+        .event-todos-add select,
+        .event-todos-add input {
+            padding: 0.45rem 0.65rem;
+            border: 1.5px solid rgba(27,36,128,.20);
+            border-radius: 8px;
+            font: inherit;
+        }
+        .event-todos-add input { flex: 1; min-width: 160px; }
+        .event-todos-hint {
+            margin: 0.55rem 0 0;
+            font-size: 0.82rem;
+            opacity: 0.7;
+        }
+        .event-archive-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            gap: 0.6rem;
+            margin-top: 1rem;
+        }
+        .event-archive-stat {
+            background: rgba(27, 36, 128, 0.06);
+            border-radius: 10px;
+            padding: 0.65rem 0.75rem;
+        }
+        .event-archive-stat .n {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #1B2480;
+        }
+        .event-archive-stat .l {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            margin-top: 0.15rem;
+        }
 
         /* Модальное окно участников */
         .participants-modal {
@@ -1169,6 +1297,12 @@
         <div id="adminPanel" class="admin-panel">
             <div id="globalMessage" class="message" style="margin-bottom: 1rem;"></div>
 
+            <div class="admin-tabs">
+                <button type="button" id="tabBtnEvents" class="admin-tab active" onclick="setAdminTab('events')">Мероприятия</button>
+                <button type="button" id="tabBtnArchive" class="admin-tab" onclick="setAdminTab('archive')">Архив <span id="archiveTabCount" class="tab-count"></span></button>
+            </div>
+
+            <div id="adminTabEvents">
             <div class="dashboard">
                 <div class="dashboard-header">
                     <h2>📊 Сводка</h2>
@@ -1247,6 +1381,25 @@
                     4) узнайте chat_id через <a href="https://t.me/userinfobot" target="_blank" rel="noopener">@userinfobot</a> и добавьте выше.
                     Уведомления идут через Google Apps Script (VPS не достучится до Telegram напрямую).
                 </p>
+            </div>
+            </div>
+
+            <div id="adminTabArchive" style="display:none;">
+                <div class="dashboard">
+                    <div class="dashboard-header">
+                        <h2>📦 Архив мероприятий</h2>
+                        <p style="margin:0;opacity:0.7;font-size:0.9rem;">Подробная статистика по событиям, которые уже закрыли чеклистом и отправили в архив.</p>
+                    </div>
+                    <div id="archiveStats" class="dashboard-stats">
+                        <p style="opacity:0.6;padding:1rem;">Загрузка статистики...</p>
+                    </div>
+                </div>
+                <div class="panel-header">
+                    <h2>Что у нас было</h2>
+                </div>
+                <div id="archiveEventsList" class="events-list">
+                    <p style="text-align: center; padding: 2rem; opacity: 0.6;">Архив пуст</p>
+                </div>
             </div>
         </div>
     </div>
@@ -1399,16 +1552,10 @@
                     </label>
                 </div>
 
-                <div class="form-group">
-                    <label style="display: flex; gap: 0.6rem; align-items: center; text-transform: none; font-size: 0.95rem;">
-                        <input type="checkbox" id="eventIsArchived" style="width: auto;">
-                        Перенести в архив вручную (мероприятие будет показываться в прошедших)
-                    </label>
-                </div>
-
                 <div class="form-group" style="border-top: 1px solid rgba(27,36,128,0.12); padding-top: 1.25rem; margin-top: 0.5rem;">
+                    <input type="hidden" id="eventIsArchived" value="0">
                     <label style="text-transform: none; font-size: 1rem; margin-bottom: 0.75rem;">📷 Итоги прошедшего мероприятия</label>
-                    <small style="opacity: 0.75; font-size: 0.85rem; display: block; margin-bottom: 1rem;">Показываются на главной при нажатии на карточку в архиве. Заполните после окончания события.</small>
+                    <small style="opacity: 0.75; font-size: 0.85rem; display: block; margin-bottom: 1rem;">Показываются на главной при нажатии на карточку в архиве. В архив событие отправляется с карточки, когда выполнен чеклист после мероприятия.</small>
                     <label style="font-size: 0.85rem; text-transform: none; opacity: 0.85;">Фото (волонтёры или другое)</label>
                     <input type="url" id="eventArchivePhoto" placeholder="https://drive.google.com/file/d/.../view" style="margin-bottom: 0.75rem;">
                     <label style="font-size: 0.85rem; text-transform: none; opacity: 0.85;">Короткий текст об итогах</label>
@@ -1441,7 +1588,7 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth-compat.js"></script>
-    <script src="assets/registration-utils.js?v=8"></script>
+    <script src="assets/registration-utils.js?v=9"></script>
     <script src="assets/api-config.js"></script>
     <script src="assets/sheets-sync.js?v=3"></script>
     <script>
@@ -1460,6 +1607,7 @@
         let isSuperAdmin = false;
         let currentQuestions = [];
         let eventsData = {};
+        let adminTab = 'events';
         let currentParticipantsData = [];
         let currentParticipantsEventId = null;
         let participantsFilter = 'all';
@@ -1578,26 +1726,162 @@
         async function loadEvents() {
             try {
                 const data = await apiFetch('/api/admin/events');
-                const container = document.getElementById('eventsList');
                 const events = data.events || [];
-
-                if (events.length) {
-                    container.innerHTML = '';
-                    eventsData = {};
-                    events.forEach(event => {
-                        eventsData[event.id] = event;
-                        container.appendChild(createEventItem(event));
-                    });
-                } else {
-                    container.innerHTML = '<p style="text-align: center; padding: 2rem; opacity: 0.6;">Мероприятий пока нет</p>';
-                }
+                eventsData = {};
+                events.forEach(event => {
+                    eventsData[event.id] = event;
+                });
+                renderEventLists();
             } catch (error) {
                 console.error('Ошибка загрузки:', error);
                 document.getElementById('eventsList').innerHTML = '<p style="text-align: center; padding: 2rem; color: var(--danger);">Ошибка загрузки данных</p>';
             }
         }
 
-        function createEventItem(event) {
+        function setAdminTab(tab) {
+            adminTab = tab === 'archive' ? 'archive' : 'events';
+            const eventsPanel = document.getElementById('adminTabEvents');
+            const archivePanel = document.getElementById('adminTabArchive');
+            const eventsBtn = document.getElementById('tabBtnEvents');
+            const archiveBtn = document.getElementById('tabBtnArchive');
+            if (eventsPanel) eventsPanel.style.display = adminTab === 'events' ? '' : 'none';
+            if (archivePanel) archivePanel.style.display = adminTab === 'archive' ? '' : 'none';
+            if (eventsBtn) eventsBtn.classList.toggle('active', adminTab === 'events');
+            if (archiveBtn) archiveBtn.classList.toggle('active', adminTab === 'archive');
+            if (adminTab === 'archive') renderArchiveStatsTable();
+        }
+
+        function sortEventsByDateDesc(list) {
+            return list.slice().sort((a, b) => String(b.dateRaw || b.date || '').localeCompare(String(a.dateRaw || a.date || '')));
+        }
+
+        function renderEventLists() {
+            const all = Object.values(eventsData);
+            const archived = sortEventsByDateDesc(all.filter(e => e.isArchived === true));
+            const active = all.filter(e => e.isArchived !== true);
+            const countEl = document.getElementById('archiveTabCount');
+            if (countEl) countEl.textContent = archived.length ? String(archived.length) : '';
+
+            const list = document.getElementById('eventsList');
+            if (list) {
+                if (!active.length) {
+                    list.innerHTML = '<p style="text-align: center; padding: 2rem; opacity: 0.6;">Активных мероприятий нет</p>';
+                } else {
+                    list.innerHTML = '';
+                    active.forEach(event => list.appendChild(createEventItem(event, 'active')));
+                }
+            }
+
+            const archiveList = document.getElementById('archiveEventsList');
+            if (archiveList) {
+                if (!archived.length) {
+                    archiveList.innerHTML = '<p style="text-align: center; padding: 2rem; opacity: 0.6;">Архив пуст. Когда чеклист после мероприятия выполнен, нажмите «В архив» на карточке события.</p>';
+                } else {
+                    archiveList.innerHTML = '';
+                    archived.forEach(event => archiveList.appendChild(createEventItem(event, 'archive')));
+                }
+            }
+            renderArchiveStatsTable();
+        }
+
+        function eventRegSummary(eventId) {
+            const regs = window._allRegistrations || [];
+            const list = regs.filter(r => r.eventId === eventId);
+            const confirmed = list.filter(isConfirmedRegistration);
+            const waitlist = list.filter(r => getRegistrationStatus(r) === REGISTRATION_STATUS.WAITLIST).length;
+            const cancelled = list.filter(isCancelledRegistration).length;
+            const present = confirmed.filter(r => r.attendance === 'present').length;
+            const late = confirmed.filter(r => r.attendance === 'late').length;
+            const absent = confirmed.filter(r => r.attendance === 'absent').length;
+            const hours = list.reduce((sum, r) => sum + (Number(r.workedHours) || 0), 0);
+            const rate = confirmed.length ? Math.round(((present + late) / confirmed.length) * 100) : 0;
+            return {
+                confirmed: confirmed.length,
+                waitlist,
+                cancelled,
+                present,
+                late,
+                absent,
+                hours,
+                rate
+            };
+        }
+
+        function renderTodoGroup(event, phase, label) {
+            const todos = getEventTodos(event).filter(item => item.phase === phase);
+            if (!todos.length) return '';
+            const eid = escapeHtmlAttr(event.id);
+            const items = todos.map(item => {
+                const tid = escapeHtmlAttr(item.id);
+                return `
+                    <div class="event-todo-item ${item.done ? 'done' : ''}">
+                        <label style="display:flex;align-items:flex-start;gap:0.55rem;flex:1;margin:0;font-weight:400;text-transform:none;">
+                            <input type="checkbox" ${item.done ? 'checked' : ''}
+                                   onchange="toggleEventTodo('${eid}', '${tid}', this.checked)">
+                            <span>${escapeHtmlText(item.text)}</span>
+                        </label>
+                        <button type="button" class="btn btn-danger btn-small btn-icon" title="Удалить пункт"
+                                onclick="removeEventTodo('${eid}', '${tid}')">×</button>
+                    </div>`;
+            }).join('');
+            return `<div class="event-todos-phase">${label}</div>${items}`;
+        }
+
+        function renderEventTodos(event) {
+            if (event.isTemplate) {
+                return '<p class="event-todos-hint">Шаблон не отправляется в архив — из него создают новые мероприятия.</p>';
+            }
+            const todos = getEventTodos(event);
+            const doneCount = todos.filter(item => item.done).length;
+            const ready = canArchiveEvent(event);
+            const eid = escapeHtmlAttr(event.id);
+            return `
+                <div class="event-todos">
+                    <div class="event-todos-head">
+                        <span>Чеклист</span>
+                        <span class="event-todos-progress">${doneCount} / ${todos.length}</span>
+                    </div>
+                    ${renderTodoGroup(event, 'before', 'До мероприятия')}
+                    ${renderTodoGroup(event, 'after', 'После мероприятия')}
+                    <div class="event-todos-add">
+                        <select id="todoPhase_${eid}">
+                            <option value="before">До</option>
+                            <option value="after" selected>После</option>
+                        </select>
+                        <input id="todoNew_${eid}" type="text" maxlength="300" placeholder="Новый пункт..."
+                               onkeydown="if(event.key==='Enter'){event.preventDefault();addEventTodo('${eid}');}">
+                        <button type="button" class="btn btn-success btn-small" onclick="addEventTodo('${eid}')">+ Добавить</button>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-small" style="margin-top:0.85rem;"
+                            ${ready ? '' : 'disabled'}
+                            onclick="archiveEvent('${eid}')">📦 В архив</button>
+                    ${ready
+                        ? '<p class="event-todos-hint">Чеклист после мероприятия выполнен — можно отправить в архив.</p>'
+                        : '<p class="event-todos-hint">Кнопка «В архив» появится, когда отмечены все пункты после мероприятия.</p>'}
+                </div>
+            `;
+        }
+
+        function renderArchiveEventStats(event) {
+            const stats = eventRegSummary(event.id);
+            const recap = (event.archivePhoto || event.archiveText)
+                ? 'есть итоги'
+                : 'без итогов';
+            return `
+                <div class="event-archive-stats">
+                    <div class="event-archive-stat"><div class="n">${stats.confirmed}${event.maxVolunteers ? ' / ' + event.maxVolunteers : ''}</div><div class="l">Записано</div></div>
+                    <div class="event-archive-stat"><div class="n">${stats.waitlist}</div><div class="l">Ожидание</div></div>
+                    <div class="event-archive-stat"><div class="n">${stats.cancelled}</div><div class="l">Отменено</div></div>
+                    <div class="event-archive-stat"><div class="n">${stats.present + stats.late}</div><div class="l">Пришли</div></div>
+                    <div class="event-archive-stat"><div class="n">${stats.absent}</div><div class="l">Не пришли</div></div>
+                    <div class="event-archive-stat"><div class="n">${stats.rate}%</div><div class="l">Явка</div></div>
+                    <div class="event-archive-stat"><div class="n">${stats.hours.toFixed(1)}</div><div class="l">Часов</div></div>
+                    <div class="event-archive-stat"><div class="n">${recap}</div><div class="l">Фото / текст</div></div>
+                </div>
+            `;
+        }
+
+        function createEventItem(event, mode) {
             const div = document.createElement('div');
             div.className = 'event-item';
 
@@ -1606,6 +1890,11 @@
             const status = event.status || 'open';
             const statusLabel = statusLabels[status] || 'Открыто';
             const templateBadge = event.isTemplate ? '<span class="status-badge" style="background: rgba(79,172,254,0.15); color: #4facfe; border: 1px solid rgba(79,172,254,0.4);">Шаблон</span>' : '';
+            const archiveBadge = event.isArchived ? '<span class="status-badge status-archived">Архив</span>' : '';
+            const extraActions = mode === 'archive'
+                ? `<button class="btn btn-small" style="background:#5d6d7e;" onclick="unarchiveEvent('${escapeHtmlAttr(event.id)}')">↩ Вернуть из архива</button>`
+                : '';
+            const extraBody = mode === 'archive' ? renderArchiveEventStats(event) : renderEventTodos(event);
 
             div.innerHTML = `
                 <div class="event-item-header">
@@ -1613,6 +1902,7 @@
                         <h3>${escapeHtmlText(event.title)}</h3>
                         <span class="status-badge status-${escapeHtmlAttr(status)}">${escapeHtmlText(statusLabel)}</span>
                         ${templateBadge}
+                        ${archiveBadge}
                     </div>
                     <div class="event-item-actions" style="flex-wrap: wrap;">
                         <button class="btn btn-success btn-small" onclick="showParticipants('${escapeHtmlAttr(event.id)}')">👥 Участники</button>
@@ -1622,6 +1912,7 @@
                         ${event.isTemplate ? `<button class="btn btn-small" style="background: #4facfe;" onclick="createFromTemplate('${escapeHtmlAttr(event.id)}')">⚡ Создать из шаблона</button>` : ''}
                         <button class="btn btn-small" style="background: var(--secondary);" onclick="duplicateEvent('${escapeHtmlAttr(event.id)}')">⧉ Скопировать</button>
                         <button class="btn btn-primary btn-small" onclick="editEventById('${escapeHtmlAttr(event.id)}')">Редактировать</button>
+                        ${extraActions}
                         <button class="btn btn-danger btn-small" onclick="deleteEvent('${escapeHtmlAttr(event.id)}')">Удалить</button>
                     </div>
                 </div>
@@ -1644,8 +1935,116 @@
                         <div>${questionsCount}</div>
                     </div>
                 </div>
+                ${extraBody}
             `;
             return div;
+        }
+
+        function clearEventPageCache(eventId) {
+            localStorage.removeItem('volunteer_events');
+            localStorage.removeItem('volunteer_events_v2');
+            if (eventId) localStorage.removeItem(`volunteer_event_${eventId}`);
+        }
+
+        async function persistEvent(event) {
+            await apiFetch(`/api/admin/events/${encodeURIComponent(event.id)}`, {
+                method: 'PUT',
+                body: JSON.stringify(event)
+            });
+            eventsData[event.id] = event;
+            clearEventPageCache(event.id);
+            renderEventLists();
+        }
+
+        async function toggleEventTodo(eventId, todoId, done) {
+            const event = eventsData[eventId];
+            if (!event) return;
+            const todos = getEventTodos(event).map(item => (
+                String(item.id) === String(todoId) ? { ...item, done: !!done } : item
+            ));
+            event.todos = todos;
+            try {
+                await persistEvent(event);
+            } catch (error) {
+                console.error(error);
+                showMessage('error', 'Не удалось сохранить чеклист');
+            }
+        }
+
+        async function removeEventTodo(eventId, todoId) {
+            const event = eventsData[eventId];
+            if (!event) return;
+            event.todos = getEventTodos(event).filter(item => String(item.id) !== String(todoId));
+            try {
+                await persistEvent(event);
+            } catch (error) {
+                console.error(error);
+                showMessage('error', 'Не удалось удалить пункт');
+            }
+        }
+
+        async function addEventTodo(eventId) {
+            const event = eventsData[eventId];
+            if (!event) return;
+            const input = document.getElementById(`todoNew_${eventId}`);
+            const phaseEl = document.getElementById(`todoPhase_${eventId}`);
+            const text = (input && input.value || '').trim();
+            if (!text) return;
+            const todos = getEventTodos(event);
+            todos.push({
+                id: Date.now(),
+                text,
+                phase: phaseEl && phaseEl.value === 'before' ? 'before' : 'after',
+                done: false
+            });
+            event.todos = todos;
+            try {
+                await persistEvent(event);
+            } catch (error) {
+                console.error(error);
+                showMessage('error', 'Не удалось добавить пункт');
+            }
+        }
+
+        async function archiveEvent(eventId) {
+            const event = eventsData[eventId];
+            if (!event) return;
+            event.todos = getEventTodos(event);
+            if (!canArchiveEvent(event)) {
+                showMessage('error', 'Сначала отметьте все пункты после мероприятия');
+                return;
+            }
+            if (!confirm('Отправить мероприятие в архив?')) return;
+            event.isArchived = true;
+            if ((event.status || 'open') === 'open') event.status = 'closed';
+            try {
+                await persistEvent(event);
+                showMessage('success', '✓ Мероприятие в архиве');
+                setAdminTab('archive');
+                loadDashboard();
+            } catch (error) {
+                console.error(error);
+                const msg = error && error.message === 'TODOS_INCOMPLETE'
+                    ? 'Сначала отметьте все пункты после мероприятия'
+                    : 'Не удалось отправить в архив';
+                showMessage('error', msg);
+            }
+        }
+
+        async function unarchiveEvent(eventId) {
+            const event = eventsData[eventId];
+            if (!event) return;
+            if (!confirm('Вернуть мероприятие из архива в рабочий список?')) return;
+            event.isArchived = false;
+            try {
+                await persistEvent(event);
+                showMessage('success', '✓ Мероприятие возвращено');
+                setAdminTab('events');
+                loadDashboard();
+            } catch (error) {
+                console.error(error);
+                showMessage('error', 'Не удалось вернуть из архива');
+            }
         }
 
         // Открыть модалку создания
@@ -1717,7 +2116,7 @@
             document.getElementById('eventSuccessMessage').value = event.successMessage || '';
             document.getElementById('eventChatLink').value = event.chatLink || '';
             document.getElementById('eventIsTemplate').checked = !!event.isTemplate;
-            document.getElementById('eventIsArchived').checked = !!event.isArchived;
+            document.getElementById('eventIsArchived').value = event.isArchived ? '1' : '0';
             document.getElementById('eventImage').value = event.image || '';
             document.getElementById('eventLogo').value = event.logo || '';
             document.getElementById('eventArchivePhoto').value = event.archivePhoto || '';
@@ -2087,12 +2486,19 @@
                 successMessage: document.getElementById('eventSuccessMessage').value.trim(),
                 chatLink: document.getElementById('eventChatLink').value.trim(),
                 isTemplate: document.getElementById('eventIsTemplate').checked,
-                isArchived: document.getElementById('eventIsArchived').checked,
+                isArchived: document.getElementById('eventIsArchived').value === '1',
                 image: document.getElementById('eventImage').value.trim(),
                 logo: document.getElementById('eventLogo').value.trim(),
                 archivePhoto: document.getElementById('eventArchivePhoto').value.trim(),
                 archiveText: document.getElementById('eventArchiveText').value.trim(),
-                questions: currentQuestions
+                questions: currentQuestions,
+                todos: (() => {
+                    const existingId = document.getElementById('eventId').value;
+                    const existing = existingId ? eventsData[existingId] : null;
+                    return existing
+                        ? (typeof getEventTodos === 'function' ? getEventTodos(existing) : (existing.todos || []))
+                        : (typeof getDefaultEventTodos === 'function' ? getDefaultEventTodos() : []);
+                })()
             };
 
             try {
@@ -2164,7 +2570,7 @@
             document.getElementById('eventSuccessMessage').value = original.successMessage || '';
             document.getElementById('eventChatLink').value = original.chatLink || '';
             document.getElementById('eventIsTemplate').checked = false;
-            document.getElementById('eventIsArchived').checked = false;
+            document.getElementById('eventIsArchived').value = '0';
             document.getElementById('eventImage').value = original.image || '';
             document.getElementById('eventLogo').value = original.logo || '';
             document.getElementById('eventArchivePhoto').value = '';
@@ -2194,7 +2600,7 @@
             document.getElementById('eventSuccessMessage').value = template.successMessage || '';
             document.getElementById('eventChatLink').value = template.chatLink || '';
             document.getElementById('eventIsTemplate').checked = false;
-            document.getElementById('eventIsArchived').checked = false;
+            document.getElementById('eventIsArchived').value = '0';
             document.getElementById('eventImage').value = template.image || '';
             document.getElementById('eventLogo').value = template.logo || '';
             document.getElementById('eventArchivePhoto').value = '';
@@ -3035,6 +3441,57 @@
         }
 
 
+        function renderArchiveStatsTable() {
+            const container = document.getElementById('archiveStats');
+            if (!container) return;
+            const archived = sortEventsByDateDesc(Object.values(eventsData).filter(e => e.isArchived === true && e.isTemplate !== true));
+            if (!archived.length) {
+                container.innerHTML = '<p style="opacity:0.65;padding:0.5rem 0;">Пока нет мероприятий в архиве — таблица появится после первой отправки.</p>';
+                return;
+            }
+            const rows = archived.map(e => {
+                const c = eventRegSummary(e.id);
+                const max = Number(e.maxVolunteers) || 0;
+                const pct = max ? Math.min(100, Math.round((c.confirmed / max) * 100)) : 0;
+                const meter = max
+                    ? `<div class="mini-meter"><div style="width:${pct}%"></div></div>`
+                    : '<span style="opacity:0.6;">∞</span>';
+                const recap = (e.archivePhoto || e.archiveText) ? 'да' : 'нет';
+                return `<tr>
+                    <td>${escapeHtmlText(e.title || '—')}</td>
+                    <td>${escapeHtmlText(typeof formatEventDateRange === 'function' ? formatEventDateRange(e) : (e.date || ''))}</td>
+                    <td>${c.confirmed}${max ? ' / ' + max : ''}</td>
+                    <td>${c.waitlist || '—'}</td>
+                    <td>${c.cancelled || '—'}</td>
+                    <td>${c.present + c.late} / ${c.absent}</td>
+                    <td>${c.rate}%</td>
+                    <td>${c.hours.toFixed(1)}</td>
+                    <td>${meter}</td>
+                    <td>${recap}</td>
+                </tr>`;
+            }).join('');
+            container.innerHTML = `
+                <div class="dashboard-events">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Мероприятие</th>
+                                <th>Дата</th>
+                                <th>Записано</th>
+                                <th>Ожидание</th>
+                                <th>Отмен</th>
+                                <th>Пришли / нет</th>
+                                <th>Явка</th>
+                                <th>Часы</th>
+                                <th>Заполнение</th>
+                                <th>Итоги</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>`;
+        }
+
         async function loadDashboard() {
             const container = document.getElementById('dashboardStats');
             if (!container) return;
@@ -3053,55 +3510,32 @@
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 const realEvents = events.filter(e => (e.status || 'open') !== 'draft' && e.isTemplate !== true);
-                const activeEvents = realEvents.filter(e => !isEventArchived(e, today));
-                const archivedEvents = realEvents.filter(e => isEventArchived(e, today));
+                const workingEvents = realEvents.filter(e => e.isArchived !== true);
+                const archivedEvents = realEvents.filter(e => e.isArchived === true);
+                const waitingArchive = workingEvents.filter(e => {
+                    const eventDate = (typeof getEventEndDate === 'function' ? getEventEndDate(e) : null)
+                        || (typeof getEventDate === 'function' ? getEventDate(e) : null);
+                    if (!eventDate) return false;
+                    const day = new Date(eventDate);
+                    day.setHours(0, 0, 0, 0);
+                    return day < today;
+                });
 
                 const confirmed = regs.filter(isConfirmedRegistration).length;
                 const waitlist = regs.filter(r => getRegistrationStatus(r) === REGISTRATION_STATUS.WAITLIST).length;
                 const cancelled = regs.filter(isCancelledRegistration).length;
 
-                const byEvent = {};
-                regs.forEach(r => {
-                    const id = r.eventId || '';
-                    if (!byEvent[id]) byEvent[id] = { confirmed: 0, waitlist: 0, cancelled: 0 };
-                    const s = getRegistrationStatus(r);
-                    if (s === REGISTRATION_STATUS.WAITLIST) byEvent[id].waitlist++;
-                    else if (s === REGISTRATION_STATUS.CANCELLED) byEvent[id].cancelled++;
-                    else byEvent[id].confirmed++;
-                });
-
                 const card = (value, label, cls = '') =>
                     `<div class="stat-card ${cls}"><div class="stat-value">${value}</div><div class="stat-label">${label}</div></div>`;
 
-                const rows = realEvents.map(e => {
-                    const c = byEvent[e.id] || { confirmed: 0, waitlist: 0, cancelled: 0 };
-                    const max = Number(e.maxVolunteers) || 0;
-                    const pct = max ? Math.min(100, Math.round((c.confirmed / max) * 100)) : 0;
-                    const meter = max
-                        ? `<div class="mini-meter"><div style="width:${pct}%"></div></div>`
-                        : '<span style="opacity:0.6;">∞</span>';
-                    return `<tr>
-                        <td>${escapeHtmlText(e.title || '—')}</td>
-                        <td>${escapeHtmlText(typeof formatEventDateRange === 'function' ? formatEventDateRange(e) : (e.date || ''))}</td>
-                        <td>${c.confirmed}${max ? ' / ' + max : ''}</td>
-                        <td>${c.waitlist || '—'}</td>
-                        <td>${c.cancelled || '—'}</td>
-                        <td>${meter}</td>
-                    </tr>`;
-                }).join('');
-
                 container.innerHTML =
-                    card(activeEvents.length, 'Активных событий') +
+                    card(workingEvents.length, 'В работе') +
+                    card(waitingArchive.length, 'Ждут архива', 'warn') +
                     card(archivedEvents.length, 'В архиве') +
                     card(confirmed, 'Подтверждено', 'accent') +
                     card(waitlist, 'В листе ожидания', 'warn') +
-                    card(cancelled, 'Отменено') +
-                    `<div class="dashboard-events">
-                        <table>
-                            <thead><tr><th>Мероприятие</th><th>Дата</th><th>Записано</th><th>Ожидание</th><th>Отмен</th><th>Заполнение</th></tr></thead>
-                            <tbody>${rows || '<tr><td colspan="6" style="opacity:0.6;">Нет мероприятий</td></tr>'}</tbody>
-                        </table>
-                    </div>`;
+                    card(cancelled, 'Отменено');
+                renderArchiveStatsTable();
             } catch (error) {
                 console.error('Ошибка статистики:', error);
                 container.innerHTML = '<p style="color: var(--danger); padding: 1rem;">Не удалось загрузить статистику</p>';

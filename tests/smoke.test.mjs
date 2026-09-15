@@ -57,6 +57,8 @@ test('standalone VPS server exposes the same API routes', async () => {
   assert.match(serverApp, /scheduleSheetsSync/);
   assert.match(serverApp, /pickFirstWaitlistDoc/);
   assert.match(serverApp, /assertRequiredAnswers/);
+  assert.match(serverApp, /TODOS_INCOMPLETE/);
+  assert.match(serverApp, /normalizeEventTodos/);
   assert.match(serverApp, /vacateConfirmedSpot/);
   assert.match(serverApp, /assertCancelToken/);
   assert.match(serverApp, /RATE_LIMIT/);
@@ -201,6 +203,21 @@ test('admin.html has dashboard and export-all', async () => {
   assert.match(adminHtml, /function loadDashboard\(\)/);
   assert.match(adminHtml, /function exportAllCSV\(\)/);
   assert.match(adminHtml, /copyConfirmedEmails/);
+  assert.match(adminHtml, /function setAdminTab/);
+  assert.match(adminHtml, /id="adminTabArchive"/);
+  assert.match(adminHtml, /function archiveEvent/);
+  assert.match(adminHtml, /function renderArchiveStatsTable/);
+});
+
+test('event archive requires after-event todos', () => {
+  const helpers = require('../functions/lib/registration-helpers.js');
+  const todos = helpers.getDefaultEventTodos(100);
+  assert.equal(helpers.canArchiveEvent({ todos }), false);
+  const afterDone = todos.map((item) => (
+    item.phase === 'after' ? { ...item, done: true } : item
+  ));
+  assert.equal(helpers.canArchiveEvent({ todos: afterDone }), true);
+  assert.equal(helpers.canArchiveEvent({ isTemplate: true, todos: afterDone }), false);
 });
 
 test('index.html has search and filters', async () => {

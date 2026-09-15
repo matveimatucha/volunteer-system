@@ -409,6 +409,47 @@ function isEventArchived(event, today) {
     return day < today;
 }
 
+function getDefaultEventTodos(baseId) {
+    const base = Number(baseId) || Date.now();
+    return [
+        { id: base + 1, phase: 'before', text: 'Заполнить описание, фото и форму регистрации', done: false },
+        { id: base + 2, phase: 'before', text: 'Открыть регистрацию (статус «Открыто»)', done: false },
+        { id: base + 3, phase: 'before', text: 'Скинуть ссылку на форму волонтёрам', done: false },
+        { id: base + 4, phase: 'before', text: 'Напомнить участникам накануне', done: false },
+        { id: base + 5, phase: 'after', text: 'Отметить явку участников', done: false },
+        { id: base + 6, phase: 'after', text: 'Проставить часы работы', done: false },
+        { id: base + 7, phase: 'after', text: 'Добавить фото и текст итогов', done: false },
+        { id: base + 8, phase: 'after', text: 'Выгрузить заявки или синхронизировать таблицу', done: false },
+        { id: base + 9, phase: 'after', text: 'Закрыть регистрацию', done: false }
+    ];
+}
+
+function normalizeEventTodos(raw) {
+    if (!Array.isArray(raw)) return [];
+    return raw.slice(0, 40).map((item, index) => {
+        if (!item || typeof item !== 'object') return null;
+        const text = String(item.text || '').trim().slice(0, 300);
+        if (!text) return null;
+        return {
+            id: item.id != null ? item.id : Date.now() + index,
+            text,
+            phase: item.phase === 'after' ? 'after' : 'before',
+            done: item.done === true
+        };
+    }).filter(Boolean);
+}
+
+function getEventTodos(event) {
+    const todos = normalizeEventTodos(event && event.todos);
+    return todos.length ? todos : getDefaultEventTodos(event && event.id);
+}
+
+function canArchiveEvent(event) {
+    if (!event || event.isTemplate === true) return false;
+    const after = getEventTodos(event).filter((item) => item.phase === 'after');
+    return after.length > 0 && after.every((item) => item.done === true);
+}
+
 function pad2(n) {
     return String(n).padStart(2, '0');
 }
