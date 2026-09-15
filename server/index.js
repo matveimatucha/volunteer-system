@@ -8,6 +8,7 @@
 require('dotenv').config();
 
 const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const { initFirebase } = require('./lib/firebase');
 const { createApp } = require('./lib/create-app');
@@ -20,11 +21,25 @@ const STATIC_ROOT = path.resolve(
     process.env.STATIC_ROOT || '..'
 );
 
+function readSiteUpdateNote() {
+    try {
+        const raw = fs.readFileSync(path.join(STATIC_ROOT, 'assets', 'update-notes.json'), 'utf8');
+        const data = JSON.parse(raw);
+        return String(data && data.note ? data.note : '').trim().slice(0, 200);
+    } catch {
+        return '';
+    }
+}
+
+const SITE_UPDATED_AT = new Date().toISOString();
+const SITE_UPDATE_NOTE = readSiteUpdateNote();
+
 const admin = initFirebase();
 const db = admin.firestore();
 const apiApp = createApp({ admin, db });
 
 const rootApp = express();
+rootApp.set('trust proxy', 1);
 
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
     .split(',')
@@ -50,7 +65,9 @@ if (allowedOrigins.length) {
 rootApp.get('/health', (req, res) => {
     res.json({
         ok: true,
-        mode: process.env.STAGING === 'true' ? 'staging-server' : 'standalone-server'
+        mode: process.env.STAGING === 'true' ? 'staging-server' : 'standalone-server',
+        updatedAt: SITE_UPDATED_AT,
+        note: SITE_UPDATE_NOTE
     });
 });
 
@@ -62,7 +79,10 @@ const staticBlocklist = new Set([
     'functions',
     'node_modules',
     'tests',
-    '.git'
+    'deploy',
+    '.git',
+    '.github',
+    '.env'
 ]);
 
 rootApp.use((req, res, next) => {

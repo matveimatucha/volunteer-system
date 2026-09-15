@@ -143,6 +143,8 @@ test('server entry serves static files and health check', async () => {
 
   assert.match(serverIndex, /express\.static/);
   assert.match(serverIndex, /\/health/);
+  assert.match(serverIndex, /updatedAt/);
+  assert.match(serverIndex, /update-notes\.json/);
   assert.match(serverIndex, /GOOGLE_APPLICATION_CREDENTIALS/);
 });
 
