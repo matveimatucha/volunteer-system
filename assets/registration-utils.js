@@ -450,6 +450,35 @@ function canArchiveEvent(event) {
     return after.length > 0 && after.every((item) => item.done === true);
 }
 
+function normalizeEventOrganizers(raw) {
+    if (!Array.isArray(raw)) return [];
+    const seen = new Set();
+    const out = [];
+    for (const item of raw.slice(0, 20)) {
+        if (item == null) continue;
+        const src = typeof item === 'object' ? item : { name: item };
+        const name = String(src.name || '').trim().slice(0, 80);
+        const email = String(src.email || '').trim().toLowerCase().slice(0, 120);
+        const uid = String(src.uid || '').trim().slice(0, 128);
+        if (!name && !email) continue;
+        const key = uid || email || name.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({
+            name: name || email.split('@')[0],
+            email,
+            uid
+        });
+    }
+    return out;
+}
+
+function formatEventOrganizers(event) {
+    return normalizeEventOrganizers(event && event.organizers)
+        .map((person) => person.name)
+        .join(', ');
+}
+
 function pad2(n) {
     return String(n).padStart(2, '0');
 }

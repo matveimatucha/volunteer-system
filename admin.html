@@ -875,6 +875,75 @@
             margin-top: 0.15rem;
         }
 
+        .organizer-picker {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+            gap: 0.4rem;
+            max-height: 240px;
+            overflow-y: auto;
+            padding: 0.55rem;
+            background: rgba(27, 36, 128, 0.04);
+            border: 1px solid rgba(27, 36, 128, 0.12);
+            border-radius: 10px;
+        }
+        .organizer-option {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            margin: 0;
+            padding: 0.4rem 0.5rem;
+            font-weight: 400;
+            text-transform: none;
+            font-size: 0.9rem;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .organizer-option:hover { background: rgba(27, 36, 128, 0.06); }
+        .organizer-option input { width: auto; margin-top: 0.2rem; }
+        .organizer-option small {
+            display: block;
+            font-size: 0.75rem;
+            opacity: 0.65;
+            font-weight: 400;
+        }
+        .organizer-picker-empty {
+            margin: 0;
+            padding: 0.5rem;
+            font-size: 0.85rem;
+            opacity: 0.7;
+        }
+        .organizer-extra {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.65rem;
+            flex-wrap: wrap;
+        }
+        .organizer-extra input { flex: 1; min-width: 180px; }
+        .organizer-extra-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            margin-top: 0.55rem;
+        }
+        .organizer-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            background: rgba(27, 36, 128, 0.08);
+            border-radius: 999px;
+            padding: 0.2rem 0.55rem 0.2rem 0.75rem;
+            font-size: 0.85rem;
+        }
+        .organizer-chip-x {
+            border: 0;
+            background: transparent;
+            cursor: pointer;
+            font-size: 1rem;
+            line-height: 1;
+            color: inherit;
+            opacity: 0.6;
+        }
+
         /* Модальное окно участников */
         .participants-modal {
             display: none;
@@ -1552,6 +1621,18 @@
                 </div>
 
                 <div class="form-group">
+                    <label>Кто отвечает</label>
+                    <small style="opacity: 0.7; font-size: 0.85rem; display: block; margin-bottom: 0.65rem;">Имена сохраняются в карточке и в архиве. Можно отметить несколько человек.</small>
+                    <div id="organizerPicker" class="organizer-picker"></div>
+                    <div class="organizer-extra">
+                        <input type="text" id="organizerExtraName" maxlength="80" placeholder="Другой человек (не из списка админов)"
+                               onkeydown="if(event.key==='Enter'){event.preventDefault();addExtraOrganizer();}">
+                        <button type="button" class="btn btn-small" onclick="addExtraOrganizer()">+ Добавить</button>
+                    </div>
+                    <div id="organizerExtraList" class="organizer-extra-list"></div>
+                </div>
+
+                <div class="form-group">
                     <label>Описание *</label>
                     <textarea id="eventDescription" required placeholder="Подробное описание мероприятия..."></textarea>
                 </div>
@@ -1646,7 +1727,7 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth-compat.js"></script>
-    <script src="assets/registration-utils.js?v=9"></script>
+    <script src="assets/registration-utils.js?v=10"></script>
     <script src="assets/api-config.js"></script>
     <script src="assets/sheets-sync.js?v=3"></script>
     <script>
@@ -1673,6 +1754,8 @@
         let participantsDayFilter = 'all';
         let participantsSearchQuery = '';
         let telegramChatIds = [];
+        let adminPeople = [];
+        let extraOrganizers = [];
 
         async function apiFetch(path, options = {}) {
             const user = auth.currentUser;
@@ -1764,7 +1847,7 @@
             document.getElementById('logoutBtn').style.display = '';
             const guideBtn = document.getElementById('adminGuideBtn');
             if (guideBtn) guideBtn.style.display = '';
-            await loadEvents();
+            await Promise.all([loadEvents(), loadAdminPeople()]);
             loadDashboard();
             initSheetsPanel();
             initTelegramPanel();
@@ -1833,6 +1916,110 @@
                 console.error('Ошибка загрузки:', error);
                 document.getElementById('eventsList').innerHTML = '<p style="text-align: center; padding: 2rem; color: var(--danger);">Ошибка загрузки данных</p>';
             }
+        }
+
+        async function loadAdminPeople() {
+            try {
+                const data = await apiFetch('/api/admin/admins');
+                adminPeople = Array.isArray(data.admins) ? data.admins : [];
+            } catch (err) {
+                console.error(err);
+                adminPeople = [];
+            }
+        }
+
+        function currentUserOrganizer() {
+            const user = auth.currentUser;
+            if (!user) return null;
+            const email = (user.email || '').toLowerCase();
+            const fromList = adminPeople.find(person =>
+                person.uid === user.uid || (person.email && person.email.toLowerCase() === email)
+            );
+            if (fromList) return fromList;
+            return {
+                uid: user.uid,
+                email: user.email || '',
+                name: user.displayName || user.email || 'Я'
+            };
+        }
+
+        function isSameOrganizer(a, b) {
+            if (!a || !b) return false;
+            if (a.uid && b.uid && a.uid === b.uid) return true;
+            const ae = String(a.email || '').toLowerCase();
+            const be = String(b.email || '').toLowerCase();
+            return Boolean(ae && be && ae === be);
+        }
+
+        function fillOrganizerPicker(selected) {
+            const selectedList = typeof normalizeEventOrganizers === 'function'
+                ? normalizeEventOrganizers(selected)
+                : (Array.isArray(selected) ? selected : []);
+            extraOrganizers = selectedList.filter(sel =>
+                !adminPeople.some(person => isSameOrganizer(person, sel))
+            );
+            const box = document.getElementById('organizerPicker');
+            if (box) {
+                if (!adminPeople.length) {
+                    box.innerHTML = '<p class="organizer-picker-empty">Список админов не загрузился — можно добавить имя вручную.</p>';
+                } else {
+                    box.innerHTML = adminPeople.map(person => {
+                        const checked = selectedList.some(sel => isSameOrganizer(person, sel)) ? 'checked' : '';
+                        return `<label class="organizer-option">
+                            <input type="checkbox" ${checked}
+                                   data-uid="${escapeHtmlAttr(person.uid)}"
+                                   data-email="${escapeHtmlAttr(person.email)}"
+                                   data-name="${escapeHtmlAttr(person.name)}">
+                            <span><strong>${escapeHtmlText(person.name)}</strong><small>${escapeHtmlText(person.email)}</small></span>
+                        </label>`;
+                    }).join('');
+                }
+            }
+            const extraInput = document.getElementById('organizerExtraName');
+            if (extraInput) extraInput.value = '';
+            renderExtraOrganizers();
+        }
+
+        function renderExtraOrganizers() {
+            const el = document.getElementById('organizerExtraList');
+            if (!el) return;
+            el.innerHTML = extraOrganizers.map((person, index) => `
+                <span class="organizer-chip">${escapeHtmlText(person.name)}
+                    <button type="button" class="organizer-chip-x" onclick="removeExtraOrganizer(${index})" aria-label="Убрать">×</button>
+                </span>
+            `).join('');
+        }
+
+        function addExtraOrganizer() {
+            const input = document.getElementById('organizerExtraName');
+            const name = String(input && input.value || '').trim();
+            if (!name) return;
+            const exists = extraOrganizers.some(person => person.name.toLowerCase() === name.toLowerCase())
+                || adminPeople.some(person => person.name.toLowerCase() === name.toLowerCase());
+            if (!exists) extraOrganizers.push({ name, email: '', uid: '' });
+            if (input) input.value = '';
+            renderExtraOrganizers();
+        }
+
+        function removeExtraOrganizer(index) {
+            extraOrganizers.splice(index, 1);
+            renderExtraOrganizers();
+        }
+
+        function collectOrganizers() {
+            const fromList = [];
+            const box = document.getElementById('organizerPicker');
+            if (box) {
+                box.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+                    fromList.push({
+                        uid: cb.getAttribute('data-uid') || '',
+                        email: cb.getAttribute('data-email') || '',
+                        name: cb.getAttribute('data-name') || ''
+                    });
+                });
+            }
+            const raw = fromList.concat(extraOrganizers);
+            return typeof normalizeEventOrganizers === 'function' ? normalizeEventOrganizers(raw) : raw;
         }
 
         function setAdminTab(tab) {
@@ -2039,6 +2226,10 @@
                         <div>${escapeHtmlText(event.location)}</div>
                     </div>
                     <div class="info-item">
+                        <div class="info-label">Ответственные</div>
+                        <div>${escapeHtmlText((typeof formatEventOrganizers === 'function' && formatEventOrganizers(event)) || 'не указаны')}</div>
+                    </div>
+                    <div class="info-item">
                         <div class="info-label">Волонтёры</div>
                         <div>${event.currentVolunteers} / ${event.maxVolunteers || '∞'}</div>
                     </div>
@@ -2177,6 +2368,7 @@
             
             // Добавляем шаблонные вопросы
             addFullTemplateQuestions();
+            fillOrganizerPicker([currentUserOrganizer()].filter(Boolean));
             
             document.getElementById('eventModal').classList.add('active');
         }
@@ -2192,6 +2384,7 @@
             document.getElementById('eventDateEnd').min = '';
             currentQuestions = [];
             renderQuestions();
+            fillOrganizerPicker([currentUserOrganizer()].filter(Boolean));
             
             document.getElementById('eventDateEnd').min = '';
             document.getElementById('eventModal').classList.add('active');
@@ -2233,6 +2426,7 @@
             document.getElementById('eventLogo').value = event.logo || '';
             document.getElementById('eventArchivePhoto').value = event.archivePhoto || '';
             document.getElementById('eventArchiveText').value = event.archiveText || '';
+            fillOrganizerPicker(event.organizers);
             currentQuestions = (event.questions || []).map(q => ({
                 ...q,
                 options: Array.isArray(q.options) ? q.options : [],
@@ -2603,6 +2797,7 @@
                 logo: document.getElementById('eventLogo').value.trim(),
                 archivePhoto: document.getElementById('eventArchivePhoto').value.trim(),
                 archiveText: document.getElementById('eventArchiveText').value.trim(),
+                organizers: collectOrganizers(),
                 questions: currentQuestions,
                 todos: (() => {
                     const existingId = document.getElementById('eventId').value;
@@ -2689,6 +2884,9 @@
             document.getElementById('eventArchiveText').value = '';
             currentQuestions = JSON.parse(JSON.stringify(original.questions || []));
             renderQuestions();
+            fillOrganizerPicker(original.organizers && original.organizers.length
+                ? original.organizers
+                : [currentUserOrganizer()].filter(Boolean));
             document.getElementById('eventModal').classList.add('active');
         }
 
@@ -2719,6 +2917,9 @@
             document.getElementById('eventArchiveText').value = '';
             currentQuestions = JSON.parse(JSON.stringify(template.questions || []));
             renderQuestions();
+            fillOrganizerPicker(template.organizers && template.organizers.length
+                ? template.organizers
+                : [currentUserOrganizer()].filter(Boolean));
             document.getElementById('eventModal').classList.add('active');
         }
 
@@ -3569,9 +3770,11 @@
                     ? `<div class="mini-meter"><div style="width:${pct}%"></div></div>`
                     : '<span style="opacity:0.6;">∞</span>';
                 const recap = (e.archivePhoto || e.archiveText) ? 'да' : 'нет';
+                const organizers = (typeof formatEventOrganizers === 'function' && formatEventOrganizers(e)) || '—';
                 return `<tr>
                     <td>${escapeHtmlText(e.title || '—')}</td>
                     <td>${escapeHtmlText(typeof formatEventDateRange === 'function' ? formatEventDateRange(e) : (e.date || ''))}</td>
+                    <td>${escapeHtmlText(organizers)}</td>
                     <td>${c.confirmed}${max ? ' / ' + max : ''}</td>
                     <td>${c.waitlist || '—'}</td>
                     <td>${c.cancelled || '—'}</td>
@@ -3589,6 +3792,7 @@
                             <tr>
                                 <th>Мероприятие</th>
                                 <th>Дата</th>
+                                <th>Ответственные</th>
                                 <th>Записано</th>
                                 <th>Ожидание</th>
                                 <th>Отмен</th>

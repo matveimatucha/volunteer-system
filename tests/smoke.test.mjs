@@ -59,6 +59,8 @@ test('standalone VPS server exposes the same API routes', async () => {
   assert.match(serverApp, /assertRequiredAnswers/);
   assert.match(serverApp, /TODOS_INCOMPLETE/);
   assert.match(serverApp, /normalizeEventTodos/);
+  assert.match(serverApp, /normalizeEventOrganizers/);
+  assert.match(serverApp, /adminRouter\.get\('\/admins'/);
   assert.match(serverApp, /vacateConfirmedSpot/);
   assert.match(serverApp, /assertCancelToken/);
   assert.match(serverApp, /RATE_LIMIT/);
@@ -220,6 +222,26 @@ test('event archive requires after-event todos', () => {
   ));
   assert.equal(helpers.canArchiveEvent({ todos: afterDone }), true);
   assert.equal(helpers.canArchiveEvent({ isTemplate: true, todos: afterDone }), false);
+});
+
+test('event organizers are sanitized and shown in admin', async () => {
+  const helpers = require('../functions/lib/registration-helpers.js');
+  const list = helpers.normalizeEventOrganizers([
+    { name: 'Илья Андреев', email: 'ilya-andreev03@mail.ru', uid: 'u1' },
+    { name: 'Илья Андреев', email: 'ilya-andreev03@mail.ru', uid: 'u1' },
+    { name: 'Нина Арзяева', email: 'nina.arzyaeva@gmail.com' },
+    { name: '  ' },
+    'Мария Рубленко'
+  ]);
+  assert.equal(list.length, 3);
+  assert.equal(list[0].name, 'Илья Андреев');
+  assert.equal(list[2].name, 'Мария Рубленко');
+  assert.equal(helpers.formatEventOrganizers({ organizers: list }), 'Илья Андреев, Нина Арзяева, Мария Рубленко');
+
+  const adminHtml = await readProjectFile('admin.html');
+  assert.match(adminHtml, /id="organizerPicker"/);
+  assert.match(adminHtml, /function collectOrganizers\(\)/);
+  assert.match(adminHtml, /apiFetch\('\/api\/admin\/admins'\)/);
 });
 
 test('index.html has search and filters', async () => {

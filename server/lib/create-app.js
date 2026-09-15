@@ -17,7 +17,8 @@ const {
     buildVolunteerStats,
     buildSheetsBulkRow,
     canArchiveEvent,
-    normalizeEventTodos
+    normalizeEventTodos,
+    normalizeEventOrganizers
 } = require('./registration-helpers');
 const { getSheetsUrl, postToSheets, scheduleSheetsSync } = require('./sheets-sync');
 const {
@@ -80,6 +81,12 @@ function createApp({ admin, db, log = console }) {
     function eventFromDoc(doc) {
         const data = doc.data();
         return { ...data, id: data.id || doc.id };
+    }
+
+    function toPublicEvent(event) {
+        if (!event || typeof event !== 'object') return event;
+        const { organizers, ...rest } = event;
+        return rest;
     }
 
     function registrationFromDoc(doc) {
@@ -237,7 +244,8 @@ function createApp({ admin, db, log = console }) {
             archivePhoto: String(src.archivePhoto || '').slice(0, 1000),
             archiveText: String(src.archiveText || '').slice(0, 4000),
             questions,
-            todos: normalizeEventTodos(src.todos)
+            todos: normalizeEventTodos(src.todos),
+            organizers: normalizeEventOrganizers(src.organizers)
         };
     }
 
@@ -265,7 +273,7 @@ function createApp({ admin, db, log = console }) {
 
     router.get('/events', asyncHandler(async (req, res) => {
         const snap = await db.collection('events').get();
-        const events = snap.docs.map(eventFromDoc).filter(e => !isEventHidden(e));
+        const events = snap.docs.map(eventFromDoc).filter(e => !isEventHidden(e)).map(toPublicEvent);
         res.json({ events });
     }));
 
@@ -274,7 +282,7 @@ function createApp({ admin, db, log = console }) {
         if (!doc.exists) throw new ApiError(404, 'EVENT_NOT_FOUND');
         const event = eventFromDoc(doc);
         if (isEventHidden(event)) throw new ApiError(404, 'EVENT_NOT_FOUND');
-        res.json({ event });
+        res.json({ event: toPublicEvent(event) });
     }));
 
     router.post('/registrations', writeLimiter, asyncHandler(async (req, res) => {
@@ -444,6 +452,26 @@ function createApp({ admin, db, log = console }) {
 
     const adminRouter = express.Router();
     adminRouter.use(requireAdmin);
+
+    adminRouter.get('/admins', asyncHandler(async (req, res) => {
+        const people = [];
+        let pageToken;
+        do {
+            const page = await admin.auth().listUsers(1000, pageToken);
+            page.users.forEach((user) => {
+                const claims = user.customClaims || {};
+                if (claims.admin !== true || user.disabled) return;
+                people.push({
+                    uid: user.uid,
+                    email: user.email || '',
+                    name: user.displayName || (user.email || '').split('@')[0]
+                });
+            });
+            pageToken = page.pageToken;
+        } while (pageToken);
+        people.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+        res.json({ admins: people });
+    }));
 
     adminRouter.get('/events', asyncHandler(async (req, res) => {
         const snap = await db.collection('events').get();
