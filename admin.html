@@ -732,6 +732,56 @@
             padding-top: 1rem;
             border-top: 1px solid rgba(27, 36, 128, 0.12);
         }
+        .event-todos-toggle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+            width: 100%;
+            border: 1.5px solid rgba(27, 36, 128, 0.16);
+            background: rgba(27, 36, 128, 0.05);
+            color: #1B2480;
+            font: inherit;
+            font-weight: 700;
+            padding: 0.7rem 0.95rem;
+            border-radius: 12px;
+            cursor: pointer;
+            text-align: left;
+        }
+        .event-todos-toggle:hover {
+            background: rgba(27, 36, 128, 0.09);
+        }
+        .event-todos-toggle-left {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+        }
+        .event-todos-chevron {
+            display: inline-block;
+            transition: transform 0.2s ease;
+        }
+        .event-todos.open .event-todos-chevron {
+            transform: rotate(180deg);
+        }
+        .event-todos-progress {
+            font-size: 0.85rem;
+            font-weight: 600;
+            opacity: 0.75;
+        }
+        .event-todos-ready-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #1e8c5a;
+            flex-shrink: 0;
+        }
+        .event-todos-body {
+            display: none;
+            margin-top: 0.85rem;
+        }
+        .event-todos.open .event-todos-body {
+            display: block;
+        }
         .event-todos-head {
             display: flex;
             justify-content: space-between;
@@ -740,11 +790,6 @@
             margin-bottom: 0.7rem;
             font-weight: 700;
             color: #1B2480;
-        }
-        .event-todos-progress {
-            font-size: 0.85rem;
-            font-weight: 600;
-            opacity: 0.75;
         }
         .event-todos-phase {
             font-size: 0.78rem;
@@ -1608,6 +1653,7 @@
         let currentQuestions = [];
         let eventsData = {};
         let adminTab = 'events';
+        const openEventTodoIds = new Set();
         let currentParticipantsData = [];
         let currentParticipantsEventId = null;
         let participantsFilter = 'all';
@@ -1827,6 +1873,14 @@
             return `<div class="event-todos-phase">${label}</div>${items}`;
         }
 
+        function toggleEventTodos(eventId) {
+            const key = String(eventId);
+            if (openEventTodoIds.has(key)) openEventTodoIds.delete(key);
+            else openEventTodoIds.add(key);
+            const box = document.querySelector('.event-todos[data-event-id="' + key.replace(/"/g, '') + '"]');
+            if (box) box.classList.toggle('open', openEventTodoIds.has(key));
+        }
+
         function renderEventTodos(event) {
             if (event.isTemplate) {
                 return '<p class="event-todos-hint">Шаблон не отправляется в архив — из него создают новые мероприятия.</p>';
@@ -1835,12 +1889,18 @@
             const doneCount = todos.filter(item => item.done).length;
             const ready = canArchiveEvent(event);
             const eid = escapeHtmlAttr(event.id);
+            const isOpen = openEventTodoIds.has(String(event.id));
             return `
-                <div class="event-todos">
-                    <div class="event-todos-head">
-                        <span>Чеклист</span>
+                <div class="event-todos ${isOpen ? 'open' : ''}" data-event-id="${eid}">
+                    <button type="button" class="event-todos-toggle" onclick="toggleEventTodos('${eid}')">
+                        <span class="event-todos-toggle-left">
+                            <span class="event-todos-chevron">▾</span>
+                            <span>Чеклист</span>
+                            ${ready ? '<span class="event-todos-ready-dot" title="Можно в архив"></span>' : ''}
+                        </span>
                         <span class="event-todos-progress">${doneCount} / ${todos.length}</span>
-                    </div>
+                    </button>
+                    <div class="event-todos-body">
                     ${renderTodoGroup(event, 'before', 'До мероприятия')}
                     ${renderTodoGroup(event, 'after', 'После мероприятия')}
                     <div class="event-todos-add">
@@ -1858,6 +1918,7 @@
                     ${ready
                         ? '<p class="event-todos-hint">Чеклист после мероприятия выполнен — можно отправить в архив.</p>'
                         : '<p class="event-todos-hint">Кнопка «В архив» появится, когда отмечены все пункты после мероприятия.</p>'}
+                    </div>
                 </div>
             `;
         }
