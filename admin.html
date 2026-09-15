@@ -579,7 +579,7 @@
         }
 
         .questions-list {
-            max-height: 400px;
+            max-height: 65vh;
             overflow-y: auto;
             padding-right: 1rem;
         }
@@ -638,6 +638,39 @@
             width: 100%;
             min-height: 90px;
             resize: vertical;
+        }
+
+        .question-grid-editor {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .question-grid-col label {
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .question-grid-hint {
+            font-size: 0.8rem;
+            opacity: 0.75;
+            margin: 0 0 0.6rem;
+            text-transform: none;
+            letter-spacing: 0;
+        }
+
+        .question-grid-exclusive {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            text-transform: none;
+            margin-top: 0.85rem;
+        }
+
+        @media (max-width: 768px) {
+            .question-grid-editor { grid-template-columns: 1fr; }
         }
 
         .questions-list::-webkit-scrollbar-thumb {
@@ -1408,7 +1441,7 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth-compat.js"></script>
-    <script src="assets/registration-utils.js?v=7"></script>
+    <script src="assets/registration-utils.js?v=8"></script>
     <script src="assets/api-config.js"></script>
     <script src="assets/sheets-sync.js?v=3"></script>
     <script>
@@ -1691,7 +1724,9 @@
             document.getElementById('eventArchiveText').value = event.archiveText || '';
             currentQuestions = (event.questions || []).map(q => ({
                 ...q,
-                options: Array.isArray(q.options) ? q.options : []
+                options: Array.isArray(q.options) ? q.options : [],
+                rows: Array.isArray(q.rows) ? q.rows : [],
+                columns: Array.isArray(q.columns) ? q.columns : []
             }));
             renderQuestions();
             document.getElementById('eventModal').classList.add('active');
@@ -1825,6 +1860,7 @@
                                     <option value="select" ${q.type === 'select' ? 'selected' : ''}>Выбор из списка</option>
                                     <option value="radio" ${q.type === 'radio' ? 'selected' : ''}>Один вариант</option>
                                     <option value="multiselect" ${q.type === 'multiselect' ? 'selected' : ''}>Несколько вариантов</option>
+                                    <option value="grid" ${q.type === 'grid' ? 'selected' : ''}>Сетка (дни × слоты)</option>
                                     <option value="checkbox" ${q.type === 'checkbox' ? 'selected' : ''}>Галочка</option>
                                     <option value="faculty" ${q.type === 'faculty' ? 'selected' : ''}>Факультет МГУ</option>
                                     <option value="course" ${q.type === 'course' ? 'selected' : ''}>Курс обучения</option>
@@ -1866,6 +1902,47 @@
                                 <button type="button" class="btn btn-success btn-small" onclick="addOption(${q.id})" style="margin-top: 0.5rem;">+ Добавить вариант</button>
                             </div>
                         ` : ''}
+
+                        ${q.type === 'grid' ? `
+                            <div class="question-grid-editor">
+                                <div class="question-grid-col">
+                                    <label>Строки (дни)</label>
+                                    <p class="question-grid-hint">Например: 24 сентября, четверг</p>
+                                    ${(q.rows || []).map((row, i) => `
+                                        <div class="option-item">
+                                            <input type="text"
+                                                   value="${escapeHtmlAttr(row)}"
+                                                   placeholder="Строка ${i + 1}"
+                                                   onchange="updateGridItem(${q.id}, 'rows', ${i}, this.value)">
+                                            <button type="button" class="btn btn-danger btn-icon" onclick="removeGridItem(${q.id}, 'rows', ${i})">×</button>
+                                        </div>
+                                    `).join('')}
+                                    <button type="button" class="btn btn-success btn-small" onclick="addGridItem(${q.id}, 'rows')" style="margin-top: 0.5rem;">+ Добавить строку</button>
+                                    <button type="button" class="btn btn-small" onclick="fillGridRowsFromEvent(${q.id})" style="margin-top: 0.5rem; background: #5c6bc0;">Подставить дни мероприятия</button>
+                                </div>
+                                <div class="question-grid-col">
+                                    <label>Столбцы (слоты)</label>
+                                    <p class="question-grid-hint">Например: 8:00-12:00</p>
+                                    ${(q.columns || []).map((col, i) => `
+                                        <div class="option-item">
+                                            <input type="text"
+                                                   value="${escapeHtmlAttr(col)}"
+                                                   placeholder="Столбец ${i + 1}"
+                                                   onchange="updateGridItem(${q.id}, 'columns', ${i}, this.value)">
+                                            <button type="button" class="btn btn-danger btn-icon" onclick="removeGridItem(${q.id}, 'columns', ${i})">×</button>
+                                        </div>
+                                    `).join('')}
+                                    <button type="button" class="btn btn-success btn-small" onclick="addGridItem(${q.id}, 'columns')" style="margin-top: 0.5rem;">+ Добавить столбец</button>
+                                </div>
+                            </div>
+                            <label class="question-grid-exclusive">
+                                <input type="checkbox"
+                                       ${q.exclusiveLast !== false ? 'checked' : ''}
+                                       onchange="updateQuestion(${q.id}, 'exclusiveLast', this.checked)"
+                                       style="width: auto;">
+                                Последний столбец исключает остальные в строке
+                            </label>
+                        ` : ''}
                     </div>
                 `;
             }).join('');
@@ -1881,10 +1958,82 @@
                         question.options = ['Вариант 1', 'Вариант 2'];
                     }
                     renderQuestions();
+                } else if (field === 'type' && value === 'grid') {
+                    ensureGridQuestion(question);
+                    renderQuestions();
                 } else if (field === 'type') {
                     renderQuestions();
                 }
             }
+        }
+
+        function ensureGridQuestion(question) {
+            if (!Array.isArray(question.rows) || question.rows.length === 0) {
+                question.rows = defaultGridRows();
+            }
+            if (!Array.isArray(question.columns) || question.columns.length === 0) {
+                question.columns = typeof DEFAULT_GRID_COLUMNS !== 'undefined'
+                    ? DEFAULT_GRID_COLUMNS.slice()
+                    : ['8:00-12:00', '12:00-16:00', '16:00-20:00', 'Не смогу в этот день'];
+            }
+            if (question.exclusiveLast == null) question.exclusiveLast = true;
+        }
+
+        function defaultGridRows() {
+            const dateRaw = document.getElementById('eventDate')?.value;
+            const dateEndRaw = document.getElementById('eventDateEnd')?.value;
+            if (dateRaw && typeof enumerateEventDays === 'function') {
+                const days = enumerateEventDays({ dateRaw, dateEndRaw });
+                if (days.length && typeof formatGridRowLabel === 'function') {
+                    return days.map(formatGridRowLabel);
+                }
+            }
+            return ['День 1', 'День 2', 'День 3'];
+        }
+
+        function addGridItem(questionId, field) {
+            const question = currentQuestions.find(q => q.id === questionId);
+            if (!question) return;
+            if (!Array.isArray(question[field])) question[field] = [];
+            question[field].push('');
+            renderQuestions();
+        }
+
+        function removeGridItem(questionId, field, index) {
+            const question = currentQuestions.find(q => q.id === questionId);
+            if (question && Array.isArray(question[field])) {
+                question[field].splice(index, 1);
+                renderQuestions();
+            }
+        }
+
+        function updateGridItem(questionId, field, index, value) {
+            const question = currentQuestions.find(q => q.id === questionId);
+            if (question && Array.isArray(question[field])) {
+                question[field][index] = value;
+            }
+        }
+
+        function fillGridRowsFromEvent(questionId) {
+            const dateRaw = document.getElementById('eventDate')?.value;
+            const dateEndRaw = document.getElementById('eventDateEnd')?.value;
+            if (!dateRaw) {
+                showModalMessage('error', 'Сначала укажите дату мероприятия');
+                return;
+            }
+            const days = typeof enumerateEventDays === 'function'
+                ? enumerateEventDays({ dateRaw, dateEndRaw })
+                : [];
+            if (!days.length) {
+                showModalMessage('error', 'Не удалось прочитать даты мероприятия');
+                return;
+            }
+            const question = currentQuestions.find(q => q.id === questionId);
+            if (!question) return;
+            question.rows = days.map((iso) => (
+                typeof formatGridRowLabel === 'function' ? formatGridRowLabel(iso) : iso
+            ));
+            renderQuestions();
         }
 
         // Обновить опцию

@@ -128,6 +128,52 @@ function isCancelledRegistration(record) {
     return getRegistrationStatus(record) === REGISTRATION_STATUS.CANCELLED;
 }
 
+const GRID_ROW_SEP = ' — ';
+const GRID_SLOT_SEP = ', ';
+const GRID_LINE_SEP = '; ';
+const DEFAULT_GRID_COLUMNS = ['8:00-12:00', '12:00-16:00', '16:00-20:00', 'Не смогу в этот день'];
+const GRID_MONTHS_LONG = [
+    'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+    'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+];
+const GRID_WEEKDAYS_LONG = [
+    'воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'
+];
+
+function isGridRowFieldName(key) {
+    return /^question_.+__\d+$/.test(String(key || ''));
+}
+
+function formatGridRowLabel(isoDate) {
+    const date = parseEventDateValue(isoDate);
+    if (!date) return String(isoDate || '');
+    return `${date.getDate()} ${GRID_MONTHS_LONG[date.getMonth()]}, ${GRID_WEEKDAYS_LONG[date.getDay()]}`;
+}
+
+function formatGridAnswer(question, selectedByRow) {
+    const rows = Array.isArray(question?.rows) ? question.rows : [];
+    const parts = [];
+    rows.forEach((row, ri) => {
+        const label = String(row || '').trim();
+        const values = (selectedByRow[ri] || [])
+            .map((value) => String(value || '').trim())
+            .filter(Boolean);
+        if (!label || !values.length) return;
+        parts.push(`${label}${GRID_ROW_SEP}${values.join(GRID_SLOT_SEP)}`);
+    });
+    return parts.join(GRID_LINE_SEP);
+}
+
+function formatGridAnswerFromForm(form, question) {
+    const fieldName = `question_${question.id}`;
+    const rows = Array.isArray(question.rows) ? question.rows : [];
+    const selectedByRow = rows.map((_, ri) => {
+        const checked = form.querySelectorAll(`input[name="${fieldName}__${ri}"]:checked`);
+        return Array.from(checked).map((cb) => cb.value);
+    });
+    return formatGridAnswer(question, selectedByRow);
+}
+
 function collectAnswersFromForm(form, questions) {
     const formData = new FormData(form);
     const answers = {};
@@ -136,6 +182,7 @@ function collectAnswersFromForm(form, questions) {
     const rawEntries = {};
     for (const [key, value] of formData.entries()) {
         if (key === 'registrationMode' || key === 'selectedDays') continue;
+        if (isGridRowFieldName(key)) continue;
         const v = typeof value === 'string' ? value.trim() : value;
         if (rawEntries[key] !== undefined) {
             if (!Array.isArray(rawEntries[key])) rawEntries[key] = [rawEntries[key]];
@@ -147,6 +194,14 @@ function collectAnswersFromForm(form, questions) {
     for (const [key, val] of Object.entries(rawEntries)) {
         answers[key] = Array.isArray(val) ? val.join(', ') : val;
     }
+
+    (questions || []).forEach((q) => {
+        if (!q || q.type !== 'grid' || q.id == null) return;
+        const formatted = formatGridAnswerFromForm(form, q);
+        const key = `question_${q.id}`;
+        if (formatted) answers[key] = formatted;
+        else delete answers[key];
+    });
 
     const questionTextMap = buildQuestionTextMap(questions);
 

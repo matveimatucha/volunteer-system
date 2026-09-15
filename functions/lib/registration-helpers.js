@@ -58,6 +58,21 @@ function findContactPhone(answers, questions) {
     return '';
 }
 
+function isMissingRequiredAnswer(q, answers) {
+    if (!q || q.type === 'infotext' || !q.required) return false;
+    const value = answers && answers[`question_${q.id}`];
+    if (value == null || String(value).trim() === '') return true;
+    if (q.type === 'grid') {
+        const rows = (Array.isArray(q.rows) ? q.rows : [])
+            .map((row) => String(row || '').trim())
+            .filter(Boolean);
+        if (!rows.length) return false;
+        const text = String(value);
+        return rows.some((row) => !text.includes(`${row} — `));
+    }
+    return false;
+}
+
 function getRegistrationStatus(record) {
     return (record && record.status) || REGISTRATION_STATUS.CONFIRMED;
 }
@@ -462,6 +477,7 @@ module.exports = {
     normalizePhone,
     findContactEmail,
     findContactPhone,
+    isMissingRequiredAnswer,
     getRegistrationStatus,
     isConfirmedRegistration,
     isFirstNameQuestion,

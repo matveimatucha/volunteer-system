@@ -5,6 +5,7 @@ const {
     REGISTRATION_STATUS,
     findContactEmail,
     findContactPhone,
+    isMissingRequiredAnswer,
     getRegistrationStatus,
     isConfirmedRegistration,
     isEventClosedForRegistration,
@@ -92,7 +93,7 @@ function createApp({ admin, db, log = console }) {
         const answers = {};
         const entries = Object.entries(rawAnswers).slice(0, 60);
         for (const [key, value] of entries) {
-            answers[String(key).slice(0, 100)] = String(value ?? '').slice(0, 3000);
+            answers[String(key).slice(0, 100)] = String(value ?? '').slice(0, 8000);
         }
 
         const answersLabeled = [];
@@ -101,7 +102,7 @@ function createApp({ admin, db, log = console }) {
                 if (!item || typeof item !== 'object') continue;
                 answersLabeled.push({
                     question: String(item.question ?? '').slice(0, 300),
-                    answer: String(item.answer ?? '').slice(0, 3000)
+                    answer: String(item.answer ?? '').slice(0, 8000)
                 });
             }
         }
@@ -127,9 +128,7 @@ function createApp({ admin, db, log = console }) {
             return;
         }
         for (const q of list) {
-            if (!q || q.type === 'infotext' || !q.required) continue;
-            const value = answers[`question_${q.id}`];
-            if (value == null || String(value).trim() === '') {
+            if (isMissingRequiredAnswer(q, answers)) {
                 throw new ApiError(400, 'MISSING_REQUIRED');
             }
         }
@@ -179,16 +178,27 @@ function createApp({ admin, db, log = console }) {
         const questions = Array.isArray(src.questions)
             ? src.questions.slice(0, 60).map((q) => {
                 if (!q || typeof q !== 'object') return null;
-                return {
+                const type = String(q.type ?? 'text').slice(0, 40);
+                const item = {
                     id: q.id,
                     text: String(q.text ?? '').slice(0, 500),
-                    type: String(q.type ?? 'text').slice(0, 40),
+                    type,
                     required: q.required === true,
                     description: String(q.description ?? '').slice(0, 1000),
                     options: Array.isArray(q.options)
                         ? q.options.slice(0, 40).map(opt => String(opt ?? '').slice(0, 200))
                         : []
                 };
+                if (type === 'grid') {
+                    item.rows = Array.isArray(q.rows)
+                        ? q.rows.slice(0, 62).map(row => String(row ?? '').slice(0, 200))
+                        : [];
+                    item.columns = Array.isArray(q.columns)
+                        ? q.columns.slice(0, 12).map(col => String(col ?? '').slice(0, 200))
+                        : [];
+                    item.exclusiveLast = q.exclusiveLast !== false;
+                }
+                return item;
             }).filter(Boolean)
             : [];
         const dateRaw = String(src.dateRaw || '').slice(0, 40);

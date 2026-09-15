@@ -243,6 +243,44 @@ test('registration-utils exposes calendar helpers and cancelled status', async (
   assert.match(utils, /function isCancelledRegistration/);
   assert.match(utils, /function formatEventDateRange/);
   assert.match(utils, /function enumerateEventDays/);
+  assert.match(utils, /function formatGridAnswer/);
+  assert.match(utils, /function formatGridRowLabel/);
+});
+
+test('grid question type is wired through admin, register and API', async () => {
+  const adminHtml = await readProjectFile('admin.html');
+  const registerHtml = await readProjectFile('register.html');
+  const serverApp = await readProjectFile('server/lib/create-app.js');
+  const helpers = require('../functions/lib/registration-helpers.js');
+
+  assert.match(adminHtml, /value="grid"/);
+  assert.match(adminHtml, /function fillGridRowsFromEvent/);
+  assert.match(registerHtml, /case 'grid':/);
+  assert.match(registerHtml, /class="answer-grid"/);
+  assert.match(registerHtml, /function handleGridExclusiveChange/);
+  assert.match(serverApp, /item\.exclusiveLast/);
+  assert.match(serverApp, /type === 'grid'/);
+
+  const question = {
+    id: 1,
+    type: 'grid',
+    required: true,
+    rows: ['24 сентября, четверг', '25 сентября, пятница'],
+    columns: ['8:00-12:00', 'Не смогу в этот день']
+  };
+  assert.equal(helpers.isMissingRequiredAnswer(question, {}), true);
+  assert.equal(
+    helpers.isMissingRequiredAnswer(question, {
+      question_1: '24 сентября, четверг — 8:00-12:00'
+    }),
+    true
+  );
+  assert.equal(
+    helpers.isMissingRequiredAnswer(question, {
+      question_1: '24 сентября, четверг — 8:00-12:00; 25 сентября, пятница — Не смогу в этот день'
+    }),
+    false
+  );
 });
 
 test('register.html lets volunteers pick days in a range', async () => {

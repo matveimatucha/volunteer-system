@@ -20,6 +20,7 @@ const {
     REGISTRATION_STATUS,
     findContactEmail,
     findContactPhone,
+    isMissingRequiredAnswer,
     getRegistrationStatus,
     isConfirmedRegistration,
     isEventClosedForRegistration,
@@ -88,7 +89,7 @@ function sanitizeAnswers(rawAnswers, rawAnswersLabeled) {
     const answers = {};
     const entries = Object.entries(rawAnswers).slice(0, 60);
     for (const [key, value] of entries) {
-        answers[String(key).slice(0, 100)] = String(value ?? '').slice(0, 3000);
+        answers[String(key).slice(0, 100)] = String(value ?? '').slice(0, 8000);
     }
 
     const answersLabeled = [];
@@ -97,7 +98,7 @@ function sanitizeAnswers(rawAnswers, rawAnswersLabeled) {
             if (!item || typeof item !== 'object') continue;
             answersLabeled.push({
                 question: String(item.question ?? '').slice(0, 300),
-                answer: String(item.answer ?? '').slice(0, 3000)
+                answer: String(item.answer ?? '').slice(0, 8000)
             });
         }
     }
@@ -123,9 +124,7 @@ function assertRequiredAnswers(answers, questions) {
         return;
     }
     for (const q of list) {
-        if (!q || q.type === 'infotext' || !q.required) continue;
-        const value = answers[`question_${q.id}`];
-        if (value == null || String(value).trim() === '') {
+        if (isMissingRequiredAnswer(q, answers)) {
             throw new ApiError(400, 'MISSING_REQUIRED');
         }
     }

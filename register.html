@@ -332,6 +332,114 @@
             text-decoration: underline;
         }
 
+        .answer-grid {
+            --grid-cols: 4;
+            background: #fff;
+            border: 1px solid #e6e6ea;
+            border-radius: 12px;
+            padding: 0.35rem 0.5rem 0.5rem;
+            overflow-x: auto;
+        }
+
+        .answer-grid.has-error {
+            border-color: var(--danger);
+            background: rgba(214, 48, 49, 0.03);
+        }
+
+        .answer-grid-head,
+        .answer-grid-row {
+            display: grid;
+            grid-template-columns: minmax(150px, 1.5fr) repeat(var(--grid-cols), minmax(92px, 1fr));
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .answer-grid-head {
+            padding: 0.7rem 0.4rem 0.55rem;
+            border-bottom: 1px solid #eee;
+            color: #555;
+            font-size: 0.88rem;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .answer-grid-row {
+            padding: 0.7rem 0.4rem;
+            border-bottom: 1px solid #f1f1f4;
+        }
+
+        .answer-grid-row:last-child {
+            border-bottom: none;
+        }
+
+        .answer-grid-row-label {
+            font-weight: 500;
+            color: #222;
+            padding-right: 0.4rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .answer-grid-col-label {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .answer-grid-cell {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.55rem;
+            margin: 0;
+            font-weight: 400;
+            cursor: pointer;
+        }
+
+        .answer-grid input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            padding: 0;
+            margin: 0;
+            flex-shrink: 0;
+            cursor: pointer;
+            accent-color: var(--primary);
+            background: none;
+            border: none;
+            box-shadow: none;
+            appearance: auto;
+        }
+
+        .answer-grid-col-name {
+            display: none;
+            font-size: 0.92rem;
+            color: #333;
+        }
+
+        @media (max-width: 640px) {
+            .answer-grid-head {
+                display: none;
+            }
+            .answer-grid-row {
+                display: flex;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.65rem;
+                padding: 0.9rem 0.35rem;
+            }
+            .answer-grid-row-label {
+                white-space: normal;
+                font-weight: 700;
+            }
+            .answer-grid-cell {
+                justify-content: flex-start;
+            }
+            .answer-grid-col-name {
+                display: inline;
+            }
+        }
+
         .submit-btn {
             width: 100%;
             padding: 1.2rem;
@@ -510,7 +618,7 @@
     </div>
 
     <script src="assets/event-images.js"></script>
-    <script src="assets/registration-utils.js?v=7"></script>
+    <script src="assets/registration-utils.js?v=8"></script>
     <script src="assets/api-config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script>
@@ -1028,6 +1136,47 @@
                             </div>
                         `;
 
+                    case 'grid': {
+                        const rows = (q.rows || []).map(r => String(r || '').trim()).filter(Boolean);
+                        const cols = (q.columns || []).map(c => String(c || '').trim()).filter(Boolean);
+                        if (!rows.length || !cols.length) return '';
+                        const exclusiveLast = q.exclusiveLast !== false;
+                        const head = `<div class="answer-grid-corner"></div>` + cols.map(col =>
+                            `<div class="answer-grid-col-label" title="${escapeHtmlAttr(col)}">${escapeHtmlText(col)}</div>`
+                        ).join('');
+                        const body = rows.map((row, ri) => {
+                            const cells = cols.map((col, ci) => `
+                                <label class="answer-grid-cell" for="${fieldName}_${ri}_${ci}">
+                                    <input type="checkbox"
+                                           id="${fieldName}_${ri}_${ci}"
+                                           name="${fieldName}__${ri}"
+                                           value="${escapeHtmlAttr(col)}"
+                                           data-grid-last="${ci === cols.length - 1 ? '1' : '0'}">
+                                    <span class="answer-grid-col-name">${escapeHtmlText(col)}</span>
+                                </label>`).join('');
+                            return `
+                                <div class="answer-grid-row">
+                                    <div class="answer-grid-row-label" title="${escapeHtmlAttr(row)}">${escapeHtmlText(row)}</div>
+                                    ${cells}
+                                </div>`;
+                        }).join('');
+                        return `
+                            <div class="form-group">
+                                <label>${qText} ${requiredMark}</label>
+                                ${qDesc ? `<small style="color: #666; margin-bottom: 0.5rem; display: block;">${qDesc}</small>` : ''}
+                                <div class="answer-grid"
+                                     style="--grid-cols: ${cols.length}"
+                                     ${q.required ? 'data-grid-required="true"' : ''}
+                                     ${exclusiveLast ? 'data-exclusive-last="true"' : ''}
+                                     data-fieldname="${fieldName}">
+                                    <div class="answer-grid-head">${head}</div>
+                                    ${body}
+                                </div>
+                                <div class="field-error">Отметьте хотя бы один вариант в каждой строке</div>
+                            </div>
+                        `;
+                    }
+
                     case 'checkbox':
                         return `
                             <div class="form-group">
@@ -1251,6 +1400,19 @@
                     if (errorDiv) errorDiv.classList.add('show');
                 }
             });
+
+            form.querySelectorAll('.answer-grid[data-grid-required]').forEach(grid => {
+                const rows = grid.querySelectorAll('.answer-grid-row');
+                const complete = Array.from(rows).every(row =>
+                    Array.from(row.querySelectorAll('input[type="checkbox"]')).some(cb => cb.checked)
+                );
+                if (!complete) {
+                    isValid = false;
+                    grid.classList.add('has-error');
+                    const errorDiv = grid.closest('.form-group').querySelector('.field-error');
+                    if (errorDiv) errorDiv.classList.add('show');
+                }
+            });
             
             // Проверяем все обязательные поля
             const inputs = form.querySelectorAll('input[required], textarea[required], select[required]');
@@ -1359,8 +1521,28 @@
                 if (errorDiv) {
                     errorDiv.classList.remove('show');
                 }
+                const grid = e.target.closest('.answer-grid');
+                if (grid) {
+                    grid.classList.remove('has-error');
+                    if (e.target.type === 'checkbox') handleGridExclusiveChange(e.target);
+                }
             }
         });
+
+        function handleGridExclusiveChange(cb) {
+            const grid = cb.closest('.answer-grid');
+            if (!grid || grid.dataset.exclusiveLast !== 'true') return;
+            const row = cb.closest('.answer-grid-row');
+            if (!row) return;
+            const boxes = Array.from(row.querySelectorAll('input[type="checkbox"]'));
+            const last = boxes.find(box => box.dataset.gridLast === '1') || boxes[boxes.length - 1];
+            if (!last) return;
+            if (cb === last && cb.checked) {
+                boxes.forEach(box => { if (box !== last) box.checked = false; });
+            } else if (cb !== last && cb.checked) {
+                last.checked = false;
+            }
+        }
 
         function displayError(message) {
             document.getElementById('contentArea').innerHTML = `
