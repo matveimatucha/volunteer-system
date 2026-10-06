@@ -132,12 +132,30 @@ test('registration helpers close past-dated events', async () => {
   assert.match(helpers, /dateEndRaw/);
 });
 
-test('firebase hosting redirect folder exists', async () => {
+test('public site uses profcom domain and contact', async () => {
   const firebaseJson = await readProjectFile('firebase.json');
   const redirectPage = await readProjectFile('deploy/hosting-redirect/index.html');
+  const siteConfig = await readProjectFile('assets/site-config.js');
+  const registerHtml = await readProjectFile('register.html');
+  const uptime = await readProjectFile('.github/workflows/uptime.yml');
+  const enableHttps = await readProjectFile('deploy/enable-https.sh');
+  const enableNew = await readProjectFile('deploy/enable-new-domain.sh');
 
   assert.match(firebaseJson, /deploy\/hosting-redirect/);
-  assert.match(redirectPage, /volonter-msu\.ru/);
+  assert.match(firebaseJson, /https:\/\/volunteer\.msuprof\.com/);
+  assert.doesNotMatch(firebaseJson, /volonter-msu\.ru/);
+  assert.match(redirectPage, /volunteer\.msuprof\.com/);
+  assert.doesNotMatch(redirectPage, /volonter-msu\.ru/);
+  assert.match(siteConfig, /https:\/\/volunteer\.msuprof\.com/);
+  assert.match(siteConfig, /volunteer@msuprof\.com/);
+  assert.doesNotMatch(siteConfig, /sukmanov|matveimatucha|volonter-msu\.ru/);
+  assert.match(registerHtml, /assets\/site-config\.js/);
+  assert.doesNotMatch(registerHtml, /matvei\.sukmanov@chemistry\.msu\.ru/);
+  assert.match(uptime, /volunteer\.msuprof\.com/);
+  assert.match(enableHttps, /INCLUDE_WWW/);
+  assert.match(enableNew, /volunteer\.msuprof\.com/);
+  assert.match(enableNew, /не трогаем/);
+  assert.doesNotMatch(enableNew, /certbot --nginx -d "\$DOMAIN" -d "www\./);
 });
 
 test('server entry serves static files and health check', async () => {

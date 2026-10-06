@@ -7,6 +7,18 @@ function getBotToken() {
     return (process.env.TELEGRAM_BOT_TOKEN || '').trim();
 }
 
+async function resolveBotToken(db) {
+    const fromEnv = getBotToken();
+    if (fromEnv) return fromEnv;
+    if (!db) return '';
+    try {
+        const snap = await db.collection('settings').doc('notifications').get();
+        return String((snap.data() || {}).telegramBotToken || '').trim();
+    } catch (_) {
+        return '';
+    }
+}
+
 function parseChatIds(raw) {
     if (!raw) return [];
     if (Array.isArray(raw)) {
@@ -36,7 +48,7 @@ function statusLabel(status) {
     return 'подтверждена';
 }
 
-function formatRegistrationMessage(registration, regId) {
+function formatRegistrationMessage(registration, regId, hits) {
     const common = extractCommonFields(registration.answersLabeled);
     const lines = [
         '🆕 Новая регистрация',
@@ -44,6 +56,12 @@ function formatRegistrationMessage(registration, regId) {
         `Мероприятие: ${registration.eventTitle || '—'}`,
         `Статус: ${statusLabel(registration.status)}`
     ];
+
+    if (Array.isArray(hits) && hits.length) {
+        lines.push('', '⛔ Не брать');
+        const reasons = [...new Set(hits.map(hit => String(hit.reason || '').trim()).filter(Boolean))];
+        if (reasons.length) lines.push(reasons.join('\n'));
+    }
 
     if (common.name) lines.push(`Имя: ${common.name}`);
     if (registration.contactEmail) lines.push(`Email: ${registration.contactEmail}`);
@@ -79,16 +97,52 @@ function formatRegistrationMessage(registration, regId) {
 }
 
 const { resolveSheetsUrl, postToSheets } = require('./sheets-sync');
+const { findBlacklistHits } = require('./blacklist');
 
-async function sendTelegramDirect(token, chatId, text) {
+async function relayTelegram(db, options, log = console) {
+    const chatIds = (options.chatIds || []).map(String).filter(Boolean);
+    const text = String(options.text || '');
+    if (!chatIds.length || !text) return false;
+    const token = await resolveBotToken(db);
+    if (!token) {
+        log.warn('[telegram] токен бота не задан');
+        return false;
+    }
+    const payload = {
+        action: 'telegram_notify',
+        botToken: token,
+        chatIds,
+        text
+    };
+    if (options.replyMarkup) payload.replyMarkup = options.replyMarkup;
+    if (options.callbackQueryId) payload.callbackQueryId = options.callbackQueryId;
+
+    try {
+        const ok = await postToSheets(payload, db);
+        if (ok) return true;
+    } catch (err) {
+        log.warn('[telegram] Apps Script не отправил сообщение', err.message);
+    }
+
+    try {
+        const results = await Promise.allSettled(chatIds.map(chatId => sendTelegramDirect(token, chatId, text, options.replyMarkup)));
+        return results.some(item => item.status === 'fulfilled');
+    } catch (_) {
+        return false;
+    }
+}
+
+async function sendTelegramDirect(token, chatId, text, replyMarkup) {
+    const body = {
+        chat_id: chatId,
+        text,
+        disable_web_page_preview: true
+    };
+    if (replyMarkup) body.reply_markup = replyMarkup;
     const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            chat_id: chatId,
-            text,
-            disable_web_page_preview: true
-        })
+        body: JSON.stringify(body)
     });
 
     if (!response.ok) {
@@ -98,8 +152,8 @@ async function sendTelegramDirect(token, chatId, text) {
     return true;
 }
 
-async function sendViaAppsScript(db, registration, regId, log) {
-    const token = getBotToken();
+async function sendViaAppsScript(db, registration, regId, log, hits) {
+    const token = await resolveBotToken(db);
     const chatIds = await getRecipientChatIds(db);
     if (!token || !chatIds.length) return false;
 
@@ -109,7 +163,7 @@ async function sendViaAppsScript(db, registration, regId, log) {
         return false;
     }
 
-    const text = formatRegistrationMessage(registration, regId);
+    const text = formatRegistrationMessage(registration, regId, hits);
     const ok = await postToSheets({
         action: 'telegram_notify',
         botToken: token,
@@ -124,57 +178,116 @@ async function sendViaAppsScript(db, registration, regId, log) {
     return ok;
 }
 
+async function claimTelegramNotification(db, regId) {
+    const ref = db.collection('registrations').doc(regId);
+    try {
+        return await db.runTransaction(async (tx) => {
+            const snap = await tx.get(ref);
+            if (!snap.exists) return false;
+            if (snap.data().telegramNotifiedAt) return false;
+            tx.update(ref, { telegramNotifiedAt: Date.now() });
+            return true;
+        });
+    } catch (_) {
+        return false;
+    }
+}
+
 async function sendRegistrationNotification(db, registration, regId, log = console) {
     if (registration.telegramNotifiedAt) return false;
 
-    const chatIds = await getRecipientChatIds(db);
-    if (!chatIds.length) {
-        log.warn('[telegram] нет получателей — добавьте chat ID в админке');
-        return false;
-    }
+    const claimed = await claimTelegramNotification(db, regId);
+    if (!claimed) return false;
 
-    if (!getBotToken()) {
-        log.warn('[telegram] TELEGRAM_BOT_TOKEN не задан на сервере');
-        return false;
-    }
-
-    // Основной путь: Google Apps Script (VPS в РФ не достучится до Telegram напрямую)
-    let sent = await sendViaAppsScript(db, registration, regId, log);
-
-    // Запасной путь: прямой API (если когда-нибудь заработает)
-    if (!sent) {
-        const text = formatRegistrationMessage(registration, regId);
-        const token = getBotToken();
-        const results = await Promise.allSettled(
-            chatIds.map(chatId => sendTelegramDirect(token, chatId, text))
-        );
-        sent = results.some(r => r.status === 'fulfilled');
-        if (sent) log.info('[telegram] отправлено напрямую', { regId });
-    }
-
-    if (!sent) return false;
-
-    await db.collection('registrations').doc(regId).update({
-        telegramNotifiedAt: Date.now()
+    const releaseClaim = () => db.collection('registrations').doc(regId).update({
+        telegramNotifiedAt: null
     }).catch(() => {});
 
-    return true;
+    try {
+        const settingsSnap = await db.collection('settings').doc('notifications').get();
+        if (settingsSnap.exists && settingsSnap.data().telegramEnabled === false) return true;
+
+        const chatIds = await getRecipientChatIds(db);
+        let instantIds = [];
+        try {
+            instantIds = await require('./telegram-bot').listInstantChatIds(db, registration.eventId);
+        } catch (err) {
+            log.error('[telegram] не удалось прочитать подписки', err);
+        }
+        const targets = [...new Set([...chatIds, ...instantIds])];
+        if (!targets.length) {
+            return true;
+        }
+
+        const token = await resolveBotToken(db);
+        if (!token) {
+            log.warn('[telegram] TELEGRAM_BOT_TOKEN не задан на сервере');
+            await releaseClaim();
+            return false;
+        }
+
+        let hits = [];
+        try {
+            const snap = await db.collection('blacklist').get();
+            const entries = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            hits = findBlacklistHits(entries, registration);
+        } catch (err) {
+            log.error('[blacklist] не удалось проверить список', err);
+        }
+
+        let sent = await relayTelegram(db, { chatIds: targets, text: formatRegistrationMessage(registration, regId, hits) }, log);
+
+        if (!sent) {
+            await releaseClaim();
+            return false;
+        }
+
+        return true;
+    } catch (err) {
+        await releaseClaim();
+        throw err;
+    }
 }
 
 function scheduleRegistrationTelegram(db, regId, registration, log = console) {
-    if (!getBotToken()) return;
     sendRegistrationNotification(db, registration, regId, log).catch((err) => {
         log.error('[telegram] ошибка отправки', { regId, error: err.message });
     });
 }
 
-async function handleTelegramUpdate(update, log = console) {
-    // Webhook с VPS не работает — ответ на /start тоже через Apps Script при необходимости
-    log.info('[telegram] webhook update ignored (use @userinfobot for chat_id)');
+async function handleTelegramUpdate(update, db, log = console) {
+    if (!update || !db) return;
+    await require('./telegram-bot').handleCuratorUpdate(db, update, log);
 }
 
-async function ensureTelegramWebhook(log = console) {
-    log.info('[telegram] webhook отключён — используется Apps Script relay');
+async function ensureTelegramWebhook(db, log = console) {
+    const token = await resolveBotToken(db);
+    if (!token) {
+        log.info('[telegram] токен бота не задан — бот кураторов не запущен');
+        return;
+    }
+    const base = (process.env.SITE_PUBLIC_URL || 'https://volunteer.msuprof.com').replace(/\/$/, '');
+    const webhookUrl = `${base}/api/telegram/webhook`;
+    const posted = await postToSheets({
+        action: 'telegram_set_webhook',
+        botToken: token,
+        webhookUrl
+    }, db);
+    if (posted) {
+        log.info('[telegram] запрос на webhook отправлен в Apps Script');
+        return;
+    }
+    try {
+        const response = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: webhookUrl })
+        });
+        if (response.ok) log.info('[telegram] webhook установлен напрямую');
+        else log.warn('[telegram] не удалось установить webhook');
+    } catch (err) {
+        log.warn('[telegram] webhook не установлен', err.message);
+    }
 }
 
 function startRegistrationWatcher(db, log = console) {
@@ -205,7 +318,8 @@ function startRegistrationWatcher(db, log = console) {
 }
 
 module.exports = {
-    getBotToken,
+    relayTelegram,
+    resolveBotToken,
     getRecipientChatIds,
     formatRegistrationMessage,
     sendRegistrationNotification,

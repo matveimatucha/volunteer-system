@@ -4,31 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Статистика волонтёров</title>
-    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
-    <link rel="shortcut icon" href="assets/favicon.svg">
+    <link rel="icon" type="image/png" href="assets/favicon.png?v=6">
+    <link rel="shortcut icon" href="assets/favicon.png?v=6">
+    <link rel="apple-touch-icon" href="assets/favicon.png?v=6">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="assets/opk-theme.css">
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet"></noscript>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
-            --primary:      #1B2480;
-            --primary-dark: #121963;
-            --secondary:    #4472C4;
-            --accent:       #E8C225;
+            --primary:      #334155;
+            --primary-dark: #1e293b;
+            --secondary:    #64748b;
+            --accent:       #2563eb;
             --success:      #1e8c5a;
             --danger:       #d63031;
-            --warn:         #e67e22;
+            --warn:         #d97706;
         }
 
         body {
-            font-family: 'Source Sans 3', 'Segoe UI', sans-serif;
-            background: linear-gradient(150deg, #1B2480 0%, #1f2ca0 50%, #1B2480 100%);
-            background-attachment: fixed;
-            color: #1a2060;
+            font-family: 'Source Sans 3', system-ui, sans-serif;
+            background: #f4f5f7;
+            color: #1f2937;
             min-height: 100vh;
         }
 
@@ -46,24 +45,24 @@
             gap: 0.75rem;
             margin-bottom: 1.75rem;
             padding-bottom: 1rem;
-            border-bottom: 2px solid rgba(255,255,255,0.2);
+            border-bottom: 1px solid #e2e8f0;
         }
 
         header h1 {
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 1.9rem;
-            letter-spacing: 1px;
-            color: #fff;
+            font-family: 'Source Sans 3', system-ui, sans-serif;
+            font-size: 1.5rem;
+            letter-spacing: 0;
+            color: #1f2937;
         }
 
         .back-link {
-            color: rgba(255,255,255,0.85);
+            color: #334155;
             text-decoration: none;
             font-size: 0.9rem;
             font-weight: 600;
             transition: opacity 0.15s;
         }
-        .back-link:hover { color: #fff; }
+        .back-link:hover { color: #1e293b; }
 
         .btn {
             display: inline-block;
@@ -101,7 +100,7 @@
             background: #fff;
             padding: 2rem;
             border-radius: 12px;
-            box-shadow: 0 4px 24px rgba(27,36,128,0.1);
+            box-shadow: 0 4px 24px rgba(51,65,85,0.1);
         }
         .auth-section h2 { margin-bottom: 1.25rem; color: var(--primary); }
         .form-group { margin-bottom: 1rem; }
@@ -127,7 +126,7 @@
             border-radius: 12px;
             padding: 1.1rem 1.25rem;
             text-align: center;
-            box-shadow: 0 2px 8px rgba(27,36,128,0.05);
+            box-shadow: 0 2px 8px rgba(51,65,85,0.05);
         }
         .summary-card .val {
             font-size: 2rem;
@@ -169,9 +168,9 @@
             gap: 0.6rem;
             margin-bottom: 1.25rem;
             padding: 0.85rem 1rem;
-            background: rgba(27,36,128,0.04);
+            background: rgba(51,65,85,0.04);
             border-radius: 8px;
-            border: 1px solid rgba(27,36,128,0.1);
+            border: 1px solid rgba(51,65,85,0.1);
         }
         .event-stats-bar.visible { display: flex; }
         .ev-chip {
@@ -201,7 +200,7 @@
             background: #fff;
             border-radius: 10px;
             overflow: hidden;
-            box-shadow: 0 2px 8px rgba(27,36,128,0.06);
+            box-shadow: 0 2px 8px rgba(51,65,85,0.06);
         }
         .vol-table th {
             background: #f0f2fa;
@@ -218,7 +217,7 @@
             vertical-align: middle;
         }
         .vol-table tr:last-child td { border-bottom: none; }
-        .vol-table tr.main-row:hover td { background: rgba(27,36,128,0.03); cursor: pointer; }
+        .vol-table tr.main-row:hover td { background: rgba(51,65,85,0.03); cursor: pointer; }
         .vol-table tr.detail-row { display: none; background: #fafbff; }
         .vol-table tr.detail-row.open { display: table-row; }
         .vol-table tr.detail-row td { padding: 0.5rem 1rem 0.8rem; }
@@ -238,6 +237,9 @@
         .vol-event-pill.late    { border-color: #f39c12; background: #fffbf0; color: #b06000; }
         .vol-event-pill.absent  { border-color: #e74c3c; background: #fff5f5; color: #a91e1e; }
         .vol-event-pill.nomark  { border-color: #bdc3c7; color: #7f8c8d; }
+        .vol-comment { margin: 0.15rem 0.15rem 0.35rem; font-size: 0.86rem; line-height: 1.35; }
+        .blacklist-mark { color:#a91e1e; font-weight:700; font-size:0.75rem; margin-left:0.35rem; text-transform:uppercase; letter-spacing:0.03em; }
+        .blacklist-reason { color:#6b2b2b; white-space:pre-wrap; font-size:0.86rem; margin:0.35rem 0; }
 
         .badge {
             display: inline-block;
@@ -258,6 +260,7 @@
             .vol-table th, .vol-table td { padding: 0.5rem 0.55rem; font-size: 0.82rem; }
         }
     </style>
+    <link rel="stylesheet" href="assets/admin-ui.css">
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="assets/registration-utils.js?v=9"></script>
@@ -287,7 +290,7 @@
                     <input type="password" id="adminPassword" required placeholder="Введите пароль" autocomplete="current-password">
                 </div>
                 <button type="submit" class="btn">Войти</button>
-                <button type="button" class="btn" style="margin-top:0.6rem;background:#eef1f8;color:#1B2480;" onclick="sendAdminPasswordReset()">Не помню пароль</button>
+                <button type="button" class="btn" style="margin-top:0.6rem;background:#eef2f6;color:#334155;" onclick="sendAdminPasswordReset()">Не помню пароль</button>
             </form>
         </div>
 
@@ -338,6 +341,20 @@
         </div>
     </div>
 
+    <div id="blacklistModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:40;padding:2rem;overflow:auto;">
+        <div style="background:#fff;max-width:520px;margin:2rem auto;padding:1.5rem;border-radius:16px;">
+            <h2 style="margin-top:0;">Не брать</h2>
+            <p id="statsBlacklistName" style="font-weight:700;"></p>
+            <p id="statsBlacklistExisting" class="blacklist-reason" style="display:none;"></p>
+            <label for="statsBlacklistReason">Почему не брать *</label>
+            <textarea id="statsBlacklistReason" maxlength="1000" style="width:100%;min-height:90px;margin:0.4rem 0 1rem;" placeholder="Коротко, что случилось"></textarea>
+            <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
+                <button type="button" class="btn btn-small" onclick="closeStatsBlacklist()">Отмена</button>
+                <button type="button" class="btn btn-small" id="statsBlacklistSave" style="background:#a91e1e;" onclick="submitStatsBlacklist()">Подтвердить</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const firebaseConfig = {
             apiKey:            "AIzaSyCh17f9EFqQ-fAEGXTGpuzja-vY1RpePsc",
@@ -366,7 +383,11 @@
             if (options.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
             const res = await fetch(apiUrl(path), { ...options, headers });
             const data = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(data.error || res.status);
+            if (!res.ok) {
+                const err = new Error(data.message || data.error || res.status);
+                err.detail = data.message || '';
+                throw err;
+            }
             return data;
         }
 
@@ -555,7 +576,7 @@
 
             if (searchQuery) {
                 list = list.filter(v =>
-                    [v.name, v.email, v.phone].join(' ').toLowerCase().includes(searchQuery)
+                    [v.name, v.email, v.phone, ...(v.events || []).map(e => e.coordinatorNote || '')].join(' ').toLowerCase().includes(searchQuery)
                 );
             }
 
@@ -648,6 +669,19 @@
                     : rate >= 40 ? `<span class="badge badge-orange">${rate}%</span>`
                     : `<span class="badge badge-red">${rate}%</span>`;
 
+                const hits = Array.isArray(v.blacklist) ? v.blacklist : [];
+                const hitText = hits.map(hit => hit.reason).filter(Boolean).join('\n');
+                const mark = hits.length ? '<span class="blacklist-mark">не брать</span>' : '';
+                const regId = ((v.events || []).find(ev => ev.registrationId) || {}).registrationId || '';
+                const blockBtn = regId
+                    ? `<button type="button" class="btn btn-small" style="background:#a91e1e;margin:0.35rem 0.15rem;" onclick="openStatsBlacklist('${escHtml(regId)}')">${hits.length ? 'Дописать причину' : 'Не брать'}</button>`
+                    : '';
+                const blockNote = hitText ? `<div class="blacklist-reason">${escHtml(hitText)}</div>` : '';
+                const comments = v.events
+                    .filter(ev => ev.coordinatorNote)
+                    .map(ev => `<div class="vol-comment"><strong>${escHtml(ev.eventTitle || 'Мероприятие')}:</strong> ${escHtml(ev.coordinatorNote)}</div>`)
+                    .join('');
+
                 const pills = v.events.map(ev => {
                     const cls = attPillClass(ev.attendance);
                     const hrs = ev.workedHours != null ? ` · ${ev.workedHours}ч` : '';
@@ -664,7 +698,7 @@
 
                 return `
                     <tr class="main-row" onclick="document.getElementById('${detailId}').classList.toggle('open')">
-                        <td><strong>${escHtml(v.name || '—')}</strong></td>
+                        <td><strong>${escHtml(v.name || '—')}</strong>${mark}</td>
                         <td style="font-size:0.85rem;">${escHtml(v.faculty || '—')}</td>
                         <td style="font-size:0.85rem;text-align:center;">${escHtml(v.year || '—')}</td>
                         <td style="font-size:0.85rem;">${vkHtml}</td>
@@ -676,6 +710,9 @@
                     <tr id="${detailId}" class="detail-row">
                         <td colspan="8">
                             <div style="padding:0.2rem 0;">
+                                ${blockNote}
+                                ${blockBtn}
+                                ${comments}
                                 ${pills || '<span style="opacity:0.55;">Нет данных о мероприятиях</span>'}
                             </div>
                         </td>
@@ -683,6 +720,49 @@
             }).join('');
 
             tbody.innerHTML = rows;
+        }
+
+        let statsBlacklistId = '';
+
+        function openStatsBlacklist(registrationId) {
+            const person = allVolunteers.find(item => (item.events || []).some(ev => ev.registrationId === registrationId));
+            if (!person) return;
+            statsBlacklistId = registrationId;
+            document.getElementById('statsBlacklistName').textContent = person.name || '—';
+            const existing = document.getElementById('statsBlacklistExisting');
+            const text = (person.blacklist || []).map(hit => hit.reason).filter(Boolean).join('\n');
+            existing.style.display = text ? '' : 'none';
+            existing.textContent = text ? `Уже в списке:\n${text}\nНовая причина добавится к этой.` : '';
+            document.getElementById('statsBlacklistReason').value = '';
+            document.getElementById('blacklistModal').style.display = 'block';
+        }
+
+        function closeStatsBlacklist() {
+            statsBlacklistId = '';
+            document.getElementById('blacklistModal').style.display = 'none';
+        }
+
+        async function submitStatsBlacklist() {
+            const reason = (document.getElementById('statsBlacklistReason').value || '').trim();
+            if (!statsBlacklistId) return;
+            if (!reason) {
+                alert('Напишите, почему человека не брать');
+                return;
+            }
+            const button = document.getElementById('statsBlacklistSave');
+            if (button) button.disabled = true;
+            try {
+                await apiFetch('/api/admin/blacklist', {
+                    method: 'POST',
+                    body: JSON.stringify({ registrationId: statsBlacklistId, reason })
+                });
+                closeStatsBlacklist();
+                await loadStats();
+            } catch (err) {
+                alert(err.detail || err.message || 'Не удалось сохранить пометку');
+            } finally {
+                if (button) button.disabled = false;
+            }
         }
 
         /* ── CSV export ────────────────────────────────── */
@@ -697,7 +777,7 @@
             const list = getFilteredVolunteers();
             if (!list.length) { alert('Нет данных для экспорта'); return; }
 
-            const header = ['ФИО', 'Факультет', 'Курс', 'ВКонтакте', 'Email', 'Телефон', 'Мероприятий', 'Пришёл', 'Часов', 'Явка %'].map(escapeCsv).join(',');
+            const header = ['ФИО', 'Факультет', 'Курс', 'ВКонтакте', 'Email', 'Телефон', 'Мероприятий', 'Пришёл', 'Часов', 'Явка %', 'Комментарии'].map(escapeCsv).join(',');
             const rows = list.map(v => {
                 const rate = v.totalConfirmed ? Math.round(v.presentCount / v.totalConfirmed * 100) : 0;
                 return [
@@ -710,7 +790,11 @@
                     v.totalConfirmed,
                     v.presentCount,
                     v.totalHours.toFixed(1),
-                    v.totalConfirmed ? rate + '%' : ''
+                    v.totalConfirmed ? rate + '%' : '',
+                    (v.events || [])
+                        .filter(ev => ev.coordinatorNote)
+                        .map(ev => `${ev.eventTitle || 'Мероприятие'}: ${ev.coordinatorNote}`)
+                        .join(' | ')
                 ].map(escapeCsv).join(',');
             });
 

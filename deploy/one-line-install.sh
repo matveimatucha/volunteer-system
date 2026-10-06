@@ -4,7 +4,11 @@
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 APP_DIR=/var/www/volunteer-system
-REPO=https://github.com/matveimatucha/volunteer-system.git
+REPO="${REPO_URL:-${REPO:-}}"
+if [ -z "$REPO" ]; then
+  echo "Укажите официальный репозиторий профкома: REPO_URL=https://github.com/ОРГАНИЗАЦИЯ/volunteer-system.git"
+  exit 1
+fi
 
 apt-get update -qq
 apt-get install -y -qq curl git nginx ufw

@@ -3,3 +3,5 @@ node_modules/
 *.log
 service-account.json
 service-account*.json
+scripts/*.local.json
+scripts/*.local.txt

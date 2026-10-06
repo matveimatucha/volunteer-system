@@ -4,8 +4,14 @@
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-/var/www/volunteer-system}"
-REPO_URL="${REPO_URL:-https://github.com/matveimatucha/volunteer-system.git}"
+REPO_URL="${REPO_URL:-}"
 DOMAIN="${DOMAIN:-}"
+
+if [ -z "$REPO_URL" ]; then
+  echo "Укажите официальный репозиторий профкома:"
+  echo "  REPO_URL=https://github.com/ОРГАНИЗАЦИЯ/volunteer-system.git bash vps-setup.sh"
+  exit 1
+fi
 
 echo "==> Обновление системы"
 apt-get update -qq
@@ -59,7 +65,7 @@ pm2 startup systemd -u root --hp /root | tail -1 | bash || true
 echo "==> nginx"
 NGINX_SITE="/etc/nginx/sites-available/volunteer"
 if [ -n "$DOMAIN" ]; then
-  SERVER_NAME="$DOMAIN www.$DOMAIN"
+  SERVER_NAME="$DOMAIN"
 else
   SERVER_NAME="_"
 fi
@@ -96,10 +102,10 @@ echo " Готово. Проверка: curl http://127.0.0.1:3000/health"
 curl -s http://127.0.0.1:3000/health || echo "(сервер ещё не отвечает — проверьте service-account.json)"
 echo ""
 if [ -n "$DOMAIN" ]; then
-  echo " HTTPS: certbot --nginx -d $DOMAIN -d www.$DOMAIN"
+  echo " HTTPS без www: bash $APP_DIR/deploy/enable-new-domain.sh"
 else
   echo " Сайт по IP: http://$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')"
-  echo " Когда будет домен: DOMAIN=ваш-домен.ru bash vps-setup.sh && certbot --nginx -d ваш-домен.ru"
+  echo " Когда будет домен: bash $APP_DIR/deploy/enable-new-domain.sh"
 fi
 echo " Админ-права: cd $APP_DIR/server && npm run set-admin -- ваш@email.com"
 echo "============================================"

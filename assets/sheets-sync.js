@@ -38,6 +38,17 @@ function normalizeAnswers(answersLabeled) {
  * Пытается угадать имя, факультет и курс из answersLabeled.
  * Принимает и массив [{question,answer}], и объект {label:value}.
  */
+function isFirstNameQuestion(q) {
+    const s = String(q || '').toLowerCase().trim();
+    if (!s || s.includes('фамил') || s.includes('отчест')) return false;
+    return s === 'имя'
+        || s.startsWith('имя ')
+        || s.endsWith(' имя')
+        || s.includes('ваше имя')
+        || s === 'name'
+        || s.startsWith('first name');
+}
+
 function extractCommonFields(answersLabeled) {
     const fields = {
         name: '',
@@ -54,7 +65,7 @@ function extractCommonFields(answersLabeled) {
         if (!a) continue;
 
         if (!fields.lastName && q.includes('фамил')) fields.lastName = a;
-        if (!fields.firstName && (q.includes('имя') || q.includes('name'))) fields.firstName = a;
+        if (!fields.firstName && isFirstNameQuestion(q)) fields.firstName = a;
         if (!fields.middleName && q.includes('отчест')) fields.middleName = a;
         if (!fields.name && (q.includes('фио') || q.includes('ф.и.о'))) fields.name = a;
         if (!fields.faculty && (q.includes('факульт') || q.includes('школ') || q.includes('институт') || q.includes('кафедр') || q.includes('направлен'))) {

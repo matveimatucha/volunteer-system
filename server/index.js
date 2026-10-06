@@ -107,8 +107,14 @@ rootApp.listen(PORT, () => {
         console.warn('WARN: GOOGLE_APPLICATION_CREDENTIALS не задан — Firestore/Auth могут не работать');
     }
     startWatchers(db, console);
+    const { runTelegramDigests } = require('./lib/telegram-bot');
+    setInterval(() => {
+        runTelegramDigests(db, console).catch((err) => {
+            console.error('[telegram] digest', err);
+        });
+    }, 10 * 60 * 1000);
     if (process.env.STAGING !== 'true') {
-        ensureTelegramWebhook(console).catch((err) => {
+        ensureTelegramWebhook(db, console).catch((err) => {
             console.error('[telegram] webhook setup failed', err.message);
         });
     }

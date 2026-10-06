@@ -12,7 +12,8 @@ LOCAL_KEY = os.environ.get(
     os.path.join(os.path.dirname(__file__), '..', 'server', 'service-account.json')
 )
 REMOTE_KEY = '/var/www/volunteer-system/server/service-account.json'
-ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'matvei.sukmanov@chemistry.msu.ru')
+ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'volunteer@msuprof.com')
+REPO_URL = os.environ.get('REPO_URL', '')
 
 
 def run(client, cmd, timeout=600):
@@ -40,17 +41,17 @@ def main():
     client.connect(HOST, username=USER, password=PASSWORD, timeout=30,
                    look_for_keys=False, allow_agent=False)
 
-    code, _ = run(client, 'test -d /var/www/volunteer-system/server && echo installed || echo missing')
-    if 'missing' in _:
-        install_cmd = (
-            'curl -fsSL https://raw.githubusercontent.com/matveimatucha/'
-            'volunteer-system/main/deploy/one-line-install.sh | bash'
+    _, installed = run(client, 'test -d /var/www/volunteer-system/server && echo installed || echo missing')
+    if 'missing' in installed:
+        hint = (
+            'Сайт на сервере ещё не установлен. На сервере выполните '
+            'REPO_URL=https://github.com/ОРГАНИЗАЦИЯ/volunteer-system.git bash deploy/vps-setup.sh'
         )
-        code, _ = run(client, install_cmd, timeout=900)
-        if code != 0:
-            print('Install failed', file=sys.stderr)
-            client.close()
-            sys.exit(code)
+        if REPO_URL:
+            hint += f' (REPO_URL уже задан: {REPO_URL})'
+        print(hint, file=sys.stderr)
+        client.close()
+        sys.exit(1)
 
     if os.path.isfile(LOCAL_KEY):
         print(f'Uploading {LOCAL_KEY}...')
@@ -68,7 +69,7 @@ def main():
     run(client, 'curl -s ifconfig.me 2>/dev/null || hostname -I')
 
     client.close()
-    print('\nDone. Open http://186.246.12.138')
+    print('\nDone. Open https://volunteer.msuprof.com')
 
 
 if __name__ == '__main__':

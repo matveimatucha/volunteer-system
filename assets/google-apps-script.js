@@ -63,6 +63,8 @@ function doPost(e) {
             sendRegistrationTelegram_(data);
         } else if (data.action === 'telegram_notify') {
             sendTelegramNotify_(data);
+        } else if (data.action === 'telegram_set_webhook') {
+            setTelegramWebhook_(data);
         } else if (data.action === 'cancel') {
             updateStatusAllSheets_(data.registrationId, 'отменена', data.cancelledAt);
         } else if (data.action === 'bulk_sync') {
@@ -116,7 +118,7 @@ function getOrCreateEventSheet_(name, sampleData) {
 function applyHeader_(sheet, headers) {
     sheet.appendRow(headers);
     const hRange = sheet.getRange(1, 1, 1, headers.length);
-    hRange.setBackground('#1B2480');
+    hRange.setBackground('#1A3D2E');
     hRange.setFontColor('#ffffff');
     hRange.setFontWeight('bold');
     hRange.setFontSize(10);
@@ -178,7 +180,7 @@ function expandEventSheetHeaders_(sheet, data) {
         if (!existing.includes(q)) {
             const col = sheet.getLastColumn() + 1;
             sheet.getRange(1, col).setValue(q)
-                .setBackground('#1B2480').setFontColor('#ffffff').setFontWeight('bold');
+                .setBackground('#1A3D2E').setFontColor('#ffffff').setFontWeight('bold');
             sheet.setColumnWidth(col, 260);
             existing.push(q);
         }
@@ -459,7 +461,7 @@ function buildTelegramRegistrationText_(data) {
     return text.length > 4000 ? text.slice(0, 3990) + '\n…' : text;
 }
 
-function sendTelegramToChats_(token, chatIds, text) {
+function sendTelegramToChats_(token, chatIds, text, replyMarkup) {
     if (!token) throw new Error('TELEGRAM_BOT_TOKEN не задан в Apps Script');
     if (!chatIds || !chatIds.length) throw new Error('Нет chat_id получателей');
     if (!text) throw new Error('Пустой текст уведомления');
@@ -467,14 +469,16 @@ function sendTelegramToChats_(token, chatIds, text) {
     let sent = 0;
     let lastError = '';
     chatIds.forEach(function(chatId) {
+        const payload = {
+            chat_id: chatId,
+            text: text,
+            disable_web_page_preview: true
+        };
+        if (replyMarkup) payload.reply_markup = replyMarkup;
         const res = UrlFetchApp.fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
             method: 'post',
             contentType: 'application/json',
-            payload: JSON.stringify({
-                chat_id: chatId,
-                text: text,
-                disable_web_page_preview: true
-            }),
+            payload: JSON.stringify(payload),
             muteHttpExceptions: true
         });
         const code = res.getResponseCode();
@@ -487,6 +491,27 @@ function sendTelegramToChats_(token, chatIds, text) {
     });
     if (!sent) throw new Error(lastError || 'Не удалось отправить в Telegram');
     return sent;
+}
+
+function answerCallback_(token, callbackQueryId) {
+    if (!token || !callbackQueryId) return;
+    UrlFetchApp.fetch('https://api.telegram.org/bot' + token + '/answerCallbackQuery', {
+        method: 'post',
+        contentType: 'application/json',
+        payload: JSON.stringify({ callback_query_id: String(callbackQueryId) }),
+        muteHttpExceptions: true
+    });
+}
+
+function setTelegramWebhook_(data) {
+    const token = telegramToken_(data);
+    if (!token || !data.webhookUrl) return;
+    UrlFetchApp.fetch('https://api.telegram.org/bot' + token + '/setWebhook', {
+        method: 'post',
+        contentType: 'application/json',
+        payload: JSON.stringify({ url: String(data.webhookUrl) }),
+        muteHttpExceptions: true
+    });
 }
 
 /**
@@ -514,7 +539,8 @@ function sendRegistrationTelegram_(data) {
 
 function sendTelegramNotify_(data) {
     const token = telegramToken_(data);
+    answerCallback_(token, data.callbackQueryId);
     const chatIds = telegramChatIds_(data);
     if (!token || !chatIds.length || !data.text) return;
-    sendTelegramToChats_(token, chatIds, data.text);
+    sendTelegramToChats_(token, chatIds, data.text, data.replyMarkup || null);
 }

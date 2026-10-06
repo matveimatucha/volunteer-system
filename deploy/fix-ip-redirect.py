@@ -7,7 +7,7 @@ import paramiko
 HOST = os.environ.get('VPS_HOST', '186.246.12.138')
 USER = os.environ.get('VPS_USER', 'root')
 PASSWORD = os.environ.get('VPS_PASSWORD', '')
-DOMAIN = os.environ.get('DOMAIN', 'volonter-msu.ru')
+DOMAIN = os.environ.get('DOMAIN', 'volunteer.msuprof.com')
 
 
 def run(client, cmd, timeout=120):

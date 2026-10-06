@@ -33,4 +33,4 @@ Write-Host 'Готово. На сервере выполните:'
 Write-Host "  ssh ${User}@${ServerIp}"
 Write-Host '  chmod 600 /var/www/volunteer-system/server/service-account.json'
 Write-Host '  cd /var/www/volunteer-system/server && pm2 restart volunteer'
-Write-Host '  npm run set-admin -- matvei.sukmanov@chemistry.msu.ru'
+Write-Host '  npm run set-admin -- volunteer@msuprof.com'

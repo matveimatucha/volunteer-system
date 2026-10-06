@@ -21,18 +21,29 @@ const {
     normalizeEventOrganizers
 } = require('./registration-helpers');
 const { getSheetsUrl, postToSheets, scheduleSheetsSync } = require('./sheets-sync');
+const { buildHoursPreview, sanitizeImportRows, sanitizeChoices } = require('./hours-import');
+const { readHoursSheet, buildHoursTemplate, buildSheetFile } = require('./hours-xlsx');
+const {
+    findBlacklistHits,
+    entryFromRegistration,
+    applyReason,
+    publicEntry,
+    MAX_REASON
+} = require('./blacklist');
 const {
     scheduleRegistrationTelegram,
-    getBotToken,
+    resolveBotToken,
+    handleTelegramUpdate,
     getRecipientChatIds,
-    handleTelegramUpdate
+    ensureTelegramWebhook
 } = require('./telegram-notify');
 
 class ApiError extends Error {
-    constructor(httpStatus, code) {
-        super(code);
+    constructor(httpStatus, code, detail) {
+        super(detail || code);
         this.httpStatus = httpStatus;
         this.code = code;
+        this.detail = detail || '';
     }
 }
 
@@ -69,7 +80,9 @@ function createApp({ admin, db, log = console }) {
         return (req, res) => {
             Promise.resolve(fn(req, res)).catch((err) => {
                 if (err instanceof ApiError) {
-                    res.status(err.httpStatus).json({ error: err.code });
+                    const body = { error: err.code };
+                    if (err.detail) body.message = err.detail;
+                    res.status(err.httpStatus).json(body);
                     return;
                 }
                 log.error('Unhandled API error', err);
@@ -231,7 +244,7 @@ function createApp({ admin, db, log = console }) {
             dateEnd,
             location: String(src.location || '').slice(0, 300),
             description: String(src.description || '').slice(0, 5000),
-            maxVolunteers: Math.max(0, Number(src.maxVolunteers) || 0),
+            maxVolunteers: 0,
             currentVolunteers: Math.max(0, Number(src.currentVolunteers) || 0),
             color: String(src.color || '#ff6b35').slice(0, 20),
             status,
@@ -372,8 +385,9 @@ function createApp({ admin, db, log = console }) {
         const snap = await db.collection('settings').doc('notifications').get();
         const data = snap.data() || {};
         const chatIds = await getRecipientChatIds(db);
+        const token = await resolveBotToken(db);
         res.json({
-            botConfigured: !!getBotToken(),
+            botConfigured: !!token,
             enabled: data.telegramEnabled !== false,
             recipientCount: chatIds.length
         });
@@ -386,7 +400,9 @@ function createApp({ admin, db, log = console }) {
             throw new ApiError(403, 'FORBIDDEN');
         }
         if (req.body) {
-            handleTelegramUpdate(req.body, log).catch(() => {});
+            handleTelegramUpdate(req.body, db, log).catch((err) => {
+                log.error('[telegram] update failed', err);
+            });
         }
         res.json({ ok: true });
     }));
@@ -518,12 +534,21 @@ function createApp({ admin, db, log = console }) {
         res.json({ ok: true, count });
     }));
 
+    async function loadBlacklist() {
+        const snap = await db.collection('blacklist').get();
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
     adminRouter.get('/registrations', asyncHandler(async (req, res) => {
         const eventId = typeof req.query.eventId === 'string' ? req.query.eventId : '';
         let query = db.collection('registrations');
         if (eventId) query = query.where('eventId', '==', eventId);
         const snap = await query.get();
-        res.json({ registrations: snap.docs.map(registrationFromDoc) });
+        const entries = await loadBlacklist();
+        const registrations = snap.docs
+            .map(registrationFromDoc)
+            .map(reg => ({ ...reg, blacklist: findBlacklistHits(entries, reg) }));
+        res.json({ registrations });
     }));
 
     adminRouter.delete('/registrations/:id', asyncHandler(async (req, res) => {
@@ -641,6 +666,130 @@ function createApp({ admin, db, log = console }) {
         });
     }));
 
+    async function loadEventRegistrations(eventId) {
+        const eventSnap = await db.collection('events').doc(eventId).get();
+        if (!eventSnap.exists) throw new ApiError(404, 'NOT_FOUND');
+        const snap = await db.collection('registrations').where('eventId', '==', eventId).get();
+        const registrations = snap.docs.map(doc => {
+            const data = doc.data();
+            return { ...data, registrationId: doc.id };
+        });
+        return { event: eventSnap.data(), registrations };
+    }
+
+    function previewWithoutUpdates(preview) {
+        return {
+            ready: preview.ready,
+            summary: preview.summary,
+            rows: preview.rows,
+            missing: preview.missing
+        };
+    }
+
+    adminRouter.get('/events/:id/hours-template', asyncHandler(async (req, res) => {
+        const { registrations } = await loadEventRegistrations(req.params.id);
+        const buffer = await buildHoursTemplate(registrations);
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename="hours-template.xlsx"');
+        res.send(buffer);
+    }));
+
+    adminRouter.post('/events/:id/participants-export', asyncHandler(async (req, res) => {
+        const eventSnap = await db.collection('events').doc(req.params.id).get();
+        if (!eventSnap.exists) throw new ApiError(404, 'NOT_FOUND');
+
+        const body = req.body || {};
+        if (!Array.isArray(body.headers) || !body.headers.length || !Array.isArray(body.rows)) {
+            throw new ApiError(400, 'BAD_REQUEST', 'Нет таблицы для выгрузки');
+        }
+        if (body.headers.length > 80 || body.rows.length > 5000) {
+            throw new ApiError(400, 'BAD_REQUEST', 'Слишком большая таблица');
+        }
+
+        const headers = body.headers.map(header => String(header ?? '').slice(0, 300));
+        const rows = body.rows.map(row => {
+            const cells = Array.isArray(row) ? row : [];
+            return headers.map((_, index) => {
+                const value = cells[index];
+                if (typeof value === 'number' && Number.isFinite(value)) return value;
+                if (value == null) return '';
+                return String(value).slice(0, 8000);
+            });
+        });
+
+        const buffer = await buildSheetFile(headers, rows);
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename="participants.xlsx"');
+        res.send(buffer);
+    }));
+
+    adminRouter.post('/events/:id/hours-import/preview', express.raw({
+        limit: '8mb',
+        type: (req) => {
+            const type = String(req.headers['content-type'] || '');
+            return type.includes('spreadsheetml') || type.includes('octet-stream');
+        }
+    }), asyncHandler(async (req, res) => {
+        let parsed;
+        try {
+            parsed = await readHoursSheet(req.body);
+        } catch (err) {
+            if (err && err.code === 'BAD_FILE') throw new ApiError(400, 'BAD_FILE', err.message);
+            throw err;
+        }
+        const { registrations } = await loadEventRegistrations(req.params.id);
+        const preview = buildHoursPreview(registrations, parsed.rows, {});
+        res.json({ rows: parsed.rows, preview: previewWithoutUpdates(preview) });
+    }));
+
+    adminRouter.post('/events/:id/hours-import/resolve', asyncHandler(async (req, res) => {
+        const sanitized = sanitizeImportRows(req.body && req.body.rows);
+        if (sanitized.error) throw new ApiError(400, 'BAD_FILE', sanitized.error);
+        const { registrations } = await loadEventRegistrations(req.params.id);
+        const preview = buildHoursPreview(registrations, sanitized.rows, sanitizeChoices(req.body && req.body.choices));
+        res.json({ preview: previewWithoutUpdates(preview) });
+    }));
+
+    adminRouter.post('/events/:id/hours-import/apply', asyncHandler(async (req, res) => {
+        const sanitized = sanitizeImportRows(req.body && req.body.rows);
+        if (sanitized.error) throw new ApiError(400, 'BAD_FILE', sanitized.error);
+        const { registrations } = await loadEventRegistrations(req.params.id);
+        const preview = buildHoursPreview(registrations, sanitized.rows, sanitizeChoices(req.body && req.body.choices));
+        if (!preview.ready) {
+            throw new ApiError(400, 'NOT_READY', 'Сначала разберите строки с ошибками и спорные совпадения');
+        }
+
+        const confirmedIds = new Set(
+            registrations.filter(isConfirmedRegistration).map(reg => reg.registrationId)
+        );
+        if (preview.updates.length !== confirmedIds.size) {
+            throw new ApiError(400, 'BAD_REQUEST', 'Список не совпал с записанными на мероприятие');
+        }
+
+        const chunkSize = 400;
+        for (let i = 0; i < preview.updates.length; i += chunkSize) {
+            const batch = db.batch();
+            for (const update of preview.updates.slice(i, i + chunkSize)) {
+                if (!confirmedIds.has(update.registrationId)) {
+                    throw new ApiError(400, 'BAD_REQUEST', 'Список не совпал с записанными на мероприятие');
+                }
+                const patch = {
+                    attendance: update.attendance,
+                    workedHours: update.workedHours
+                };
+                if (update.updateComment) patch.coordinatorNote = update.coordinatorNote;
+                batch.update(db.collection('registrations').doc(update.registrationId), patch);
+            }
+            await batch.commit();
+        }
+
+        res.json({
+            ok: true,
+            present: preview.summary.present,
+            absent: preview.summary.absent
+        });
+    }));
+
     adminRouter.get('/volunteer-stats', asyncHandler(async (req, res) => {
         const [evSnap, regSnap] = await Promise.all([
             db.collection('events').get(),
@@ -650,8 +799,50 @@ function createApp({ admin, db, log = console }) {
         const eventTitles = {};
         evSnap.forEach(doc => { eventTitles[doc.id] = doc.data().title || doc.id; });
 
-        const volunteers = buildVolunteerStats(regSnap.docs, eventTitles);
+        const entries = await loadBlacklist();
+        const volunteers = buildVolunteerStats(regSnap.docs, eventTitles).map(volunteer => ({
+            ...volunteer,
+            blacklist: findBlacklistHits(entries, volunteer)
+        }));
         res.json({ volunteers });
+    }));
+
+    adminRouter.get('/blacklist', asyncHandler(async (req, res) => {
+        const entries = await loadBlacklist();
+        entries.sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+        res.json({ entries: entries.map(publicEntry) });
+    }));
+
+    adminRouter.post('/blacklist', asyncHandler(async (req, res) => {
+        const registrationId = String((req.body && req.body.registrationId) || '').trim();
+        const reason = String((req.body && req.body.reason) || '').trim().slice(0, MAX_REASON);
+        if (!registrationId || !reason) {
+            throw new ApiError(400, 'BAD_REQUEST', 'Напишите, почему человека не брать');
+        }
+        const regSnap = await db.collection('registrations').doc(registrationId).get();
+        if (!regSnap.exists) throw new ApiError(404, 'NOT_FOUND');
+        const reg = regSnap.data();
+        const entries = await loadBlacklist();
+        const hits = findBlacklistHits(entries, reg);
+        if (hits.length) {
+            const existing = entries.find(entry => entry.id === hits[0].id);
+            const patch = applyReason(existing, reg, registrationId, reason);
+            await db.collection('blacklist').doc(existing.id).update(patch);
+            res.json({ entry: publicEntry({ ...existing, ...patch }), updated: true });
+            return;
+        }
+        const created = entryFromRegistration(reg, registrationId, reason, (req.user && req.user.email) || '');
+        const ref = db.collection('blacklist').doc();
+        await ref.set(created);
+        res.json({ entry: publicEntry({ id: ref.id, ...created }), updated: false });
+    }));
+
+    adminRouter.delete('/blacklist/:id', asyncHandler(async (req, res) => {
+        const ref = db.collection('blacklist').doc(req.params.id);
+        const snap = await ref.get();
+        if (!snap.exists) throw new ApiError(404, 'NOT_FOUND');
+        await ref.delete();
+        res.json({ ok: true });
     }));
 
     adminRouter.get('/settings/notifications', asyncHandler(async (req, res) => {
@@ -670,11 +861,57 @@ function createApp({ admin, db, log = console }) {
         const telegramChatIds = Array.isArray(body.telegramChatIds)
             ? body.telegramChatIds.map(String).filter(Boolean)
             : [];
-        await db.collection('settings').doc('notifications').set({
+        const patch = {
             telegramEnabled: body.telegramEnabled !== false,
             telegramChatIds,
             updatedAt: new Date().toISOString()
+        };
+        const token = typeof body.telegramBotToken === 'string' ? body.telegramBotToken.trim() : '';
+        if (token) {
+            if (!/^\d+:[A-Za-z0-9_-]{20,}$/.test(token)) throw new ApiError(400, 'BAD_REQUEST', 'Это не похоже на токен бота');
+            patch.telegramBotToken = token;
+        }
+        await db.collection('settings').doc('notifications').set(patch, { merge: true });
+        res.json({ ok: true });
+    }));
+
+    adminRouter.post('/telegram/connect', asyncHandler(async (req, res) => {
+        await ensureTelegramWebhook(db, log);
+        res.json({ ok: true });
+    }));
+
+    adminRouter.get('/telegram/curators', asyncHandler(async (req, res) => {
+        const snap = await db.collection('telegramCurators').get();
+        const curators = snap.docs.map(doc => {
+            const data = doc.data() || {};
+            return {
+                chatId: String(data.chatId || doc.id),
+                status: data.status || 'pending',
+                firstName: data.firstName || '',
+                username: data.username || '',
+                requestedAt: data.requestedAt || '',
+                subscriptions: Array.isArray(data.subscriptions) ? data.subscriptions : []
+            };
+        }).sort((a, b) => String(b.requestedAt).localeCompare(String(a.requestedAt)));
+        res.json({ curators });
+    }));
+
+    adminRouter.post('/telegram/curators/:chatId/approve', asyncHandler(async (req, res) => {
+        const ref = db.collection('telegramCurators').doc(req.params.chatId);
+        const snap = await ref.get();
+        if (!snap.exists) throw new ApiError(404, 'NOT_FOUND');
+        await ref.set({
+            status: 'approved',
+            approvedAt: new Date().toISOString()
         }, { merge: true });
+        require('./telegram-bot').notifyCuratorApproved(db, req.params.chatId, log).catch(err => {
+            log.error('[telegram] не удалось открыть меню куратору', err);
+        });
+        res.json({ ok: true });
+    }));
+
+    adminRouter.delete('/telegram/curators/:chatId', asyncHandler(async (req, res) => {
+        await db.collection('telegramCurators').doc(req.params.chatId).delete();
         res.json({ ok: true });
     }));
 
@@ -785,7 +1022,7 @@ function createApp({ admin, db, log = console }) {
     }));
 
     const app = express();
-    app.use(express.json({ limit: '1mb' }));
+    app.use(express.json({ limit: '4mb' }));
     router.use('/admin', adminRouter);
     app.use('/api', router);
     app.use('/', router);

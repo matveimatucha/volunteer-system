@@ -10,11 +10,7 @@ const admin = require('firebase-admin');
 
 const args = process.argv.slice(2);
 const email = args.find((a) => !a.startsWith('--'));
-const AUTO_SUPER_EMAILS = new Set([
-    'matvei.sukmanov@chemistry.msu.ru'
-]);
-const superMode = args.includes('--super')
-    || (email && AUTO_SUPER_EMAILS.has(email.toLowerCase()));
+const superMode = args.includes('--super');
 
 if (!email) {
     console.error('Использование: node scripts/set-admin.js <email> [--super]');

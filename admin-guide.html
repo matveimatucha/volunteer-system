@@ -4,25 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Инструкция — админ-панель</title>
-    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="icon" type="image/png" href="assets/favicon.png?v=6">
+    <link rel="shortcut icon" href="assets/favicon.png?v=6">
+    <link rel="apple-touch-icon" href="assets/favicon.png?v=6">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assets/opk-theme.css">
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Source Sans 3', sans-serif;
-            background-color: #F7F3C4;
-            color: #3a3f6b;
+            font-family: 'Source Sans 3', system-ui, sans-serif;
+            background-color: #f4f5f7;
+            color: #334155;
             padding: 2rem 1.25rem 4rem;
             line-height: 1.65;
         }
 
         .container { max-width: 900px; margin: 0 auto; }
 
-        /* opk-theme.css красит header в тёмно-синий — отключаем, как в admin.html */
         header {
             background: transparent !important;
             box-shadow: none !important;
@@ -38,26 +38,26 @@
         }
 
         h1 {
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 3rem;
-            letter-spacing: 2px;
-            color: #1B2480 !important;
+            font-family: 'Source Sans 3', system-ui, sans-serif;
+            font-size: 1.75rem;
+            letter-spacing: 0;
+            color: #1f2937 !important;
         }
 
         .back-link {
-            background: rgba(27, 36, 128, 0.09);
-            color: #1B2480;
+            background: rgba(51, 65, 85, 0.09);
+            color: #334155;
             padding: 0.8rem 1.5rem;
             border-radius: 50px;
             text-decoration: none;
             font-weight: 600;
-            border: 2px solid rgba(27, 36, 128, 0.20);
+            border: 2px solid rgba(51, 65, 85, 0.20);
             transition: all 0.2s ease;
             white-space: nowrap;
         }
 
         .back-link:hover {
-            background: rgba(27, 36, 128, 0.16);
+            background: rgba(51, 65, 85, 0.16);
             transform: translateY(-2px);
         }
 
@@ -65,27 +65,27 @@
             background: rgba(255, 255, 255, 0.88);
             border-radius: 16px;
             padding: 1.5rem 1.75rem;
-            border: 1px solid rgba(27, 36, 128, 0.12);
+            border: 1px solid rgba(51, 65, 85, 0.12);
             margin-bottom: 2rem;
-            box-shadow: 0 8px 28px rgba(27, 36, 128, 0.08);
+            box-shadow: 0 8px 28px rgba(51, 65, 85, 0.08);
         }
 
         .guide-intro p { margin-bottom: 0.75rem; }
         .guide-intro p:last-child { margin-bottom: 0; }
 
         .toc {
-            background: rgba(27, 36, 128, 0.06);
+            background: rgba(51, 65, 85, 0.06);
             border-radius: 14px;
             padding: 1.25rem 1.5rem;
             margin-bottom: 2.5rem;
-            border-left: 4px solid #1B2480;
+            border-left: 4px solid #334155;
         }
 
         .toc h2 {
-            font-family: 'Bebas Neue', sans-serif;
+            font-family: 'Source Sans 3', system-ui, sans-serif;
             font-size: 1.5rem;
             letter-spacing: 1px;
-            color: #1B2480;
+            color: #334155;
             margin-bottom: 0.75rem;
         }
 
@@ -96,7 +96,7 @@
         }
 
         .toc li { margin-bottom: 0.35rem; }
-        .toc a { color: #1B2480; font-weight: 600; text-decoration: none; }
+        .toc a { color: #334155; font-weight: 600; text-decoration: none; }
         .toc a:hover { text-decoration: underline; }
 
         section {
@@ -104,23 +104,23 @@
             border-radius: 16px;
             padding: 1.75rem 2rem;
             margin-bottom: 1.5rem;
-            border: 1px solid rgba(27, 36, 128, 0.1);
+            border: 1px solid rgba(51, 65, 85, 0.1);
             scroll-margin-top: 1.5rem;
         }
 
         section h2 {
-            font-family: 'Bebas Neue', sans-serif;
+            font-family: 'Source Sans 3', system-ui, sans-serif;
             font-size: 2rem;
             letter-spacing: 1.5px;
-            color: #1B2480;
+            color: #334155;
             margin-bottom: 1rem;
             padding-bottom: 0.5rem;
-            border-bottom: 2px solid rgba(27, 36, 128, 0.1);
+            border-bottom: 2px solid rgba(51, 65, 85, 0.1);
         }
 
         section h3 {
             font-size: 1.05rem;
-            color: #1a2060;
+            color: #1A2E24;
             margin: 1.25rem 0 0.5rem;
             font-weight: 700;
         }
@@ -148,11 +148,11 @@
         }
 
         code, .kbd {
-            background: rgba(27, 36, 128, 0.08);
+            background: rgba(51, 65, 85, 0.08);
             padding: 0.1rem 0.45rem;
             border-radius: 4px;
             font-size: 0.9em;
-            color: #1B2480;
+            color: #334155;
         }
 
         table {
@@ -165,16 +165,16 @@
         th, td {
             padding: 0.65rem 0.85rem;
             text-align: left;
-            border-bottom: 1px solid rgba(27, 36, 128, 0.1);
+            border-bottom: 1px solid rgba(51, 65, 85, 0.1);
             vertical-align: top;
         }
 
         th {
-            background: rgba(27, 36, 128, 0.07);
+            background: rgba(51, 65, 85, 0.07);
             font-size: 0.8rem;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: rgba(27, 36, 128, 0.75);
+            color: rgba(51, 65, 85, 0.75);
         }
 
         @media (max-width: 640px) {
@@ -184,6 +184,7 @@
             .toc ol { columns: 1; }
         }
     </style>
+    <link rel="stylesheet" href="assets/admin-ui.css">
 </head>
 <body class="admin-theme">
     <div class="container">
@@ -194,7 +195,7 @@
 
         <div class="guide-intro">
             <p>Кратко: как вести мероприятия на сайте волонтёров ОПК МГУ — от создания до архива.</p>
-            <p>Админка: <code>volonter-msu.ru/admin.html</code>. Под заголовком всегда видна строка <strong>последнего обновления</strong> сайта — время выкладки и что изменилось.</p>
+            <p>Админка: <code>volunteer.msuprof.com/admin.html</code>. Под заголовком всегда видна строка <strong>последнего обновления</strong> сайта — время выкладки и что изменилось.</p>
         </div>
 
         <nav class="toc" aria-label="Содержание">
@@ -223,6 +224,7 @@
             <ul>
                 <li><strong>Мероприятия</strong> — сводка, рабочие карточки, чеклисты, Google Таблицы, Telegram.</li>
                 <li><strong>Архив</strong> — закрытые чеклистом события и подробная статистика по каждому.</li>
+                <li><strong>Чёрный список</strong> — люди, которых не стоит брать. Записываются они как обычно и сами про пометку не знают.</li>
             </ul>
             <p>Справа: <strong>Инструкция</strong>, <strong>Выйти</strong>, ссылка на главную.</p>
         </section>
@@ -259,7 +261,6 @@
             <ul>
                 <li><strong>Дата начала</strong> — обязательна. Если мероприятие на один день, этого достаточно.</li>
                 <li><strong>Дата окончания</strong> — необязательна. Если указать, волонтёры при записи выберут дни участия, а в списке участников можно будет искать людей на конкретный день.</li>
-                <li><strong>Максимум волонтёров</strong> — лимит мест. Если оставить пустым, запись без ограничений.</li>
                 <li><strong>Фото и логотип</strong> — ссылка с Google Диска (доступ «всем, у кого есть ссылка») или прямая ссылка на картинку.</li>
                 <li><strong>Цвет плашки</strong> — оформление карточки на главной и страницы регистрации.</li>
                 <li><strong>Текст после регистрации</strong> — что увидит участник после отправки формы.</li>
@@ -352,10 +353,41 @@
             <p>У записанных в строке три кнопки: <strong>✓</strong> пришёл, <strong>⏰</strong> опоздал, <strong>✗</strong> не пришёл. Рядом поле часов (0–72, шаг 0,5). Сверху — сводка: сколько пришли, опоздали, не пришли, без отметки, сумма часов и процент явки.</p>
             <p>Эти отметки попадают в архивную таблицу и в <strong>🏆 Статистику волонтёров</strong>.</p>
 
+            <h3>Загрузка часов из Excel</h3>
+            <p>В окне участников кнопка <strong>⬆ Часы из Excel</strong>. Загружают те же люди, у кого есть админка. Файл только <strong>.xlsx</strong>, часы — одно число на всё мероприятие.</p>
+            <p>Кнопка <strong>⬇ Скачать шаблон</strong> выгружает записанных на это мероприятие. ФИО, факультет и курс уже заполнены, часы и комментарий можно дописать. Свой файл тоже подойдёт, если в первой строке те же колонки:</p>
+            <ul>
+                <li><strong>ФИО</strong></li>
+                <li><strong>Факультет</strong></li>
+                <li><strong>Курс</strong></li>
+                <li><strong>Часы</strong> — от 0 до 72, шаг 0,5. Пусто или 0 значит «часов нет».</li>
+                <li><strong>Комментарий</strong> — заметка о человеке именно на этом мероприятии.</li>
+            </ul>
+            <p>Файл считается полным итогом мероприятия. Сайт смотрит только на записанных:</p>
+            <ul>
+                <li>в файле есть часы — человек пришёл, часы записываются;</li>
+                <li>человека нет в файле или часов нет — неявка, часы на это мероприятие снимаются;</li>
+                <li>комментарий в строке сохраняется и при неявке;</li>
+                <li>пустая ячейка «Комментарий» у найденного человека очищает заметку только по этому мероприятию;</li>
+                <li>если строки человека нет, его старый комментарий не стирается;</li>
+                <li>человека нет среди записанных — строка пропускается, новую заявку сайт не создаёт;</li>
+                <li>несколько людей с теми же ФИО, факультетом и курсом — в сверке нужно выбрать, кому записать;</li>
+                <li>один человек указан в нескольких строках или в часах ошибка — запись не пройдёт, пока файл не исправят.</li>
+            </ul>
+            <p>Сверка идёт по ФИО, факультету и курсу из анкеты. Регистр и «ё/е» не важны: «Иванов Иван» и «иванов иван» совпадут. Курс «1», «1 курс» и «первый» — одно и то же. Если в анкете вопросы названы так, что сайт не узнаёт фамилию, факультет или курс, человек попадёт в «не найден».</p>
+            <p>Перед кнопкой <strong>Подтвердить и записать</strong> видно, кому запишутся часы, у кого будет неявка и какие строки пропущены. Пока подтверждения нет, на сайте ничего не меняется. Повторная загрузка заново ставит явку и часы по новому файлу.</p>
+            <p>Комментарий виден в колонке таблицы участников этого мероприятия. В <strong>🏆 Статистике волонтёров</strong> у человека собираются заметки со всех мероприятий: откройте строку волонтёра, комментарий стоит рядом с названием события.</p>
+
+            <h3>Чёрный список</h3>
+            <p>Если волонтёр плохо проявил себя, его можно пометить, чтобы в следующий раз куратор сразу это видел. Сам человек ничего не узнает: страница записи, письмо и место остаются обычными.</p>
+            <p>Кнопка <strong>Не брать</strong> стоит в строке участника и в раскрытой карточке в статистике. Нужно коротко написать причину и подтвердить. ФИО, факультет, курс, почта и телефон берутся из заявки, вручную их не вводят. Если человек уже в списке, откроется прежняя причина, новую можно дописать.</p>
+            <p>Вкладка <strong>Чёрный список</strong> показывает, кого пометили, почему и с какого мероприятия. Там же пометку можно снять. Когда такой человек записывается снова, у заявки будет «не брать» с причиной, и то же придёт в Telegram.</p>
+
             <h3>Действия в окне участников</h3>
             <ul>
-                <li><strong>⬇ Скачать новые CSV</strong> — только непросмотренные заявки.</li>
-                <li><strong>⬇ Скачать все CSV</strong> — полная выгрузка с ответами, явкой и часами.</li>
+                <li><strong>⬆ Часы из Excel</strong> — шаблон и загрузка явки, часов и комментариев.</li>
+                <li><strong>⬇ Скачать новые Excel</strong> — только непросмотренные заявки, файл .xlsx.</li>
+                <li><strong>⬇ Скачать все Excel</strong> — заявки с учётом текущего поиска и фильтра, файл .xlsx. Внутри только ответы анкеты.</li>
                 <li><strong>📧 Копировать e-mail</strong> — адреса записанных через запятую (для письма-напоминания).</li>
             </ul>
         </section>
@@ -386,14 +418,15 @@
 
         <section id="telegram">
             <h2>10. Telegram</h2>
-            <p>Уведомления о новых заявках приходят в Telegram через Google Apps Script (сервер в РФ не всегда достучится до Telegram напрямую).</p>
+            <p>Когда волонтёр записывается, кураторам приходит сводка в Telegram. Сервер в РФ сам до Telegram часто не достучивается, поэтому сообщение отправляет Google-таблица, уже связанная с сайтом.</p>
+            <p>Куратор сам открывает бота и пишет <code>/start</code>. В админке его подтверждают в блоке <strong>Кураторы в боте</strong>. После этого бот показывает мероприятия с открытой записью. У выбранного мероприятия три режима: каждая заявка, сводка каждые 3 часа или сводка раз в день в 21:00. Кнопки «Сколько сейчас» и «Сводка по всем» присылают числа записанных.</p>
             <ol>
-                <li>Создайте бота через <a href="https://t.me/BotFather" target="_blank">@BotFather</a>.</li>
-                <li>Вставьте токен бота в <code>TELEGRAM_BOT_TOKEN</code> в Apps Script и переразверните веб-приложение.</li>
-                <li>Каждый получатель пишет боту <code>/start</code>.</li>
-                <li>Узнайте chat_id через <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a> и добавьте в админке.</li>
+                <li>Создайте бота через <a href="https://t.me/BotFather" target="_blank">@BotFather</a> и скопируйте токен.</li>
+                <li>В админке, блок <strong>Telegram</strong>, вставьте токен и нажмите <strong>Сохранить токен</strong>.</li>
+                <li>Тот же токен один раз вставьте в Apps Script таблицы в <code>TELEGRAM_BOT_TOKEN</code>, запустите <code>authorizeTelegram_</code>, переразверните веб-приложение и заново вставьте его URL в админку. Сервер сам попросит таблицу включить приём команд бота.</li>
+                <li>Куратор пишет боту <code>/start</code>, вы нажимаете <strong>Подтвердить</strong>.</li>
             </ol>
-            <p>Галочка <strong>«Уведомления о новых регистрациях»</strong> включает или отключает отправку.</p>
+            <p>Галочка <strong>«Присылать сводку о каждой новой записи»</strong> включает или выключает отправку.</p>
         </section>
 
         <section id="export">
@@ -404,14 +437,15 @@
                 </thead>
                 <tbody>
                     <tr><td>Сводка → Экспорт всех заявок</td><td>Краткий CSV по всей базе</td></tr>
-                    <tr><td>Участники → Скачать все CSV</td><td>Полный CSV с ответами, явкой и часами</td></tr>
-                    <tr><td>Участники → Скачать новые CSV</td><td>Только непросмотренные заявки</td></tr>
-                    <tr><td>🏆 Статистика волонтёров</td><td>Сводка по людям: сколько мероприятий, явка, часы</td></tr>
+                    <tr><td>Участники → Скачать все Excel</td><td>Ответы анкеты по заявкам</td></tr>
+                    <tr><td>Участники → Скачать новые Excel</td><td>Только непросмотренные заявки</td></tr>
+                    <tr><td>Участники → Часы из Excel → Скачать шаблон</td><td>Excel записанных: ФИО, факультет, курс, часы, комментарий</td></tr>
+                    <tr><td>🏆 Статистика волонтёров</td><td>Сводка по людям: мероприятия, явка, часы, комментарии</td></tr>
                     <tr><td>Google Таблицы</td><td>Живая таблица с автообновлением</td></tr>
                 </tbody>
             </table>
             <p>CSV открывается в Excel: файл уже с кодировкой UTF-8 (BOM).</p>
-            <p>Страница <strong>🏆 Статистика волонтёров</strong> — отдельный вход тем же email и паролем. Там поиск, фильтр по мероприятию и дню, выгрузка CSV.</p>
+            <p>Страница <strong>🏆 Статистика волонтёров</strong> — отдельный вход тем же email и паролем. Там поиск, фильтр по мероприятию и дню, выгрузка CSV. Комментарии с мероприятий собраны в раскрывающейся строке человека и попадают в CSV.</p>
         </section>
 
         <section id="tips">
@@ -430,7 +464,7 @@
             <h2>13. Частые вопросы</h2>
 
             <h3>Участник пишет «ошибка при регистрации»</h3>
-            <p>Возможно, места закончились в момент отправки или мероприятие закрыто. Попросите обновить страницу. Проверьте статус и лимит мест в админке.</p>
+            <p>Возможно, места уже кто-то занял в момент отправки или мероприятие закрыто. Попросите обновить страницу и проверьте статус мероприятия в админке.</p>
 
             <h3>Дубли по email или телефону</h3>
             <p>Система не даёт зарегистрироваться дважды на одно мероприятие с тем же email или телефоном.</p>

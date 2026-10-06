@@ -1,160 +1,166 @@
 /* ================================================================
-   ОПК МГУ — визуальная тема
-   Светло-жёлтый фон, тёмно-синий, ботанические украшения
+   ОПК МГУ — осенняя тема (референс: тёмно-зелёный + крем + тыквы)
    ================================================================ */
 
-/* ---- палитра ---- */
 :root {
-  --opk-navy:        #1B2480;
-  --opk-navy-dark:   #121963;
-  --opk-navy-mid:    #2639B0;
-  --opk-navy-faint:  rgba(27, 36, 128, 0.09);
-  --opk-navy-border: rgba(27, 36, 128, 0.18);
-  --opk-bg:          #F7F3C4;
-  --opk-accent:      #E8C225;
-  --opk-green:       #4A7A3A;
-  --opk-text:        #1a2060;
-  --opk-text-soft:   #3a3f6b;
-  --opk-fl-blue:     #4472C4;
-  --opk-fl-purple:   #7B5CCA;
-  --opk-fl-yellow:   #F0C020;
+  --opk-navy:        #1A3D2E;
+  --opk-navy-dark:   #0F2A1F;
+  --opk-navy-mid:    #2A5540;
+  --opk-navy-faint:  rgba(237, 228, 208, 0.12);
+  --opk-navy-border: rgba(237, 228, 208, 0.22);
+  --opk-bg:          #1A3D2E;
+  --opk-accent:      #E07A3D;
+  --opk-green:       #1A3D2E;
+  --opk-text:        #EDE4D0;
+  --opk-text-soft:   #D4CBB8;
+  --opk-cream:       #EDE4D0;
+  --opk-fl-orange:   #E8913A;
+  --opk-fl-rust:     #C45C3A;
+  --opk-fl-leaf:     #D4692A;
+  --opk-fl-stem:     #6B4A2A;
 }
 
-/* ---- страница ---- */
 body {
-  background-color: var(--opk-bg) !important;
+  background-color: #1A3D2E !important;
   background-image: none !important;
-  color: var(--opk-text-soft) !important;
+  color: #D4CBB8 !important;
 }
 body::before {
   background:
-    radial-gradient(ellipse 35% 35% at 5%   5%,   rgba(68,114,196,.07)   0%, transparent 100%),
-    radial-gradient(ellipse 35% 35% at 95%  5%,   rgba(232,194,37,.10)  0%, transparent 100%),
-    radial-gradient(ellipse 35% 35% at 95%  95%,  rgba(232,194,37,.08)  0%, transparent 100%),
-    radial-gradient(ellipse 35% 35% at 5%   95%,  rgba(68,114,196,.07)   0%, transparent 100%)
+    radial-gradient(ellipse 40% 40% at 8%  8%,  rgba(224,122,61,.18) 0%, transparent 100%),
+    radial-gradient(ellipse 40% 40% at 92% 12%, rgba(196,92,58,.14)  0%, transparent 100%),
+    radial-gradient(ellipse 40% 40% at 90% 90%, rgba(232,145,58,.12) 0%, transparent 100%),
+    radial-gradient(ellipse 35% 35% at 10% 88%, rgba(237,228,208,.06) 0%, transparent 100%)
     !important;
 }
 
-/* ---- шапка ---- */
 header {
-  background: linear-gradient(150deg, #1B2480 0%, #1f2ca0 50%, #1B2480 100%) !important;
+  background: linear-gradient(150deg, #0F2A1F 0%, #1A3D2E 50%, #244A38 100%) !important;
+  border: 1px solid rgba(237,228,208,.18);
+  box-shadow: 0 12px 48px rgba(0,0,0,.35) !important;
+}
+header h1,
+header .tagline {
+  color: #EDE4D0 !important;
 }
 
-/* ---- карточки ---- */
 .event-card {
-  box-shadow: 0 8px 32px rgba(27,36,128,.12) !important;
-  border-color: rgba(27,36,128,.07) !important;
+  background: #F3EBD9 !important;
+  box-shadow: 0 10px 36px rgba(0,0,0,.28) !important;
+  border-color: rgba(237,228,208,.2) !important;
 }
-.event-description { color: #3e4470 !important; }
-.spots-row         { color: #565c90 !important; }
-.spots-count       { color: var(--opk-navy) !important; }
-.spots-meter       { background: rgba(27,36,128,.10) !important; }
+.event-description { color: #3A4A40 !important; }
+.spots-row         { color: #566058 !important; }
+.spots-count       { color: #1A3D2E !important; }
+.spots-meter       { background: rgba(26,61,46,.12) !important; }
 
-/* ---- кнопка регистрации ---- */
 .register-btn {
-  background: linear-gradient(135deg, #1B2480 0%, #2639B0 100%) !important;
-  box-shadow: 0 8px 22px rgba(27,36,128,.28) !important;
+  background: linear-gradient(135deg, #E07A3D 0%, #C45C3A 100%) !important;
+  box-shadow: 0 8px 22px rgba(224,122,61,.35) !important;
+  color: #fff !important;
 }
 .register-btn:hover:not(:disabled) {
-  box-shadow: 0 12px 28px rgba(27,36,128,.40) !important;
+  box-shadow: 0 12px 28px rgba(224,122,61,.5) !important;
 }
 .register-btn:disabled {
-  background: #c4c8d8 !important;
+  background: #8a9088 !important;
   box-shadow: none !important;
 }
 
-/* ---- кнопка «Поделиться» ---- */
 .share-btn {
-  background: rgba(27,36,128,.08) !important;
-  color: var(--opk-navy) !important;
+  background: rgba(26,61,46,.1) !important;
+  color: #1A3D2E !important;
 }
 .share-btn:hover {
-  background: rgba(27,36,128,.16) !important;
+  background: rgba(26,61,46,.18) !important;
 }
 
-/* ---- ссылка «Админ» ---- */
 .admin-link {
-  background: rgba(27,36,128,.08) !important;
-  color: var(--opk-navy) !important;
-  border: 2px solid rgba(27,36,128,.20) !important;
+  background: rgba(237,228,208,.12) !important;
+  color: #EDE4D0 !important;
+  border: 2px solid rgba(237,228,208,.28) !important;
 }
 .admin-link:hover {
-  background: rgba(27,36,128,.15) !important;
-  box-shadow: 0 8px 24px rgba(27,36,128,.15) !important;
+  background: rgba(237,228,208,.22) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.2) !important;
 }
 
-/* ---- архив ---- */
 .archive-btn {
   background: transparent !important;
-  border: 2px solid rgba(27,36,128,.30) !important;
-  color: var(--opk-navy) !important;
+  border: 2px solid rgba(237,228,208,.4) !important;
+  color: #EDE4D0 !important;
 }
 .archive-btn:hover {
-  background: rgba(27,36,128,.07) !important;
+  background: rgba(237,228,208,.1) !important;
 }
-.archive-label { color: rgba(27,36,128,.60) !important; }
+.archive-label { color: rgba(237,228,208,.65) !important; }
 
-/* ---- пусто / загрузка ---- */
 .empty-state {
-  background: rgba(27,36,128,.05) !important;
-  color: var(--opk-navy) !important;
-  border: 1px solid rgba(27,36,128,.12) !important;
+  background: rgba(237,228,208,.08) !important;
+  color: #EDE4D0 !important;
+  border: 1px solid rgba(237,228,208,.18) !important;
 }
-.loading  { color: var(--opk-navy) !important; }
+.loading  { color: #EDE4D0 !important; }
 .spinner  {
-  border-color: rgba(27,36,128,.15) !important;
-  border-top-color: var(--opk-navy) !important;
+  border-color: rgba(237,228,208,.2) !important;
+  border-top-color: #E07A3D !important;
 }
 
-/* ---- поиск (главная) ---- */
-.free-toggle { color: var(--opk-navy) !important; }
+.free-toggle { color: #EDE4D0 !important; }
+#eventSearch {
+  background: rgba(243,235,217,.95) !important;
+  color: #1A2E24 !important;
+}
 #eventSearch:focus {
-  border-color: var(--opk-navy) !important;
-  box-shadow: 0 8px 28px rgba(27,36,128,.18) !important;
+  border-color: #E07A3D !important;
+  box-shadow: 0 8px 28px rgba(0,0,0,.25) !important;
 }
 
-/* ---- register.html: ссылка назад ---- */
 .back-link {
-  background: rgba(27,36,128,.08) !important;
-  color: var(--opk-navy) !important;
-  border-color: rgba(27,36,128,.20) !important;
+  background: rgba(237,228,208,.12) !important;
+  color: #EDE4D0 !important;
+  border-color: rgba(237,228,208,.28) !important;
 }
 .back-link:hover {
-  background: rgba(27,36,128,.14) !important;
+  background: rgba(237,228,208,.2) !important;
 }
 
-/* ---- register.html: форма ---- */
-label            { color: var(--opk-navy) !important; }
+label            { color: #1A3D2E !important; }
 .required        { color: #d63031 !important; }
 input:focus, textarea:focus, select:focus {
-  border-color: var(--opk-navy) !important;
-  box-shadow: 0 0 0 3px rgba(27,36,128,.10) !important;
+  border-color: #1A3D2E !important;
+  box-shadow: 0 0 0 3px rgba(26,61,46,.15) !important;
 }
 .spots-badge {
-  background: linear-gradient(135deg, var(--opk-navy), var(--opk-navy-dark)) !important;
+  background: linear-gradient(135deg, #1A3D2E, #0F2A1F) !important;
 }
 .submit-btn {
-  background: linear-gradient(135deg, var(--opk-navy) 0%, var(--opk-navy-dark) 100%) !important;
+  background: linear-gradient(135deg, #E07A3D 0%, #C45C3A 100%) !important;
 }
 .submit-btn:hover:not(:disabled) {
-  box-shadow: 0 10px 30px rgba(27,36,128,.35) !important;
+  box-shadow: 0 10px 30px rgba(224,122,61,.4) !important;
 }
 .submit-btn:disabled {
-  background: #c4c8d8 !important;
+  background: #8a9088 !important;
   cursor: not-allowed;
   transform: none !important;
 }
 
-/* ---- модалка «Поделиться» ---- */
-.share-modal-content h3 { color: var(--opk-navy) !important; }
+.share-modal-content {
+  background: #F3EBD9 !important;
+}
+.share-modal-content h3 { color: #1A3D2E !important; }
 .share-link-row button,
 .share-native {
-  background: linear-gradient(135deg, var(--opk-navy) 0%, var(--opk-navy-dark) 100%) !important;
+  background: linear-gradient(135deg, #E07A3D 0%, #C45C3A 100%) !important;
 }
 
-/* ================================================================
-   БОТАНИЧЕСКИЕ УКРАШЕНИЯ — цветы по углам страницы
-   ================================================================ */
+.form-container,
+.auth-section {
+  background: #F3EBD9 !important;
+}
+
+/* ---- осенние украшения ---- */
 .page-flowers {
   position: fixed;
   inset: 0;
@@ -164,7 +170,7 @@ input:focus, textarea:focus, select:focus {
 }
 .flower-corner {
   position: absolute;
-  opacity: .30;
+  opacity: .55;
   line-height: 0;
 }
 .flower-tl { top: -6px;  left: -6px; }
@@ -173,22 +179,16 @@ input:focus, textarea:focus, select:focus {
 .flower-br { bottom: -6px; right: -6px; transform: scaleX(-1); }
 
 @media (max-width: 900px) {
-  .flower-corner { opacity: .18; }
+  .flower-corner { opacity: .38; }
   .flower-corner svg { width: 130px; height: 130px; }
 }
 @media (max-width: 600px) {
   .flower-corner { display: none; }
 }
 
-/* ===== Общие мобильные правки ===== */
 @media (max-width: 480px) {
-  /* убираем горизонтальный скролл */
   html, body { overflow-x: hidden; }
-
-  /* шапки и форма */
   .container { padding: 0.85rem !important; }
-
-  /* кнопки — увеличенная зона касания */
   .register-btn,
   .submit-btn,
   .archive-btn,
@@ -197,69 +197,60 @@ input:focus, textarea:focus, select:focus {
     touch-action: manipulation;
   }
   .share-btn { min-height: 44px; }
-
-  /* модалка «Поделиться» */
   .share-modal { padding: 1rem; }
   .share-modal-content { border-radius: 14px; }
-
-  /* карточки событий */
   .event-date-badge { font-size: 0.68rem; padding: 0.35rem 0.65rem; }
-
-  /* успешная регистрация */
-  .success-actions > * {
-    flex: 1 1 100%;
-  }
+  .success-actions > * { flex: 1 1 100%; }
 }
 
-/* ================================================================
-   ADMIN — светлая тема поверх тёмной
-   ================================================================ */
+/* ---- admin: карточки на тёмно-зелёном фоне ---- */
 body.admin-theme {
-  color: var(--opk-text-soft) !important;
+  color: #D4CBB8 !important;
 }
 body.admin-theme h1 {
-  color: var(--opk-navy) !important;
+  color: #EDE4D0 !important;
 }
 body.admin-theme .back-link,
 body.admin-theme .back-link:hover {
-  color: var(--opk-navy) !important;
+  color: #EDE4D0 !important;
 }
 body.admin-theme .auth-section {
-  background: rgba(255,255,255,.85) !important;
-  border: 1px solid rgba(27,36,128,.15) !important;
+  background: rgba(243,235,217,.95) !important;
+  border: 1px solid rgba(237,228,208,.25) !important;
   backdrop-filter: blur(8px);
+  color: #3A4A40 !important;
 }
 body.admin-theme .auth-section h2 {
-  color: var(--opk-navy) !important;
+  color: #1A3D2E !important;
 }
 body.admin-theme .admin-panel {
   background: transparent !important;
 }
 body.admin-theme .event-item {
-  background: rgba(255,255,255,.88) !important;
-  border-color: rgba(27,36,128,.12) !important;
-  color: var(--opk-text-soft) !important;
+  background: rgba(243,235,217,.95) !important;
+  border-color: rgba(237,228,208,.2) !important;
+  color: #3A4A40 !important;
 }
-body.admin-theme .event-item h3      { color: var(--opk-navy) !important; }
-body.admin-theme .panel-header h2    { color: var(--opk-navy) !important; }
-body.admin-theme .info-label         { color: var(--opk-navy) !important; opacity: .7; }
+body.admin-theme .event-item h3      { color: #1A3D2E !important; }
+body.admin-theme .panel-header h2    { color: #EDE4D0 !important; }
+body.admin-theme .info-label         { color: #1A3D2E !important; opacity: .7; }
 body.admin-theme input, body.admin-theme textarea, body.admin-theme select {
   background: #fff !important;
-  color: var(--opk-text) !important;
-  border-color: rgba(27,36,128,.20) !important;
+  color: #1A2E24 !important;
+  border-color: rgba(26,61,46,.25) !important;
 }
 body.admin-theme .dashboard {
-  background: rgba(255,255,255,.75) !important;
-  border-color: rgba(27,36,128,.12) !important;
+  background: rgba(243,235,217,.9) !important;
+  border-color: rgba(237,228,208,.2) !important;
 }
 body.admin-theme .stat-card {
-  background: rgba(27,36,128,.07) !important;
-  color: var(--opk-navy) !important;
+  background: rgba(26,61,46,.1) !important;
+  color: #1A3D2E !important;
 }
-body.admin-theme .stat-card.accent .stat-value { color: #1e8c5a !important; }
+body.admin-theme .stat-card.accent .stat-value { color: #2d7a4a !important; }
 body.admin-theme .stat-card.warn   .stat-value { color: #c97a00 !important; }
-body.admin-theme .dashboard-header h2 { color: var(--opk-navy) !important; }
-body.admin-theme .globalMessage { color: var(--opk-navy) !important; }
+body.admin-theme .dashboard-header h2 { color: #1A3D2E !important; }
+body.admin-theme .globalMessage { color: #EDE4D0 !important; }
 body.admin-theme .mini-meter {
-  background: rgba(27,36,128,.12) !important;
+  background: rgba(26,61,46,.15) !important;
 }

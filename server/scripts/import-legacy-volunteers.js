@@ -63,7 +63,7 @@ async function commitBatches(ops) {
                 : 'Импортировано из прошлой базы волонтёров.',
             maxVolunteers: 0,
             currentVolunteers: attendees,
-            color: '#1B2480',
+            color: '#1A3D2E',
             status: 'closed',
             successMessage: '',
             chatLink: '',

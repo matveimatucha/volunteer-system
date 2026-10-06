@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Apply reliability and performance tweaks on the VPS."""
+"""Apply reliability and performance tweaks on the VPS.
+
+Replaces the nginx site `volunteer`. Do not run this during the dual-domain
+move (old + volunteer.msuprof.com). After the new address is the only one,
+DOMAIN defaults to volunteer.msuprof.com and www is not added.
+"""
 import os
 import sys
 import paramiko
@@ -7,7 +12,7 @@ import paramiko
 HOST = os.environ.get('VPS_HOST', '186.246.12.138')
 USER = os.environ.get('VPS_USER', 'root')
 PASSWORD = os.environ.get('VPS_PASSWORD', '')
-DOMAIN = os.environ.get('DOMAIN', 'volonter-msu.ru')
+DOMAIN = os.environ.get('DOMAIN', 'volunteer.msuprof.com')
 APP_DIR = os.environ.get('APP_DIR', '/var/www/volunteer-system')
 
 
@@ -65,7 +70,7 @@ cat > /etc/nginx/sites-available/volunteer <<'NGX'
 server {
     listen 443 ssl;
     listen [::]:443 ssl;
-    server_name __DOMAIN__ www.__DOMAIN__;
+    server_name __DOMAIN__;
 
     ssl_certificate /etc/letsencrypt/live/__DOMAIN__/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/__DOMAIN__/privkey.pem;
@@ -114,7 +119,7 @@ server {
 server {
     listen 80;
     listen [::]:80;
-    server_name __DOMAIN__ www.__DOMAIN__;
+    server_name __DOMAIN__;
     return 301 https://$host$request_uri;
 }
 

@@ -1,0 +1,104 @@
+/* Спокойное оформление служебных страниц. Не связано с темой главной. */
+:root {
+    --admin-bg: #f4f5f7;
+    --admin-surface: #ffffff;
+    --admin-text: #1f2937;
+    --admin-muted: #64748b;
+    --admin-border: #e2e8f0;
+    --admin-primary: #334155;
+    --admin-primary-hover: #1e293b;
+}
+
+body,
+body.admin-theme {
+    background: var(--admin-bg) !important;
+    background-image: none !important;
+    color: var(--admin-text) !important;
+}
+
+body::before,
+body.admin-theme::before {
+    display: none !important;
+}
+
+header {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    animation: none !important;
+}
+
+h1,
+h2,
+h3,
+.panel-header h2,
+.event-item h3,
+.auth-section h2,
+.dashboard-header h2 {
+    font-family: 'Source Sans 3', system-ui, sans-serif !important;
+    letter-spacing: 0 !important;
+    color: var(--admin-text) !important;
+}
+
+h1 {
+    font-size: 1.75rem !important;
+    font-weight: 700 !important;
+    text-transform: none !important;
+}
+
+.back-link,
+.back-link:hover {
+    background: #fff !important;
+    color: var(--admin-primary) !important;
+    border: 1px solid var(--admin-border) !important;
+    border-radius: 8px !important;
+}
+
+.auth-section,
+.admin-panel,
+.dashboard,
+.event-item,
+.form-container {
+    background: var(--admin-surface) !important;
+    color: var(--admin-text) !important;
+}
+
+.btn {
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    border-radius: 8px !important;
+}
+
+.btn-primary,
+.btn-primary:hover {
+    background: var(--admin-primary) !important;
+    color: #fff !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+.globalMessage,
+.site-update-line {
+    color: var(--admin-muted) !important;
+}
+
+label,
+.info-label {
+    color: var(--admin-muted) !important;
+}
+
+input,
+textarea,
+select {
+    background: #fff !important;
+    color: var(--admin-text) !important;
+    border-color: var(--admin-border) !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    border-color: #94a3b8 !important;
+    box-shadow: 0 0 0 3px rgba(51, 65, 85, 0.1) !important;
+}

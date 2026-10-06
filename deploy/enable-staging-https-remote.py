@@ -7,7 +7,7 @@ import paramiko
 HOST = os.environ.get('VPS_HOST', '186.246.12.138')
 USER = os.environ.get('VPS_USER', 'root')
 PASSWORD = os.environ.get('VPS_PASSWORD', '')
-STAGING_HOST = os.environ.get('STAGING_HOST', 'staging.volonter-msu.ru')
+STAGING_HOST = os.environ.get('STAGING_HOST', 'staging.volunteer.msuprof.com')
 STAGING_DIR = os.environ.get('STAGING_DIR', '/var/www/volunteer-system-staging')
 
 

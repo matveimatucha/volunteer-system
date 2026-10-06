@@ -11,18 +11,18 @@ jobs:
     steps:
       - name: Check /health
         run: |
-          body=$(curl -fsS --max-time 30 https://volonter-msu.ru/health)
+          body=$(curl -fsS --max-time 30 https://volunteer.msuprof.com/health)
           echo "$body"
           echo "$body" | grep -q '"ok":true'
 
       - name: Check main page
         run: |
-          code=$(curl -fsS --max-time 30 -o /dev/null -w "%{http_code}" https://volonter-msu.ru/)
+          code=$(curl -fsS --max-time 30 -o /dev/null -w "%{http_code}" https://volunteer.msuprof.com/)
           echo "HTTP $code"
           test "$code" = "200"
 
       - name: Check registration page
         run: |
-          code=$(curl -fsS --max-time 30 -o /dev/null -w "%{http_code}" https://volonter-msu.ru/register.html)
+          code=$(curl -fsS --max-time 30 -o /dev/null -w "%{http_code}" https://volunteer.msuprof.com/register.html)
           echo "HTTP $code"
           test "$code" = "200"

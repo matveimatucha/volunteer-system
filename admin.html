@@ -4,15 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Админ-панель</title>
-    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
-    <link rel="shortcut icon" href="assets/favicon.svg">
+    <link rel="icon" type="image/png" href="assets/favicon.png?v=6">
+    <link rel="shortcut icon" href="assets/favicon.png?v=6">
+    <link rel="apple-touch-icon" href="assets/favicon.png?v=6">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="dns-prefetch" href="https://firestore.googleapis.com">
     <link rel="preconnect" href="https://firestore.googleapis.com">
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="assets/opk-theme.css">
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet"></noscript>
     <style>
         * {
             margin: 0;
@@ -21,21 +21,21 @@
         }
 
         :root {
-            --primary:       #1B2480;
-            --primary-dark:  #121963;
-            --secondary:     #4472C4;
-            --accent:        #E8C225;
-            --dark:          #1a2060;
-            --light:         #F7F3C4;
+            --primary:       #334155;
+            --primary-dark:  #1e293b;
+            --secondary:     #64748b;
+            --accent:        #2563eb;
+            --dark:          #1f2937;
+            --light:         #f8fafc;
             --success:       #1e8c5a;
             --danger:        #d63031;
         }
 
         body {
-            font-family: 'Source Sans 3', sans-serif;
-            background-color: #F7F3C4;
+            font-family: 'Source Sans 3', system-ui, sans-serif;
+            background-color: #f4f5f7;
             min-height: 100vh;
-            color: #3a3f6b;
+            color: #334155;
             padding: 2rem;
         }
 
@@ -62,35 +62,35 @@
         }
 
         h1 {
-            font-family: 'Bebas Neue', sans-serif;
-            font-size: 3.5rem;
-            letter-spacing: 2px;
-            color: #1B2480;
+            font-family: 'Source Sans 3', system-ui, sans-serif;
+            font-size: 1.75rem;
+            letter-spacing: 0;
+            color: #334155;
         }
 
         .site-update-line {
             margin: 0.4rem 0 0;
             font-size: 0.82rem;
             font-weight: 600;
-            color: rgba(27, 36, 128, 0.62);
+            color: rgba(51, 65, 85, 0.62);
             max-width: 28rem;
             line-height: 1.35;
         }
         .site-update-line:empty { display: none; }
 
         .back-link {
-            background: rgba(27, 36, 128, 0.09);
-            color: #1B2480;
+            background: rgba(51, 65, 85, 0.09);
+            color: #334155;
             padding: 0.8rem 1.5rem;
             border-radius: 50px;
             text-decoration: none;
             font-weight: 600;
             transition: all 0.3s ease;
-            border: 2px solid rgba(27, 36, 128, 0.20);
+            border: 2px solid rgba(51, 65, 85, 0.20);
         }
 
         .back-link:hover {
-            background: rgba(27, 36, 128, 0.16);
+            background: rgba(51, 65, 85, 0.16);
             transform: translateY(-2px);
         }
 
@@ -101,17 +101,17 @@
             padding: 3rem;
             max-width: 500px;
             margin: 0 auto;
-            border: 1px solid rgba(27, 36, 128, 0.15);
-            box-shadow: 0 12px 40px rgba(27, 36, 128, 0.12);
+            border: 1px solid rgba(51, 65, 85, 0.15);
+            box-shadow: 0 12px 40px rgba(51, 65, 85, 0.12);
         }
 
         .auth-section h2 {
-            font-family: 'Bebas Neue', sans-serif;
+            font-family: 'Source Sans 3', system-ui, sans-serif;
             font-size: 2.5rem;
             margin-bottom: 2rem;
             text-align: center;
             letter-spacing: 2px;
-            color: #1B2480;
+            color: #334155;
         }
 
         .form-group {
@@ -140,8 +140,8 @@
             margin-bottom: 1rem;
         }
         .participants-day-btn.active {
-            background: #1B2480;
-            border-color: #1B2480;
+            background: #334155;
+            border-color: #334155;
             color: #fff;
         }
         .day-filter-label {
@@ -168,9 +168,9 @@
             width: 100%;
             padding: 1rem;
             background: #fff;
-            border: 2px solid rgba(27, 36, 128, 0.18);
+            border: 2px solid rgba(51, 65, 85, 0.18);
             border-radius: 10px;
-            color: #1a2060;
+            color: #1f2937;
             font-family: 'Source Sans 3', sans-serif;
             font-size: 1rem;
             transition: all 0.3s ease;
@@ -178,21 +178,21 @@
 
         select option {
             background-color: #fff;
-            color: #1a2060;
+            color: #1f2937;
         }
 
         input::placeholder,
         textarea::placeholder {
-            color: rgba(27, 36, 128, 0.38);
+            color: rgba(51, 65, 85, 0.38);
         }
 
         input:focus,
         textarea:focus,
         select:focus {
             outline: none;
-            border-color: #1B2480;
+            border-color: #334155;
             background: #fff;
-            box-shadow: 0 0 0 3px rgba(27, 36, 128, 0.10);
+            box-shadow: 0 0 0 3px rgba(51, 65, 85, 0.10);
         }
 
         textarea {
@@ -217,15 +217,15 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #1B2480, #121963);
+            background: linear-gradient(135deg, #334155, #1e293b);
             color: white;
             width: 100%;
         }
 
         .btn-primary:hover {
-            background: linear-gradient(135deg, #2639B0, #1B2480);
+            background: linear-gradient(135deg, #475569, #334155);
             transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(27, 36, 128, 0.35);
+            box-shadow: 0 10px 30px rgba(51, 65, 85, 0.35);
         }
 
         .btn-success {
@@ -268,14 +268,14 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border: 1px solid rgba(27, 36, 128, 0.12);
+            border: 1px solid rgba(51, 65, 85, 0.12);
         }
 
         .panel-header h2 {
-            font-family: 'Bebas Neue', sans-serif;
+            font-family: 'Source Sans 3', system-ui, sans-serif;
             font-size: 2rem;
             letter-spacing: 2px;
-            color: #1B2480;
+            color: #334155;
         }
 
         .events-list {
@@ -287,15 +287,15 @@
             background: rgba(255, 255, 255, 0.88);
             padding: 2rem;
             border-radius: 15px;
-            border: 1px solid rgba(27, 36, 128, 0.12);
+            border: 1px solid rgba(51, 65, 85, 0.12);
             transition: all 0.3s ease;
-            box-shadow: 0 4px 18px rgba(27, 36, 128, 0.08);
+            box-shadow: 0 4px 18px rgba(51, 65, 85, 0.08);
         }
 
         .event-item:hover {
             background: rgba(255, 255, 255, 0.97);
             transform: translateX(5px);
-            box-shadow: 0 6px 24px rgba(27, 36, 128, 0.13);
+            box-shadow: 0 6px 24px rgba(51, 65, 85, 0.13);
         }
 
         .event-item-header {
@@ -306,9 +306,9 @@
         }
 
         .event-item h3 {
-            font-family: 'Bebas Neue', sans-serif;
+            font-family: 'Source Sans 3', system-ui, sans-serif;
             font-size: 1.8rem;
-            color: #1B2480;
+            color: #334155;
             letter-spacing: 1px;
         }
 
@@ -331,7 +331,7 @@
         }
 
         .info-label {
-            color: rgba(27, 36, 128, 0.58);
+            color: rgba(51, 65, 85, 0.58);
             font-size: 0.8rem;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -387,10 +387,10 @@
             border-radius: 20px;
             max-width: 900px;
             width: 100%;
-            border: 2px solid rgba(27, 36, 128, 0.18);
+            border: 2px solid rgba(51, 65, 85, 0.18);
             animation: slideIn 0.3s ease-out;
             margin-bottom: 2rem;
-            color: #1a2060;
+            color: #1f2937;
         }
 
         @keyframes slideIn {
@@ -405,7 +405,7 @@
         }
 
         .modal h2 {
-            font-family: 'Bebas Neue', sans-serif;
+            font-family: 'Source Sans 3', system-ui, sans-serif;
             font-size: 2.5rem;
             margin-bottom: 2rem;
             letter-spacing: 2px;
@@ -450,11 +450,30 @@
             border-radius: 20px;
             max-width: 600px;
             width: 100%;
-            border: 2px solid rgba(27, 36, 128, 0.20);
+            border: 2px solid rgba(51, 65, 85, 0.20);
             animation: scaleIn 0.3s ease-out;
-            box-shadow: 0 20px 60px rgba(27, 36, 128, 0.18);
+            box-shadow: 0 20px 60px rgba(51, 65, 85, 0.18);
             margin-bottom: 2rem;
         }
+
+        #hoursImportModal.template-modal { z-index: 4000; }
+        .hours-modal-content { max-width: 920px; }
+        .hours-modal-content h2 { margin-top: 0; }
+        .hours-help { margin: 0 0 1rem; font-size: 0.95rem; line-height: 1.45; }
+        .hours-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1rem; }
+        .hours-summary { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.8rem 0; }
+        .hours-chip {
+            border: 1px solid rgba(51, 65, 85, 0.2);
+            border-radius: 999px;
+            padding: 0.2rem 0.7rem;
+            font-size: 0.82rem;
+        }
+        .hours-chip.warn { border-color: #e67e22; color: #d35400; }
+        .hours-chip.bad { border-color: #e74c3c; color: #c0392b; }
+        .hours-preview-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .hours-preview-table th, .hours-preview-table td { padding: 0.45rem 0.5rem; border-bottom: 1px solid rgba(51,65,85,0.1); text-align: left; vertical-align: top; }
+        .hours-preview-wrap { max-height: 360px; overflow: auto; margin-top: 0.5rem; }
+        .hours-note { color: #c0392b; font-size: 0.9rem; }
 
         @keyframes scaleIn {
             from {
@@ -468,7 +487,7 @@
         }
 
         .template-modal h2 {
-            font-family: 'Bebas Neue', sans-serif;
+            font-family: 'Source Sans 3', system-ui, sans-serif;
             font-size: 2.5rem;
             margin-bottom: 1.5rem;
             letter-spacing: 2px;
@@ -534,10 +553,10 @@
         }
 
         .questions-header h3 {
-            font-family: 'Bebas Neue', sans-serif;
+            font-family: 'Source Sans 3', system-ui, sans-serif;
             font-size: 1.8rem;
             letter-spacing: 1px;
-            color: #1B2480;
+            color: #334155;
         }
 
         .question-item {
@@ -545,7 +564,7 @@
             padding: 1.5rem;
             border-radius: 10px;
             margin-bottom: 1rem;
-            border: 1px solid rgba(27, 36, 128, 0.12);
+            border: 1px solid rgba(51, 65, 85, 0.12);
         }
 
         .question-header-row {
@@ -599,7 +618,7 @@
         }
 
         .questions-list::-webkit-scrollbar-track {
-            background: rgba(27, 36, 128, 0.05);
+            background: rgba(51, 65, 85, 0.05);
             border-radius: 10px;
         }
 
@@ -638,7 +657,7 @@
         .question-type-badge {
             font-size: 0.82rem;
             font-weight: 600;
-            color: #1B2480;
+            color: #334155;
             opacity: 0.85;
             padding-top: 0.35rem;
             flex: 1;
@@ -684,7 +703,7 @@
         }
 
         .questions-list::-webkit-scrollbar-thumb {
-            background: rgba(27, 36, 128, 0.30);
+            background: rgba(51, 65, 85, 0.30);
             border-radius: 10px;
         }
 
@@ -710,9 +729,9 @@
             flex-wrap: wrap;
         }
         .admin-tab {
-            border: 2px solid rgba(27, 36, 128, 0.18);
+            border: 2px solid rgba(51, 65, 85, 0.18);
             background: rgba(255,255,255,0.7);
-            color: #1B2480;
+            color: #334155;
             font-family: inherit;
             font-weight: 700;
             font-size: 0.95rem;
@@ -721,9 +740,9 @@
             cursor: pointer;
         }
         .admin-tab.active {
-            background: #1B2480;
+            background: #334155;
             color: #fff;
-            border-color: #1B2480;
+            border-color: #334155;
         }
         .tab-count {
             display: inline-block;
@@ -735,12 +754,12 @@
             font-size: 0.8rem;
         }
         .admin-tab:not(.active) .tab-count {
-            background: rgba(27, 36, 128, 0.12);
+            background: rgba(51, 65, 85, 0.12);
         }
         .event-todos {
             margin-top: 1.15rem;
             padding-top: 1rem;
-            border-top: 1px solid rgba(27, 36, 128, 0.12);
+            border-top: 1px solid rgba(51, 65, 85, 0.12);
         }
         .event-todos-toggle {
             display: flex;
@@ -748,9 +767,9 @@
             align-items: center;
             gap: 0.75rem;
             width: 100%;
-            border: 1.5px solid rgba(27, 36, 128, 0.16);
-            background: rgba(27, 36, 128, 0.05);
-            color: #1B2480;
+            border: 1.5px solid rgba(51, 65, 85, 0.16);
+            background: rgba(51, 65, 85, 0.05);
+            color: #334155;
             font: inherit;
             font-weight: 700;
             padding: 0.7rem 0.95rem;
@@ -759,7 +778,7 @@
             text-align: left;
         }
         .event-todos-toggle:hover {
-            background: rgba(27, 36, 128, 0.09);
+            background: rgba(51, 65, 85, 0.09);
         }
         .event-todos-toggle-left {
             display: flex;
@@ -799,13 +818,13 @@
             gap: 0.75rem;
             margin-bottom: 0.7rem;
             font-weight: 700;
-            color: #1B2480;
+            color: #334155;
         }
         .event-todos-phase {
             font-size: 0.78rem;
             text-transform: uppercase;
             letter-spacing: 0.6px;
-            color: rgba(27, 36, 128, 0.62);
+            color: rgba(51, 65, 85, 0.62);
             margin: 0.7rem 0 0.4rem;
         }
         .event-todo-item {
@@ -843,7 +862,7 @@
         .event-todos-add select,
         .event-todos-add input {
             padding: 0.45rem 0.65rem;
-            border: 1.5px solid rgba(27,36,128,.20);
+            border: 1.5px solid rgba(51,65,85,.20);
             border-radius: 8px;
             font: inherit;
         }
@@ -860,14 +879,14 @@
             margin-top: 1rem;
         }
         .event-archive-stat {
-            background: rgba(27, 36, 128, 0.06);
+            background: rgba(51, 65, 85, 0.06);
             border-radius: 10px;
             padding: 0.65rem 0.75rem;
         }
         .event-archive-stat .n {
             font-size: 1.15rem;
             font-weight: 800;
-            color: #1B2480;
+            color: #334155;
         }
         .event-archive-stat .l {
             font-size: 0.75rem;
@@ -882,8 +901,8 @@
             max-height: 240px;
             overflow-y: auto;
             padding: 0.55rem;
-            background: rgba(27, 36, 128, 0.04);
-            border: 1px solid rgba(27, 36, 128, 0.12);
+            background: rgba(51, 65, 85, 0.04);
+            border: 1px solid rgba(51, 65, 85, 0.12);
             border-radius: 10px;
         }
         .organizer-option {
@@ -898,7 +917,7 @@
             border-radius: 8px;
             cursor: pointer;
         }
-        .organizer-option:hover { background: rgba(27, 36, 128, 0.06); }
+        .organizer-option:hover { background: rgba(51, 65, 85, 0.06); }
         .organizer-option input { width: auto; margin-top: 0.2rem; }
         .organizer-option small {
             display: block;
@@ -929,7 +948,7 @@
             display: inline-flex;
             align-items: center;
             gap: 0.35rem;
-            background: rgba(27, 36, 128, 0.08);
+            background: rgba(51, 65, 85, 0.08);
             border-radius: 999px;
             padding: 0.2rem 0.55rem 0.2rem 0.75rem;
             font-size: 0.85rem;
@@ -965,7 +984,7 @@
             background: #fff;
             padding: 2.5rem;
             border-radius: 20px;
-            max-width: 1100px;
+            max-width: min(1600px, calc(100vw - 2rem));
             width: 100%;
             border: 2px solid rgba(46,204,113,0.3);
             margin-bottom: 2rem;
@@ -980,7 +999,7 @@
             gap: 1rem;
         }
         .participants-modal-header h2 {
-            font-family: 'Bebas Neue', sans-serif;
+            font-family: 'Source Sans 3', system-ui, sans-serif;
             font-size: 2rem;
             letter-spacing: 2px;
             color: var(--success);
@@ -989,35 +1008,60 @@
             overflow-x: auto;
         }
         .participants-table {
-            width: 100%;
-            border-collapse: collapse;
+            width: max-content;
+            min-width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
             font-size: 0.88rem;
         }
         .participants-table th {
-            background: rgba(27,36,128,0.07);
+            background: #f3f5f8;
             padding: 0.8rem 1rem;
             text-align: left;
-            color: rgba(27,36,128,0.65);
+            color: rgba(51,65,85,0.65);
             font-size: 0.78rem;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.04em;
             white-space: nowrap;
         }
+        .participant-note { min-width: 160px; max-width: 280px; white-space: pre-wrap; overflow-wrap: break-word; }
+        .blacklist-mark { display:block; margin-top:0.35rem; color:#a91e1e; font-weight:700; font-size:0.78rem; letter-spacing:0; text-transform:none; }
+        .blacklist-reason { display:block; margin-top:0.15rem; color:#6b2b2b; font-size:0.8rem; white-space:pre-wrap; max-width: 240px; }
+        .participant-actions { display:flex; flex-wrap:wrap; gap:0.35rem; margin-top:0.45rem; }
+        #blacklistModal.template-modal { z-index: 4500; }
         .participants-table td {
             padding: 0.75rem 1rem;
-            border-bottom: 1px solid rgba(27,36,128,0.07);
+            border-bottom: 1px solid rgba(51,65,85,0.07);
             vertical-align: top;
-            max-width: 250px;
-            word-break: break-word;
+            white-space: nowrap;
             color: #2d3560;
+            background: #fff;
         }
-        .participants-table tr:hover td {
-            background: rgba(27,36,128,0.03);
+        .participants-table td.col-answer,
+        .participants-table th.col-answer {
+            white-space: normal;
+            min-width: 160px;
+            max-width: 280px;
+            overflow-wrap: break-word;
         }
+        .participants-table .col-name {
+            position: sticky;
+            left: 0;
+            z-index: 1;
+            min-width: 220px;
+            background: #fff;
+            box-shadow: 4px 0 8px -6px rgba(51,65,85,0.45);
+        }
+        .participants-table thead .col-name {
+            z-index: 2;
+            background: #f3f5f8;
+        }
+        .participants-table tr:hover td { background: #f7f8fa; }
+        .participants-table tr:hover td.col-name { background: #f7f8fa; }
 
         .participants-filter-btn.active {
-            background: #1B2480;
-            border-color: #1B2480;
+            background: #334155;
+            border-color: #334155;
         }
 
         .empty-participants {
@@ -1032,9 +1076,9 @@
             gap: 0.65rem;
             margin-bottom: 1rem;
             padding: 0.85rem 1rem;
-            background: rgba(27,36,128,0.04);
+            background: rgba(51,65,85,0.04);
             border-radius: 8px;
-            border: 1px solid rgba(27,36,128,0.1);
+            border: 1px solid rgba(51,65,85,0.1);
         }
         .attendance-stat-chip {
             display: flex;
@@ -1095,12 +1139,12 @@
             padding: 0.9rem 1.1rem;
             text-align: center;
         }
-        .vol-stat-card .val { font-size: 1.7rem; font-weight: 800; color: #1B2480; }
+        .vol-stat-card .val { font-size: 1.7rem; font-weight: 800; color: #334155; }
         .vol-stat-card .lbl { font-size: 0.8rem; opacity: 0.7; margin-top: 0.2rem; }
         .vol-leaderboard { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
         .vol-leaderboard th, .vol-leaderboard td { padding: 0.55rem 0.75rem; text-align: left; border-bottom: 1px solid #f0f0f0; }
         .vol-leaderboard th { background: #f8f9ff; font-weight: 700; font-size: 0.82rem; opacity: 0.85; }
-        .vol-leaderboard tr:hover td { background: rgba(27,36,128,0.03); }
+        .vol-leaderboard tr:hover td { background: rgba(51,65,85,0.03); }
         .vol-row-detail { display: none; background: #fafbff; }
         .vol-row-detail.open { display: table-row; }
         .vol-row-detail td { padding: 0.5rem 1rem 0.75rem; }
@@ -1156,7 +1200,7 @@
         }
 
         .deleted-events-panel h3 {
-            font-family: 'Bebas Neue', sans-serif;
+            font-family: 'Source Sans 3', system-ui, sans-serif;
             font-size: 1.45rem;
             letter-spacing: 1px;
             color: var(--danger);
@@ -1178,7 +1222,7 @@
             margin-bottom: 0.75rem;
             padding: 0.55rem 0.85rem;
             border-radius: 10px;
-            background: rgba(27, 36, 128, 0.07);
+            background: rgba(51, 65, 85, 0.07);
             font-size: 0.9rem;
             display: none;
         }
@@ -1252,11 +1296,11 @@
 
         .dashboard {
             background: rgba(255, 255, 255, 0.75);
-            border: 1px solid rgba(27, 36, 128, 0.12);
+            border: 1px solid rgba(51, 65, 85, 0.12);
             border-radius: 16px;
             padding: 1.25rem 1.5rem;
             margin-bottom: 1.5rem;
-            box-shadow: 0 4px 18px rgba(27, 36, 128, 0.07);
+            box-shadow: 0 4px 18px rgba(51, 65, 85, 0.07);
         }
         .dashboard-header {
             display: flex;
@@ -1273,11 +1317,11 @@
             gap: 0.85rem;
         }
         .stat-card {
-            background: rgba(27, 36, 128, 0.07);
+            background: rgba(51, 65, 85, 0.07);
             border-radius: 12px;
             padding: 1rem 1.1rem;
             text-align: center;
-            color: #1B2480;
+            color: #334155;
         }
         .stat-card .stat-value {
             font-size: 1.9rem;
@@ -1311,20 +1355,20 @@
         .mini-meter {
             height: 6px;
             border-radius: 4px;
-            background: rgba(27, 36, 128, 0.12);
+            background: rgba(51, 65, 85, 0.12);
             overflow: hidden;
             min-width: 80px;
         }
-        .mini-meter > div { height: 100%; background: linear-gradient(90deg, #1B2480, #2639B0); }
+        .mini-meter > div { height: 100%; background: linear-gradient(90deg, #334155, #475569); }
 
         /* ---- Google Sheets panel ---- */
         .sheets-panel {
             background: rgba(255,255,255,.80);
-            border: 1px solid rgba(27,36,128,.14);
+            border: 1px solid rgba(51,65,85,.14);
             border-radius: 16px;
             padding: 1.25rem 1.5rem;
             margin-bottom: 1.5rem;
-            box-shadow: 0 4px 18px rgba(27,36,128,.07);
+            box-shadow: 0 4px 18px rgba(51,65,85,.07);
         }
         .sheets-panel-header {
             display: flex;
@@ -1335,10 +1379,10 @@
         }
         .sheets-panel-header h2 {
             margin: 0;
-            font-family: 'Bebas Neue', sans-serif;
+            font-family: 'Source Sans 3', system-ui, sans-serif;
             font-size: 1.5rem;
             letter-spacing: 1px;
-            color: #1B2480;
+            color: #334155;
             flex: 1;
         }
         .sheets-url-row {
@@ -1352,17 +1396,17 @@
             flex: 1 1 320px;
             min-width: 0;
             padding: 0.65rem 0.9rem;
-            border: 1.5px solid rgba(27,36,128,.20);
+            border: 1.5px solid rgba(51,65,85,.20);
             border-radius: 10px;
             font-size: 0.9rem;
             font-family: inherit;
-            color: #1a2060;
+            color: #1f2937;
             background: #fff;
         }
         .sheets-url-row input:focus {
             outline: none;
-            border-color: #1B2480;
-            box-shadow: 0 0 0 3px rgba(27,36,128,.10);
+            border-color: #334155;
+            box-shadow: 0 0 0 3px rgba(51,65,85,.10);
         }
         .sheets-status {
             font-size: 0.88rem;
@@ -1374,22 +1418,41 @@
         .sheets-status.err { display:inline-block; background:#f8d7da; color:#721c24; }
         .sheets-hint {
             font-size: 0.83rem;
-            color: rgba(27,36,128,.60);
+            color: rgba(51,65,85,.60);
             line-height: 1.5;
             margin-top: 0.5rem;
         }
-        .sheets-hint a { color: #1B2480; }
+        .sheets-hint a { color: #334155; }
+        .telegram-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            margin: 0 0 0.9rem;
+            text-transform: none;
+            letter-spacing: 0;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .telegram-toggle input {
+            width: 1.1rem;
+            height: 1.1rem;
+            padding: 0;
+            margin: 0;
+            flex: 0 0 auto;
+        }
         @media (max-width: 480px) {
             .sheets-panel { padding: 1rem; }
             .sheets-url-row input { flex-basis: 100%; }
         }
     </style>
+    <link rel="stylesheet" href="assets/admin-ui.css">
 </head>
 <body class="admin-theme">
     <div class="container">
         <header>
             <div>
-                <h1>⚙️ АДМИН-ПАНЕЛЬ</h1>
+                <h1>Админ-панель</h1>
                 <p id="siteUpdateLine" class="site-update-line"></p>
             </div>
             <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
@@ -1413,7 +1476,7 @@
                     <input type="password" id="adminPassword" required placeholder="Введите пароль" autocomplete="current-password">
                 </div>
                 <button type="submit" class="btn btn-primary">Войти</button>
-                <button type="button" class="btn" id="resetPasswordBtn" style="margin-top:0.6rem;background:#eef1f8;color:#1B2480;" onclick="sendAdminPasswordReset()">Не помню пароль</button>
+                <button type="button" class="btn" id="resetPasswordBtn" style="margin-top:0.6rem;background:#eef2f6;color:#334155;" onclick="sendAdminPasswordReset()">Не помню пароль</button>
             </form>
             <p style="margin-top:1rem;font-size:0.85rem;opacity:0.75;text-align:center;">
                 Если пароль ещё не задавали — нажмите «Не помню пароль», письмо придёт на эту почту.
@@ -1427,6 +1490,7 @@
             <div class="admin-tabs">
                 <button type="button" id="tabBtnEvents" class="admin-tab active" onclick="setAdminTab('events')">Мероприятия</button>
                 <button type="button" id="tabBtnArchive" class="admin-tab" onclick="setAdminTab('archive')">Архив <span id="archiveTabCount" class="tab-count"></span></button>
+                <button type="button" id="tabBtnBlacklist" class="admin-tab" onclick="setAdminTab('blacklist')">Чёрный список</button>
             </div>
 
             <div id="adminTabEvents">
@@ -1489,10 +1553,16 @@
                     <h2>📱 Telegram</h2>
                     <span id="telegramStatusBadge" class="sheets-status"></span>
                 </div>
-                <label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;cursor:pointer;">
+                <label class="telegram-toggle">
                     <input type="checkbox" id="telegramEnabled" checked onchange="saveTelegramSettings()">
-                    Уведомления о новых регистрациях
+                    <span>Присылать сводку о каждой новой записи</span>
                 </label>
+                <div class="sheets-url-row">
+                    <input type="password" id="telegramTokenInput" autocomplete="new-password"
+                           placeholder="Токен бота от @BotFather">
+                    <button type="button" class="btn btn-small" onclick="saveTelegramToken()">Сохранить токен</button>
+                    <button type="button" class="btn btn-small" onclick="connectTelegramBot()">Подключить бота</button>
+                </div>
                 <div class="sheets-url-row">
                     <input type="text" id="telegramChatIdInput"
                            placeholder="Chat ID получателя (123456789 или -100… для группы)"
@@ -1500,13 +1570,16 @@
                     <button class="btn btn-small" onclick="addTelegramChatId()">+ Добавить</button>
                 </div>
                 <ul id="telegramChatIdsList" style="list-style:none;padding:0;margin:0.75rem 0 0;display:flex;flex-direction:column;gap:0.4rem;"></ul>
+                <h3 style="margin:1.2rem 0 0.4rem;font-size:1rem;">Кураторы в боте</h3>
+                <p class="sheets-hint" style="margin-top:0;">Куратор пишет боту /start. Здесь его подтверждают, и бот показывает мероприятия на записи.</p>
+                <div id="telegramCurators"></div>
                 <p class="sheets-hint">
-                    <strong>Как настроить:</strong>
-                    1) создайте бота через <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a>;
-                    2) в <a href="assets/google-apps-script.js" target="_blank">Apps Script</a> вставьте токен в <code>TELEGRAM_BOT_TOKEN</code> и переразверните веб-приложение;
-                    3) каждый получатель пишет боту <code>/start</code>;
-                    4) узнайте chat_id через <a href="https://t.me/userinfobot" target="_blank" rel="noopener">@userinfobot</a> и добавьте выше.
-                    Уведомления идут через Google Apps Script (VPS не достучится до Telegram напрямую).
+                    <strong>Как включить сводки кураторам:</strong>
+                    1) в @BotFather создайте бота и скопируйте токен, вставьте его выше;
+                    2) тот же токен один раз вставьте в Apps Script таблицы в <code>TELEGRAM_BOT_TOKEN</code>, запустите <code>authorizeTelegram_</code> и переразверните веб-приложение;
+                    3) каждый куратор пишет этому боту <code>/start</code>;
+                    4) chat id берётся у @userinfobot и добавляется в поле выше.
+                    Письмо в Telegram отправляет Google, не сам сервер.
                 </p>
             </div>
             </div>
@@ -1528,6 +1601,14 @@
                     <p style="text-align: center; padding: 2rem; opacity: 0.6;">Архив пуст</p>
                 </div>
             </div>
+
+            <div id="adminTabBlacklist" style="display:none;">
+                <div class="panel-header">
+                    <h2>Чёрный список</h2>
+                </div>
+                <p style="margin:0 0 1rem;max-width:720px;">Эти люди записываются как обычно и не видят пометку. Куратор видит «не брать» в участниках мероприятия и в Telegram. Добавить человека можно из строки заявки или из статистики волонтёров.</p>
+                <div id="blacklistList"><p style="opacity:0.6;">Загрузка...</p></div>
+            </div>
         </div>
     </div>
 
@@ -1537,7 +1618,7 @@
             <h2>🎯 Использовать шаблон?</h2>
             <p>Хотите автоматически добавить готовый набор базовых вопросов для волонтёров?</p>
             
-            <div style="background: rgba(27, 36, 128, 0.06); padding: 1.5rem; border-radius: 10px; border-left: 4px solid #1B2480; color: #1a2060;">
+            <div style="background: rgba(51, 65, 85, 0.06); padding: 1.5rem; border-radius: 10px; border-left: 4px solid #334155; color: #1f2937;">
                 <p style="margin: 0 0 1rem 0; font-weight: 600; text-align: left;">Будут добавлены 10 базовых вопросов:</p>
                 <ul>
                     <li>Имя, фамилия, факультет, курс</li>
@@ -1563,9 +1644,10 @@
             <div class="participants-modal-header">
                 <h2 id="participantsTitle">Участники</h2>
                 <div style="display: flex; gap: 0.8rem; flex-wrap: wrap;">
-                    <button class="btn btn-success btn-small" onclick="exportCSV('new')">⬇ Скачать новые CSV</button>
-                    <button class="btn btn-small" style="background: var(--secondary);" onclick="exportCSV('all')">⬇ Скачать все CSV</button>
+                    <button class="btn btn-success btn-small" onclick="exportParticipants('new')">⬇ Скачать новые Excel</button>
+                    <button class="btn btn-small" style="background: var(--secondary);" onclick="exportParticipants('all')">⬇ Скачать все Excel</button>
                     <button class="btn btn-small" style="background: #16a085;" onclick="copyConfirmedEmails()" title="Скопировать e-mail записанных для рассылки-напоминания">📧 Копировать e-mail</button>
+                    <button class="btn btn-small" style="background: #1a6b8a;" onclick="openHoursImport()">⬆ Часы из Excel</button>
                     <button class="btn btn-small" style="background: #7f8c8d;" onclick="markAllViewed()">✓ Отметить как просмотренные</button>
                     <button class="btn btn-danger btn-small" onclick="closeParticipantsModal()">✕ Закрыть</button>
                 </div>
@@ -1584,6 +1666,39 @@
             <div id="participantsDayFilter" class="participants-day-filter"></div>
             <div id="participantsContent">
                 <p class="empty-participants">Загрузка...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="hoursImportModal" class="template-modal">
+        <div class="template-modal-content hours-modal-content">
+            <h2>Часы из Excel</h2>
+            <p class="hours-help">Файл — полный итог мероприятия. Колонки: ФИО, Факультет, Курс, Часы, Комментарий. Если человека нет в файле или у него нет часов, на мероприятии ставится неявка. Комментарий сохраняется на человеке и виден по всем мероприятиям.</p>
+            <div class="hours-actions">
+                <button type="button" class="btn btn-small" style="background: var(--secondary);" onclick="downloadHoursTemplate()">⬇ Скачать шаблон</button>
+                <label class="btn btn-success btn-small" style="margin:0;cursor:pointer;">
+                    Выбрать .xlsx
+                    <input id="hoursImportFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none;" onchange="onHoursFileSelected(this)">
+                </label>
+                <button type="button" class="btn btn-danger btn-small" onclick="closeHoursImport()">Закрыть</button>
+            </div>
+            <p id="hoursImportStatus" style="min-height:1.2em;margin:0 0 0.6rem;"></p>
+            <div id="hoursImportPreview"></div>
+        </div>
+    </div>
+
+    <div id="blacklistModal" class="template-modal">
+        <div class="template-modal-content">
+            <h2>Не брать</h2>
+            <p id="blacklistPersonName" style="font-weight:700;"></p>
+            <p id="blacklistExisting" class="blacklist-reason" style="display:none;"></p>
+            <div class="form-group">
+                <label>Почему не брать *</label>
+                <textarea id="blacklistReason" maxlength="1000" placeholder="Коротко, что случилось"></textarea>
+            </div>
+            <div class="template-actions">
+                <button type="button" class="btn btn-danger" onclick="closeBlacklistForm()">Отмена</button>
+                <button type="button" class="btn btn-success" id="blacklistSaveBtn" onclick="submitBlacklist()">Подтвердить</button>
             </div>
         </div>
     </div>
@@ -1638,11 +1753,6 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Максимум волонтёров (пусто — без ограничений)</label>
-                    <input type="number" id="eventMaxVolunteers" placeholder="Например: 20">
-                </div>
-
-                <div class="form-group">
                     <label>Ссылка на фоновое фото мероприятия (опционально)</label>
                     <input type="url" id="eventImage" placeholder="https://drive.google.com/file/d/.../view">
                     <small style="opacity: 0.7; font-size: 0.85rem; margin-top: 0.5rem; display: block;">Ссылка «Поделиться» с Google Диска (доступ: все, у кого есть ссылка) или прямая ссылка на картинку. Обложка карточки и страницы регистрации.</small>
@@ -1651,7 +1761,7 @@
                 <div class="form-group">
                     <label>Ссылка на логотип мероприятия (опционально)</label>
                     <input type="url" id="eventLogo" placeholder="https://drive.google.com/file/d/.../view">
-                    <small style="opacity: 0.7; font-size: 0.85rem; margin-top: 0.5rem; display: block;">Та же схема: Google Диск или прямая ссылка. Если пусто — assets/logo.png</small>
+                    <small style="opacity: 0.7; font-size: 0.85rem; margin-top: 0.5rem; display: block;">Та же схема: Google Диск или прямая ссылка. Если пусто — прозрачный логотип ОПК</small>
                 </div>
 
                 <div class="form-group">
@@ -1691,7 +1801,7 @@
                     </label>
                 </div>
 
-                <div class="form-group" style="border-top: 1px solid rgba(27,36,128,0.12); padding-top: 1.25rem; margin-top: 0.5rem;">
+                <div class="form-group" style="border-top: 1px solid rgba(51,65,85,0.12); padding-top: 1.25rem; margin-top: 0.5rem;">
                     <input type="hidden" id="eventIsArchived" value="0">
                     <label style="text-transform: none; font-size: 1rem; margin-bottom: 0.75rem;">📷 Итоги прошедшего мероприятия</label>
                     <small style="opacity: 0.75; font-size: 0.85rem; display: block; margin-bottom: 1rem;">Показываются на главной при нажатии на карточку в архиве. В архив событие отправляется с карточки, когда выполнен чеклист после мероприятия.</small>
@@ -1753,6 +1863,11 @@
         let participantsFilter = 'all';
         let participantsDayFilter = 'all';
         let participantsSearchQuery = '';
+        let hoursImportRows = [];
+        let hoursImportChoices = {};
+        let hoursImportPreview = null;
+        let hoursImportBusy = false;
+        let blacklistTargetId = '';
         let telegramChatIds = [];
         let adminPeople = [];
         let extraOrganizers = [];
@@ -1773,6 +1888,7 @@
             if (!res.ok) {
                 const err = new Error(data.error || 'API_ERROR');
                 err.httpStatus = res.status;
+                err.detail = data.message || '';
                 throw err;
             }
             return data;
@@ -2023,16 +2139,21 @@
         }
 
         function setAdminTab(tab) {
-            adminTab = tab === 'archive' ? 'archive' : 'events';
+            adminTab = tab === 'archive' || tab === 'blacklist' ? tab : 'events';
             const eventsPanel = document.getElementById('adminTabEvents');
             const archivePanel = document.getElementById('adminTabArchive');
+            const blacklistPanel = document.getElementById('adminTabBlacklist');
             const eventsBtn = document.getElementById('tabBtnEvents');
             const archiveBtn = document.getElementById('tabBtnArchive');
+            const blacklistBtn = document.getElementById('tabBtnBlacklist');
             if (eventsPanel) eventsPanel.style.display = adminTab === 'events' ? '' : 'none';
             if (archivePanel) archivePanel.style.display = adminTab === 'archive' ? '' : 'none';
+            if (blacklistPanel) blacklistPanel.style.display = adminTab === 'blacklist' ? '' : 'none';
             if (eventsBtn) eventsBtn.classList.toggle('active', adminTab === 'events');
             if (archiveBtn) archiveBtn.classList.toggle('active', adminTab === 'archive');
+            if (blacklistBtn) blacklistBtn.classList.toggle('active', adminTab === 'blacklist');
             if (adminTab === 'archive') renderArchiveStatsTable();
+            if (adminTab === 'blacklist') loadBlacklist();
         }
 
         function sortEventsByDateDesc(list) {
@@ -2231,7 +2352,7 @@
                     </div>
                     <div class="info-item">
                         <div class="info-label">Волонтёры</div>
-                        <div>${event.currentVolunteers} / ${event.maxVolunteers || '∞'}</div>
+                        <div>${event.currentVolunteers || 0}</div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">Вопросов в форме</div>
@@ -2414,7 +2535,6 @@
             if (endInput) endInput.min = document.getElementById('eventDate').value || '';
             document.getElementById('eventLocation').value = event.location;
             document.getElementById('eventDescription').value = event.description;
-            document.getElementById('eventMaxVolunteers').value = event.maxVolunteers ? event.maxVolunteers : '';
             document.getElementById('eventColor').value = event.color || '#ff6b35';
             document.getElementById('colorPreview').style.background = event.color || '#ff6b35';
             document.getElementById('eventStatus').value = event.status || 'open';
@@ -2785,7 +2905,7 @@
                 dateEnd: dateEndRaw ? (formatDateRuFromIso(dateEndRaw) || dateEndRaw) : '',
                 location: document.getElementById('eventLocation').value,
                 description: document.getElementById('eventDescription').value,
-                maxVolunteers: parseInt(document.getElementById('eventMaxVolunteers').value) || 0,
+                maxVolunteers: 0,
                 currentVolunteers: parseInt(document.getElementById('eventCurrentVolunteers').value) || 0,
                 color: document.getElementById('eventColor').value,
                 status: document.getElementById('eventStatus').value || 'open',
@@ -2870,7 +2990,6 @@
             document.getElementById('eventDateEnd').min = '';
             document.getElementById('eventLocation').value = original.location;
             document.getElementById('eventDescription').value = original.description;
-            document.getElementById('eventMaxVolunteers').value = original.maxVolunteers ? original.maxVolunteers : '';
             document.getElementById('eventColor').value = original.color || '#ff6b35';
             document.getElementById('colorPreview').style.background = original.color || '#ff6b35';
             document.getElementById('eventStatus').value = 'draft';
@@ -2903,7 +3022,6 @@
             document.getElementById('eventDateEnd').min = '';
             document.getElementById('eventLocation').value = template.location || '';
             document.getElementById('eventDescription').value = template.description || '';
-            document.getElementById('eventMaxVolunteers').value = template.maxVolunteers ? template.maxVolunteers : '';
             document.getElementById('eventColor').value = template.color || '#ff6b35';
             document.getElementById('colorPreview').style.background = template.color || '#ff6b35';
             document.getElementById('eventStatus').value = 'draft';
@@ -2988,7 +3106,7 @@
                 <span class="attendance-stat-chip absent">✗ Не пришли: ${absent}</span>
                 <span class="attendance-stat-chip nomark">? Без отметки: ${nomark}</span>
                 <span class="attendance-stat-chip hours">⏱ Часов: ${totalHours.toFixed(1)}</span>
-                <span class="attendance-stat-chip" style="border-color:#1B2480;color:#1B2480;">📊 Явка: ${rate}%</span>
+                <span class="attendance-stat-chip" style="border-color:#334155;color:#334155;">📊 Явка: ${rate}%</span>
             `;
         }
 
@@ -3059,6 +3177,7 @@
                         r.eventTitle,
                         JSON.stringify(r.answers || {}),
                         JSON.stringify(r.answersLabeled || {}),
+                        r.coordinatorNote || '',
                         Array.isArray(r.selectedDays) ? r.selectedDays.join(' ') : ''
                     ].join(' ').toLowerCase();
                     return blob.includes(participantsSearchQuery);
@@ -3187,19 +3306,28 @@
 
             const isRange = typeof isMultiDayEvent === 'function' && isMultiDayEvent(event);
             const daysHeader = isRange ? '<th>Дни участия</th>' : '';
-            const thead = keys.map(k => `<th>${escapeHtmlText(questionTextMap[k] || k)}</th>`).join('');
+            const thead = keys.map(k => `<th class="col-answer">${escapeHtmlText(questionTextMap[k] || k)}</th>`).join('');
             const tbody = records.map(r => {
                 const cells = keys.map(k => {
                     const val = getAnswerValue(r, k, questionTextMap);
-                    return `<td>${escapeHtmlText(val || '—')}</td>`;
+                    return `<td class="col-answer">${escapeHtmlText(val || '—')}</td>`;
                 }).join('');
                 const isNew = !seenIds.has(r.registrationId);
                 const rid = (typeof escapeHtmlAttr === 'function' ? escapeHtmlAttr : escapeHtmlText)(r.registrationId);
                 const isWait = getRegistrationStatus(r) === REGISTRATION_STATUS.WAITLIST;
                 const isConf = isConfirmedRegistration(r);
+                const profile = typeof extractCommonFields === 'function' ? extractCommonFields(r.answersLabeled) : {};
+                const hits = Array.isArray(r.blacklist) ? r.blacklist : [];
+                const hitText = hits.map(hit => hit.reason).filter(Boolean).join('\n');
+                const blacklistMark = hits.length
+                    ? `<span class="blacklist-mark">Не брать</span>${hitText ? `<span class="blacklist-reason">${escapeHtmlText(hitText)}</span>` : ''}`
+                    : '';
                 const actions = `
-                    <button type="button" class="btn btn-danger btn-icon" title="Удалить" onclick="deleteRegistration('${rid}')">×</button>
-                    ${isWait ? `<button type="button" class="btn btn-success btn-small" onclick="promoteFromWaitlist('${rid}')">Принять</button>` : ''}
+                    <div class="participant-actions">
+                        <button type="button" class="btn btn-danger btn-icon" title="Удалить" onclick="deleteRegistration('${rid}')">×</button>
+                        <button type="button" class="btn btn-small" style="background:#a91e1e;" onclick="openBlacklistForm('${rid}')">${hits.length ? 'Дописать' : 'Не брать'}</button>
+                        ${isWait ? `<button type="button" class="btn btn-success btn-small" onclick="promoteFromWaitlist('${rid}')">Принять</button>` : ''}
+                    </div>
                 `;
 
                 const att = r.attendance || '';
@@ -3214,14 +3342,16 @@
                 const daysCell = isRange ? `<td>${escapeHtmlText(formatParticipantDays(r))}</td>` : '';
 
                 return `<tr>
-                    <td style="white-space:nowrap;">${actions}</td>
                     <td>${escapeHtmlText(r.createdAt || r.timestamp || '—')}${isNew ? ' <span style="color:#2ecc71;font-weight:700;">· NEW</span>' : ''}</td>
+                    <td class="col-name"><strong>${escapeHtmlText(getParticipantName(r))}</strong>${blacklistMark}${actions}</td>
+                    <td>${escapeHtmlText(profile.year || '—')}</td>
+                    <td>${escapeHtmlText(profile.faculty || '—')}</td>
                     <td>${escapeHtmlText(getStatusLabel(r))}</td>
-                    <td>${escapeHtmlText(getParticipantName(r))}</td>
                     <td>${escapeHtmlText(r.contactEmail || '—')}</td>
                     <td>${escapeHtmlText(r.contactPhone || '—')}</td>
                     ${daysCell}
                     ${attendanceCell}
+                    <td class="participant-note">${escapeHtmlText(String(r.coordinatorNote || '').trim() || '—')}</td>
                     ${cells}
                 </tr>`;
             }).join('');
@@ -3229,7 +3359,7 @@
             container.innerHTML = `
                 <div class="participants-table-wrap">
                     <table class="participants-table">
-                        <thead><tr><th></th><th>Дата</th><th>Статус</th><th>Имя</th><th>Email</th><th>Телефон</th>${daysHeader}<th>Посещение</th><th>Часы</th>${thead}</tr></thead>
+                        <thead><tr><th>Время</th><th class="col-name">ФИО</th><th>Курс</th><th>Факультет</th><th>Статус</th><th>Email</th><th>Телефон</th>${daysHeader}<th>Посещение</th><th>Часы</th><th>Комментарий</th>${thead}</tr></thead>
                         <tbody>${tbody}</tbody>
                     </table>
                 </div>
@@ -3429,8 +3559,302 @@
             showMessage('success', '✓ Все текущие заявки отмечены как просмотренные');
         }
 
-        // Экспорт участников в CSV (all | new)
-        function exportCSV(mode = 'all') {
+        function openHoursImport() {
+            if (!currentParticipantsEventId) return;
+            hoursImportRows = [];
+            hoursImportChoices = {};
+            hoursImportPreview = null;
+            hoursImportBusy = false;
+            const file = document.getElementById('hoursImportFile');
+            if (file) file.value = '';
+            document.getElementById('hoursImportModal').classList.add('active');
+            renderHoursPreview();
+        }
+
+        function closeHoursImport() {
+            document.getElementById('hoursImportModal').classList.remove('active');
+        }
+
+        function setHoursStatus(text) {
+            const status = document.getElementById('hoursImportStatus');
+            if (status) status.textContent = text || '';
+        }
+
+        async function loadBlacklist() {
+            const box = document.getElementById('blacklistList');
+            if (box) box.innerHTML = '<p style="opacity:0.6;">Загрузка...</p>';
+            try {
+                const data = await apiFetch('/api/admin/blacklist');
+                renderBlacklist(data.entries || []);
+            } catch (err) {
+                if (box) box.innerHTML = `<p class="hours-note">${escapeHtmlText(err.detail || err.message || 'Не удалось загрузить список')}</p>`;
+            }
+        }
+
+        function renderBlacklist(entries) {
+            const box = document.getElementById('blacklistList');
+            if (!box) return;
+            if (!entries.length) {
+                box.innerHTML = '<p style="opacity:0.65;">Пока никого нет.</p>';
+                return;
+            }
+            const rows = entries.map(entry => {
+                const id = escapeHtmlAttr(entry.id);
+                const from = (entry.eventTitles || []).join(', ') || '—';
+                return `<tr>
+                    <td><strong>${escapeHtmlText(entry.name || '—')}</strong></td>
+                    <td>${escapeHtmlText(entry.faculty || '—')}</td>
+                    <td>${escapeHtmlText(entry.year || '—')}</td>
+                    <td class="blacklist-reason">${escapeHtmlText(entry.reason || '—')}</td>
+                    <td>${escapeHtmlText(from)}</td>
+                    <td><button type="button" class="btn btn-small" onclick="removeFromBlacklist('${id}')">Снять пометку</button></td>
+                </tr>`;
+            }).join('');
+            box.innerHTML = `<div class="participants-table-wrap"><table class="participants-table">
+                <thead><tr><th>Кто</th><th>Факультет</th><th>Курс</th><th>Почему</th><th>Откуда</th><th></th></tr></thead>
+                <tbody>${rows}</tbody>
+            </table></div>`;
+        }
+
+        function openBlacklistForm(registrationId) {
+            const record = currentParticipantsData.find(item => item.registrationId === registrationId);
+            if (!record) return;
+            blacklistTargetId = registrationId;
+            document.getElementById('blacklistPersonName').textContent = getParticipantName(record);
+            const existing = document.getElementById('blacklistExisting');
+            const hits = Array.isArray(record.blacklist) ? record.blacklist : [];
+            const text = hits.map(hit => hit.reason).filter(Boolean).join('\n');
+            existing.style.display = text ? '' : 'none';
+            existing.textContent = text ? `Уже в списке:\n${text}\nНовая причина добавится к этой.` : '';
+            document.getElementById('blacklistReason').value = '';
+            document.getElementById('blacklistModal').classList.add('active');
+        }
+
+        function closeBlacklistForm() {
+            blacklistTargetId = '';
+            document.getElementById('blacklistModal').classList.remove('active');
+        }
+
+        async function submitBlacklist() {
+            const reason = (document.getElementById('blacklistReason').value || '').trim();
+            if (!blacklistTargetId) return;
+            if (!reason) {
+                showMessage('error', 'Напишите, почему человека не брать');
+                return;
+            }
+            const button = document.getElementById('blacklistSaveBtn');
+            if (button) button.disabled = true;
+            try {
+                await apiFetch('/api/admin/blacklist', {
+                    method: 'POST',
+                    body: JSON.stringify({ registrationId: blacklistTargetId, reason })
+                });
+                closeBlacklistForm();
+                showMessage('success', '✓ Пометка «не брать» сохранена');
+                if (currentParticipantsEventId) showParticipants(currentParticipantsEventId);
+                if (adminTab === 'blacklist') loadBlacklist();
+            } catch (err) {
+                showMessage('error', err.detail || 'Не удалось сохранить пометку');
+            } finally {
+                if (button) button.disabled = false;
+            }
+        }
+
+        async function removeFromBlacklist(id) {
+            if (!confirm('Снять пометку «не брать»?')) return;
+            try {
+                await apiFetch(`/api/admin/blacklist/${encodeURIComponent(id)}`, { method: 'DELETE' });
+                showMessage('success', '✓ Пометку сняли');
+                loadBlacklist();
+            } catch (err) {
+                showMessage('error', err.detail || 'Не удалось снять пометку');
+            }
+        }
+
+        async function downloadHoursTemplate() {
+            const user = auth.currentUser;
+            if (!user || !currentParticipantsEventId) {
+                setHoursStatus('Сначала откройте участников мероприятия.');
+                return;
+            }
+            setHoursStatus('Готовим шаблон...');
+            try {
+                const token = await user.getIdToken();
+                const res = await fetch(apiUrl(`/api/admin/events/${encodeURIComponent(currentParticipantsEventId)}/hours-template`), {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    throw new Error(data.message || data.error || 'Не удалось скачать шаблон');
+                }
+                const blob = await res.blob();
+                if (!blob.size) throw new Error('Сервер прислал пустой файл');
+                saveBlob(blob, 'hours-template.xlsx');
+                setHoursStatus('Шаблон скачан.');
+            } catch (err) {
+                const text = err.message || 'Не удалось скачать шаблон';
+                setHoursStatus(text);
+                showMessage('error', text);
+            }
+        }
+
+        async function onHoursFileSelected(input) {
+            const file = input.files && input.files[0];
+            if (!file || !currentParticipantsEventId) return;
+            if (!/\.xlsx$/i.test(file.name)) {
+                showMessage('error', 'Сохраните таблицу как .xlsx');
+                input.value = '';
+                return;
+            }
+            hoursImportBusy = true;
+            hoursImportChoices = {};
+            hoursImportPreview = null;
+            renderHoursPreview();
+            try {
+                const data = await apiFetch(`/api/admin/events/${encodeURIComponent(currentParticipantsEventId)}/hours-import/preview`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+                    body: await file.arrayBuffer()
+                });
+                hoursImportRows = data.rows || [];
+                hoursImportPreview = data.preview || null;
+            } catch (err) {
+                hoursImportRows = [];
+                hoursImportPreview = { error: err.detail || err.message || 'Не удалось прочитать файл' };
+            } finally {
+                hoursImportBusy = false;
+                input.value = '';
+                renderHoursPreview();
+            }
+        }
+
+        async function onHoursChoice(rowNumber, registrationId) {
+            hoursImportChoices[String(rowNumber)] = registrationId;
+            hoursImportBusy = true;
+            renderHoursPreview();
+            try {
+                const data = await apiFetch(`/api/admin/events/${encodeURIComponent(currentParticipantsEventId)}/hours-import/resolve`, {
+                    method: 'POST',
+                    body: JSON.stringify({ rows: hoursImportRows, choices: hoursImportChoices })
+                });
+                hoursImportPreview = data.preview || null;
+            } catch (err) {
+                hoursImportPreview = { error: err.detail || err.message || 'Не удалось обновить сверку' };
+            } finally {
+                hoursImportBusy = false;
+                renderHoursPreview();
+            }
+        }
+
+        function hoursPersonLabel(person) {
+            return [person.name || '—', person.faculty || 'факультет не указан', person.year || 'курс не указан'].join(' · ');
+        }
+
+        function renderHoursPreview() {
+            const box = document.getElementById('hoursImportPreview');
+            if (!box) return;
+            if (hoursImportBusy && !hoursImportPreview) {
+                box.innerHTML = '<p>Читаем файл...</p>';
+                return;
+            }
+            if (!hoursImportPreview) {
+                box.innerHTML = '<p style="opacity:0.7;">Скачайте шаблон или выберите свой .xlsx с теми же колонками.</p>';
+                return;
+            }
+            if (hoursImportPreview.error) {
+                box.innerHTML = `<p class="hours-note">${escapeHtmlText(hoursImportPreview.error)}</p>`;
+                return;
+            }
+
+            const summary = hoursImportPreview.summary || {};
+            const chips = [
+                `<span class="hours-chip">Часы: ${summary.present || 0}</span>`,
+                `<span class="hours-chip">Неявка: ${summary.absent || 0}</span>`,
+                `<span class="hours-chip">Не из списка: ${summary.unknown || 0}</span>`
+            ];
+            if (summary.ambiguous) chips.push(`<span class="hours-chip warn">Выбрать человека: ${summary.ambiguous}</span>`);
+            if (summary.invalid) chips.push(`<span class="hours-chip bad">Ошибка в часах: ${summary.invalid}</span>`);
+            if (summary.conflict) chips.push(`<span class="hours-chip bad">Повтор человека: ${summary.conflict}</span>`);
+
+            const rowHtml = (hoursImportPreview.rows || []).map(row => {
+                const hoursText = row.hours == null ? '—' : String(row.hours);
+                let choice = '';
+                if (row.status === 'ambiguous') {
+                    const options = (row.candidates || []).map(candidate =>
+                        `<option value="${escapeHtmlAttr(candidate.registrationId)}">${escapeHtmlText(hoursPersonLabel(candidate))}</option>`
+                    ).join('');
+                    choice = `<select onchange="onHoursChoice(${Number(row.row)}, this.value)"><option value="">Выберите</option>${options}</select>`;
+                }
+                return `<tr>
+                    <td>${escapeHtmlText(row.row)}</td>
+                    <td>${escapeHtmlText(hoursPersonLabel(row))}</td>
+                    <td>${escapeHtmlText(hoursText)}</td>
+                    <td>${escapeHtmlText(row.comment || '—')}</td>
+                    <td>${escapeHtmlText(row.message || '')}${choice ? '<div style="margin-top:0.35rem;">' + choice + '</div>' : ''}</td>
+                </tr>`;
+            }).join('');
+
+            const missing = hoursImportPreview.missing || [];
+            const missingShown = missing.slice(0, 40).map(person => `<li>${escapeHtmlText(hoursPersonLabel(person))}</li>`).join('');
+            const missingMore = missing.length > 40 ? `<li>и ещё ${missing.length - 40}</li>` : '';
+            const missingBlock = missing.length
+                ? `<p style="margin:0.8rem 0 0.3rem;">Неявка, потому что этих записанных нет в файле. Их прошлый комментарий не сотрётся:</p><ul>${missingShown}${missingMore}</ul>`
+                : '';
+            const emptyHoursWarn = !summary.present && summary.absent
+                ? '<p class="hours-note">В файле ни у кого нет часов. Подтверждение поставит неявку всем, кого нет с числом часов.</p>'
+                : '';
+            const canApply = hoursImportPreview.ready && !hoursImportBusy;
+
+            box.innerHTML = `
+                <div class="hours-summary">${chips.join('')}</div>
+                ${emptyHoursWarn}
+                <div class="hours-preview-wrap">
+                    <table class="hours-preview-table">
+                        <thead><tr><th>Строка</th><th>Человек</th><th>Часы</th><th>Комментарий</th><th>Что будет</th></tr></thead>
+                        <tbody>${rowHtml || '<tr><td colspan="5">В файле нет строк</td></tr>'}</tbody>
+                    </table>
+                </div>
+                ${missingBlock}
+                <div class="hours-actions" style="margin-top:1rem;">
+                    <button type="button" class="btn btn-success" ${canApply ? '' : 'disabled'} onclick="applyHoursImport()">${hoursImportBusy ? 'Сохраняем...' : 'Подтвердить и записать'}</button>
+                </div>`;
+        }
+
+        async function applyHoursImport() {
+            if (!hoursImportPreview || !hoursImportPreview.ready || hoursImportBusy || !currentParticipantsEventId) return;
+            const summary = hoursImportPreview.summary || {};
+            const agreed = confirm(`Записать итог мероприятия?\nПолучат часы: ${summary.present || 0}\nНеявка: ${summary.absent || 0}\nСтрок не из списка: ${summary.unknown || 0}`);
+            if (!agreed) return;
+            hoursImportBusy = true;
+            renderHoursPreview();
+            try {
+                const data = await apiFetch(`/api/admin/events/${encodeURIComponent(currentParticipantsEventId)}/hours-import/apply`, {
+                    method: 'POST',
+                    body: JSON.stringify({ rows: hoursImportRows, choices: hoursImportChoices })
+                });
+                closeHoursImport();
+                showMessage('success', `✓ Часы записаны. Пришли: ${data.present}. Неявка: ${data.absent}.`);
+                showParticipants(currentParticipantsEventId);
+            } catch (err) {
+                hoursImportBusy = false;
+                showMessage('error', err.detail || 'Не удалось записать часы');
+                renderHoursPreview();
+            }
+        }
+
+        function saveBlob(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 2000);
+        }
+
+        // Экспорт участников в Excel (all | new)
+        async function exportParticipants(mode = 'all') {
             if (!currentParticipantsData.length || !currentParticipantsEventId) {
                 alert('Нет данных для экспорта');
                 return;
@@ -3441,45 +3865,48 @@
                 alert(mode === 'new' ? 'Новых заявок нет' : 'Нет данных для экспорта');
                 return;
             }
+            if (!auth.currentUser) {
+                showMessage('error', 'Нет входа');
+                return;
+            }
 
             const event = eventsData[currentParticipantsEventId];
             const keys = getOrderedAnswerKeys(event?.questions || [], records);
             const questionTextMap = buildQuestionTextMap(event?.questions || []);
+            if (!keys.length) {
+                alert('В анкете нет ответов для выгрузки');
+                return;
+            }
+            const headers = keys.map(key => questionTextMap[key] || key);
+            const rows = records.map(record => keys.map(key => getAnswerValue(record, key, questionTextMap)));
 
-            const headerKeys = keys.map(k => questionTextMap[k] || k);
-            const header = ['registrationId', 'status', 'createdAt', 'createdAtMs', 'timestamp', 'eventId', 'eventTitle', 'contactEmail', 'contactPhone', 'selectedDays', 'attendance', 'workedHours', ...headerKeys].map(escapeCsv).join(',');
-            const attRu = { present: 'Пришёл', late: 'Опоздал', absent: 'Не пришёл' };
-            const rows = records.map(r => {
-                const fixedColumns = [
-                    r.registrationId || '',
-                    getRegistrationStatus(r),
-                    r.createdAt || '',
-                    r.createdAtMs || '',
-                    r.timestamp || '',
-                    r.eventId || '',
-                    r.eventTitle || '',
-                    r.contactEmail || '',
-                    r.contactPhone || '',
-                    Array.isArray(r.selectedDays) ? r.selectedDays.join('; ') : '',
-                    attRu[r.attendance] || '',
-                    r.workedHours != null ? r.workedHours : ''
-                ];
-                const answers = keys.map(k => r.answers?.[k] || '');
-                return [...fixedColumns, ...answers].map(escapeCsv).join(',');
-            });
-
-            // \uFEFF — BOM для корректного открытия в Excel
-            const csv = '\uFEFF' + [header, ...rows].join('\n');
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `participants_${mode}_${Date.now()}.csv`;
-            a.click();
-            URL.revokeObjectURL(url);
-
-            markAsSeen(records);
-            showParticipants(currentParticipantsEventId);
+            try {
+                const token = await auth.currentUser.getIdToken();
+                const res = await fetch(apiUrl(`/api/admin/events/${encodeURIComponent(currentParticipantsEventId)}/participants-export`), {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ headers, rows })
+                });
+                if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    throw new Error(data.message || 'Не удалось скачать Excel');
+                }
+                const blob = await res.blob();
+                if (!blob.size) throw new Error('Сервер прислал пустой файл');
+                const title = (event && event.title ? event.title : 'participants')
+                    .replace(/[\\/:*?"<>|]+/g, ' ')
+                    .trim()
+                    .slice(0, 60) || 'participants';
+                const suffix = mode === 'new' ? 'новые' : 'все';
+                saveBlob(blob, `${title} — ${suffix}.xlsx`);
+                markAsSeen(records);
+                showParticipants(currentParticipantsEventId);
+            } catch (err) {
+                showMessage('error', err.message || 'Не удалось скачать Excel');
+            }
         }
 
         async function copyRegLink(eventId, btn) {
@@ -3560,6 +3987,7 @@
                     : [];
                 if (enabledInput) enabledInput.checked = data.telegramEnabled !== false;
                 renderTelegramChatIds();
+                loadTelegramCurators();
 
                 const res = await fetch(apiUrl('/api/telegram/status'));
                 if (res.ok) {
@@ -3579,6 +4007,82 @@
             } catch (e) {
                 console.error('Telegram panel init:', e);
                 setTelegramStatus(false, '⚠ Ошибка загрузки настроек');
+            }
+        }
+
+        async function connectTelegramBot() {
+            try {
+                await apiFetch('/api/admin/telegram/connect', { method: 'POST' });
+                showMessage('success', '✓ Бот подключён. Кураторы могут написать /start');
+            } catch (err) {
+                showMessage('error', err.detail || 'Не удалось подключить бота. Проверьте токен и Apps Script.');
+            }
+        }
+
+        async function loadTelegramCurators() {
+            const box = document.getElementById('telegramCurators');
+            if (!box) return;
+            try {
+                const data = await apiFetch('/api/admin/telegram/curators');
+                const curators = data.curators || [];
+                if (!curators.length) {
+                    box.innerHTML = '<p style="opacity:0.6;">Пока никто не написал боту.</p>';
+                    return;
+                }
+                box.innerHTML = curators.map(person => {
+                    const id = escapeHtmlAttr(person.chatId);
+                    const who = escapeHtmlText(person.firstName || person.username || person.chatId);
+                    const name = person.username ? ` @${escapeHtmlText(person.username)}` : '';
+                    const subs = (person.subscriptions || []).length;
+                    const actions = person.status === 'approved'
+                        ? `<button type="button" class="btn btn-small" onclick="rejectTelegramCurator('${id}')">Убрать</button>`
+                        : `<button type="button" class="btn btn-small btn-success" onclick="approveTelegramCurator('${id}')">Подтвердить</button>
+                           <button type="button" class="btn btn-small" onclick="rejectTelegramCurator('${id}')">Отклонить</button>`;
+                    const state = person.status === 'approved' ? `следит: ${subs}` : 'ждёт подтверждения';
+                    return `<div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin:0.45rem 0;">
+                        <span><strong>${who}</strong>${name} — ${state}</span>
+                        ${actions}
+                    </div>`;
+                }).join('');
+            } catch (err) {
+                box.innerHTML = '<p class="hours-note">Не удалось загрузить кураторов</p>';
+            }
+        }
+
+        async function approveTelegramCurator(chatId) {
+            await apiFetch(`/api/admin/telegram/curators/${encodeURIComponent(chatId)}/approve`, { method: 'POST' });
+            showMessage('success', '✓ Куратор подтверждён');
+            loadTelegramCurators();
+        }
+
+        async function rejectTelegramCurator(chatId) {
+            await apiFetch(`/api/admin/telegram/curators/${encodeURIComponent(chatId)}`, { method: 'DELETE' });
+            showMessage('success', '✓ Доступ убран');
+            loadTelegramCurators();
+        }
+
+        async function saveTelegramToken() {
+            const input = document.getElementById('telegramTokenInput');
+            const token = (input && input.value || '').trim();
+            if (!/^\d+:[A-Za-z0-9_-]{20,}$/.test(token)) {
+                showMessage('error', 'Это не похоже на токен от @BotFather');
+                return;
+            }
+            const enabledInput = document.getElementById('telegramEnabled');
+            try {
+                await apiFetch('/api/admin/settings/notifications', {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        telegramEnabled: enabledInput ? enabledInput.checked : true,
+                        telegramChatIds,
+                        telegramBotToken: token
+                    })
+                });
+                if (input) input.value = '';
+                showMessage('success', '✓ Токен бота сохранён');
+                await initTelegramPanel();
+            } catch (e) {
+                showMessage('error', 'Не удалось сохранить токен');
             }
         }
 

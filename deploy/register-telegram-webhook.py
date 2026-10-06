@@ -6,7 +6,10 @@ import paramiko
 HOST = os.environ.get('VPS_HOST', '186.246.12.138')
 PASSWORD = os.environ.get('VPS_PASSWORD', '')
 ENV_FILE = '/var/www/volunteer-system/server/.env'
-WEBHOOK_URL = 'https://volonter-msu.ru/api/telegram/webhook'
+WEBHOOK_URL = os.environ.get(
+    'WEBHOOK_URL',
+    'https://volunteer.msuprof.com/api/telegram/webhook'
+)
 
 
 def run(client, cmd):

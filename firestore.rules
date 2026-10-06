@@ -2,14 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Самостоятельная отмена: пользователь по ссылке может
-    // перевести свою заявку только в статус "cancelled".
-    function isSelfCancel() {
-      return request.resource.data.diff(resource.data)
-          .affectedKeys().hasOnly(['status', 'cancelledAt'])
-        && request.resource.data.status == 'cancelled';
-    }
-
     match /events/{eventId} {
       allow read: if true;
       allow write: if false;

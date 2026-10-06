@@ -36,7 +36,7 @@ function getDirectImageUrl(url) {
 }
 
 function getEventLogoUrl(url) {
-    if (!url || !String(url).trim()) return 'assets/logo.png';
+    if (!url || !String(url).trim()) return 'assets/logo-opk-white.png';
     const direct = getDirectImageUrl(url);
     if (/drive\.google\.com\/thumbnail/i.test(direct)) {
         return direct.replace(/sz=w\d+/i, 'sz=w256');

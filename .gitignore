@@ -8,4 +8,6 @@ firestore-debug.log
 server/.env
 server/service-account.json
 server/service-account*.json
+server/scripts/*.local.json
+server/scripts/*.local.txt
 *.pem

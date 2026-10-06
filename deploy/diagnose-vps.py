@@ -19,9 +19,10 @@ cmds = [
     'cat /etc/nginx/sites-enabled/volunteer',
     'ufw status 2>&1 || true',
     'tail -50 /var/log/nginx/error.log 2>&1 || true',
+    'curl -skI https://186.246.12.138/health -H "Host: volunteer.msuprof.com" | head -10',
+    'echo | openssl s_client -connect 127.0.0.1:443 -servername volunteer.msuprof.com 2>&1 | head -25',
+    'echo | openssl s_client -connect 186.246.12.138:443 -servername volunteer.msuprof.com 2>&1 | head -25',
     'curl -skI https://186.246.12.138/health -H "Host: volonter-msu.ru" | head -10',
-    'echo | openssl s_client -connect 127.0.0.1:443 -servername volonter-msu.ru 2>&1 | head -25',
-    'echo | openssl s_client -connect 186.246.12.138:443 -servername volonter-msu.ru 2>&1 | head -25',
     'free -h; df -h /',
 ]
 

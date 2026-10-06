@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create staging environment on VPS (staging.volonter-msu.ru)."""
+"""Create staging environment on VPS (staging.volunteer.msuprof.com)."""
 import os
 import sys
 import paramiko
@@ -7,11 +7,11 @@ import paramiko
 HOST = os.environ.get('VPS_HOST', '186.246.12.138')
 USER = os.environ.get('VPS_USER', 'root')
 PASSWORD = os.environ.get('VPS_PASSWORD', '')
-DOMAIN = os.environ.get('DOMAIN', 'volonter-msu.ru')
+DOMAIN = os.environ.get('DOMAIN', 'volunteer.msuprof.com')
 STAGING_HOST = os.environ.get('STAGING_HOST', f'staging.{DOMAIN}')
 PROD_DIR = os.environ.get('APP_DIR', '/var/www/volunteer-system')
 STAGING_DIR = os.environ.get('STAGING_DIR', '/var/www/volunteer-system-staging')
-REPO_URL = os.environ.get('REPO_URL', 'https://github.com/matveimatucha/volunteer-system.git')
+REPO_URL = os.environ.get('REPO_URL', '')
 
 
 def run(client, cmd, timeout=600):
@@ -31,6 +31,9 @@ def run(client, cmd, timeout=600):
 def main():
     if not PASSWORD:
         print('Set VPS_PASSWORD', file=sys.stderr)
+        sys.exit(1)
+    if not REPO_URL:
+        print('Set REPO_URL to the official organization repository', file=sys.stderr)
         sys.exit(1)
 
     client = paramiko.SSHClient()

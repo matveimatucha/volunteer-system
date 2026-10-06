@@ -451,6 +451,7 @@ function fillVolunteerFromRegistration(entry, r, docId, eventTitles) {
         status: r.status || '',
         attendance: r.attendance || null,
         workedHours: r.workedHours != null ? Number(r.workedHours) : null,
+        coordinatorNote: String(r.coordinatorNote || '').trim(),
         registrationId: r.registrationId || docId,
         selectedDays: Array.isArray(r.selectedDays) ? r.selectedDays.slice(0, MAX_EVENT_DAYS) : []
     });
